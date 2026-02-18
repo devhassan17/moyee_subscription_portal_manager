@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+
     <!-- Add Moyee fields to Sale Order form (used for subscription orders too) -->
     <record id="view_sale_order_form_moyee" model="ir.ui.view">
         <field name="name">sale.order.form.moyee</field>
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
+
+            <!-- Add new tab inside notebook -->
             <xpath expr="//sheet/notebook" position="inside">
                 <page string="Portal Controls (Moyee)">
                     <group>
@@ -20,12 +23,7 @@
                 </page>
             </xpath>
 
-            <!-- Show billing control fields on order lines (inline) -->
-            <xpath expr="//field[@name='order_line']//tree" position="inside">
-                <field name="is_active_for_billing" optional="show"/>
-                <field name="start_date" optional="hide"/>
-                <field name="end_date" optional="hide"/>
-            </xpath>
         </field>
     </record>
+
 </odoo>
