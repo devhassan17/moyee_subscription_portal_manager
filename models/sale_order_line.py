@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models, _
-from odoo.exceptions import AccessError, UserError
+from odoo import fields, models
 
-class SaleSubscriptionLine(models.Model):
-    _inherit = "sale.subscription.line"
+class SaleOrderLine(models.Model):
+    _inherit = "sale.order.line"
 
     is_active_for_billing = fields.Boolean(
         string="Active for Billing",
@@ -13,6 +12,7 @@ class SaleSubscriptionLine(models.Model):
     )
     start_date = fields.Date(string="Start Date", tracking=True)
     end_date = fields.Date(string="End Date", tracking=True)
+
     change_source = fields.Selection(
         [("portal", "Portal"), ("backend", "Backend")],
         string="Change Source",
@@ -24,7 +24,6 @@ class SaleSubscriptionLine(models.Model):
     change_note = fields.Text(string="Change Note", tracking=True)
 
     def moyee_end_line(self, end_date=False, note=False, source="backend"):
-        """Soft-remove line from future billing without deleting history."""
         for line in self:
             vals = {
                 "is_active_for_billing": False,

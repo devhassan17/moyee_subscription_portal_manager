@@ -6,7 +6,7 @@
         <field name="arch" type="xml">
             <form string="Replace Product on Subscription">
                 <group>
-                    <field name="subscription_id"/>
+                    <field name="order_id"/>
                     <field name="old_line_id"/>
                     <field name="new_product_id"/>
                     <field name="quantity"/>
@@ -27,6 +27,4 @@
         <field name="view_mode">form</field>
         <field name="target">new</field>
     </record>
-
-    <!-- Optional: Add a smart button / action entry point can be added later -->
 </odoo>

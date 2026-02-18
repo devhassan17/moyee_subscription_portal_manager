@@ -1,2 +1,2 @@
-from . import subscription_line
-from . import subscription_extension
+from . import sale_order_line
+from . import sale_order_subscription

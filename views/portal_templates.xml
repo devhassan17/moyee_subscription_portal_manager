@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- Best-effort inherit: if the portal subscription template exists, this adds a button -->
     <template id="moyee_portal_subscription_inherit" inherit_id="sale_subscription.portal_my_subscription">
         <xpath expr="//div[contains(@class,'o_portal_wrap')]" position="inside">
             <div class="mt-3">
-                <a t-att-href="'/my/subscriptions/%s/moyee/change_product' % subscription.id"
+                <a t-att-href="'/my/subscriptions/%s/moyee/change_product' % (subscription.id if subscription else order.id)"
                    class="btn btn-primary">
                     Change Product (Moyee)
                 </a>
@@ -15,7 +16,7 @@
         <t t-call="portal.portal_layout">
             <t t-set="title">Change Product</t>
             <div class="container mt-4">
-                <h3>Change Product for Subscription <t t-esc="subscription.code or subscription.name"/></h3>
+                <h3>Change Product for Subscription <t t-esc="order.name"/></h3>
                 <form method="post">
                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                     <div class="form-group mt-3">
@@ -23,7 +24,7 @@
                         <select class="form-control" name="old_line_id" required="required">
                             <t t-foreach="lines" t-as="l">
                                 <option t-att-value="l.id">
-                                    <t t-esc="l.product_id.display_name"/> (Qty: <t t-esc="l.quantity"/>)
+                                    <t t-esc="l.product_id.display_name"/> (Qty: <t t-esc="l.product_uom_qty"/>)
                                 </option>
                             </t>
                         </select>
@@ -44,7 +45,7 @@
                     </div>
 
                     <button type="submit" class="btn btn-success mt-3">Apply Change</button>
-                    <a t-att-href="'/my/subscriptions/%s' % subscription.id" class="btn btn-link mt-3">Back</a>
+                    <a t-att-href="'/my/subscriptions/%s' % order.id" class="btn btn-link mt-3">Back</a>
                 </form>
             </div>
         </t>

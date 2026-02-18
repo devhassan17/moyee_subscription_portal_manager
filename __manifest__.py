@@ -1,1 +1,19 @@
-{"name": "Moyee Subscription Portal Manager", "version": "18.0.1.0.0", "summary": "Advanced Subscription Management & Portal Control (Base Module)", "description": "Single unified module to manage subscription changes from backend and customer portal.\nBase skeleton: fields, portal routes, wizard, templates, security rules.\n", "author": "Ali", "license": "LGPL-3", "category": "Sales/Subscriptions", "depends": ["sale_subscription", "portal", "sale_management", "website"], "data": ["security/security_rules.xml", "security/ir.model.access.csv", "views/subscription_views.xml", "views/wizard_views.xml", "views/portal_templates.xml", "views/settings_views.xml"], "installable": True, "application": False}
+{
+    "name": "Moyee Subscription Portal Manager",
+    "version": "18.0.1.0.1",
+    "summary": "Advanced Subscription Management & Portal Control (Base Module)",
+    "description": "Odoo 18 base module: manage subscription products from portal/backend using sale.order subscription engine.",
+    "author": "Moyee",
+    "license": "LGPL-3",
+    "category": "Sales/Subscriptions",
+    "depends": ["sale_subscription", "portal", "sale_management", "website"],
+    "data": [
+        "security/security_rules.xml",
+        "security/ir.model.access.csv",
+        "views/sale_order_views.xml",
+        "views/wizard_views.xml",
+        "views/portal_templates.xml"
+    ],
+    "installable": True,
+    "application": False
+}
