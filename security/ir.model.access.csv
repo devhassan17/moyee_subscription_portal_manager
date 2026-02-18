@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_moyee_replace_product_wizard_user,Moyee Replace Product Wizard,model_moyee_subscription_replace_product_wizard,base.group_user,1,1,1,0

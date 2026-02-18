@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_subscription_line_form_moyee" model="ir.ui.view">
+        <field name="name">sale.subscription.line.form.moyee</field>
+        <field name="model">sale.subscription.line</field>
+        <field name="inherit_id" ref="sale_subscription.sale_subscription_line_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/group" position="inside">
+                <group string="Moyee Billing Control">
+                    <field name="is_active_for_billing"/>
+                    <field name="start_date"/>
+                    <field name="end_date"/>
+                    <field name="change_source" readonly="1"/>
+                    <field name="change_date" readonly="1"/>
+                    <field name="changed_by" readonly="1"/>
+                    <field name="change_note"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

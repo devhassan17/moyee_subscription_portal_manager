@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Minimal settings placeholder: can be extended into res.config.settings -->
+    <record id="view_sale_subscription_form_moyee" model="ir.ui.view">
+        <field name="name">sale.subscription.form.moyee</field>
+        <field name="model">sale.subscription</field>
+        <field name="inherit_id" ref="sale_subscription.sale_subscription_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="Portal Controls (Moyee)">
+                    <group>
+                        <field name="allow_portal_product_change"/>
+                        <field name="allow_portal_add_product"/>
+                        <field name="allow_portal_remove_product"/>
+                        <field name="allow_portal_pause"/>
+                        <field name="allow_portal_frequency_change"/>
+                        <field name="allow_portal_address_change"/>
+                        <field name="allow_portal_push_delivery"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
