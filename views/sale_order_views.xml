@@ -28,13 +28,13 @@
         <field name="inherit_id" ref="sale.view_order_line_tree"/>
         <field name="arch" type="xml">
 
-            <xpath expr="//list" position="inside">
-                <button name="action_moyee_soft_remove"
-                        type="object"
-                        icon="fa-trash"
-                        class="btn-link"
-                        attrs="{'invisible':[('x_moyee_is_removed','=',True)]}"/>
-            </xpath>
+                <xpath expr="//list" position="inside">
+            <button name="action_moyee_soft_remove"
+                    type="object"
+                    icon="fa-trash"
+                    class="btn-link"
+                    invisible="x_moyee_is_removed"/>
+        </xpath>
 
         </field>
     </record>
