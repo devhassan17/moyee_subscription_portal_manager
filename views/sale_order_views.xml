@@ -1,34 +1,38 @@
 <odoo>
 
-    <!-- 1) Filter removed lines server-side on the sale.order form -->
-    <record id="view_order_form_moyee_subscription" model="ir.ui.view">
+    <!-- Hide removed lines server-side -->
+    <record id="view_order_form_moyee_subscription"
+            model="ir.ui.view">
         <field name="name">sale.order.form.moyee.subscription</field>
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
 
-            <!-- Hide removed lines by default (server-side domain, not CSS) -->
-            <xpath expr="//field[@name='order_line']" position="attributes">
-                <attribute name="domain">[('x_moyee_is_removed','=',False), ('product_uom_qty','&gt;',0)]</attribute>
+            <xpath expr="//field[@name='order_line']"
+                   position="attributes">
+                <attribute name="domain">
+                    [('x_moyee_is_removed','=',False),
+                     ('product_uom_qty','&gt;',0)]
+                </attribute>
             </xpath>
 
         </field>
     </record>
 
 
-    <!-- 2) Add Remove button by inheriting the sale.order.line tree view -->
-    <record id="view_order_line_tree_moyee_remove_btn" model="ir.ui.view">
-        <field name="name">sale.order.line.tree.moyee.remove.btn</field>
+    <!-- Odoo 18 uses <list> not <tree> -->
+    <record id="view_order_line_tree_moyee_remove_btn"
+            model="ir.ui.view">
+        <field name="name">sale.order.line.list.moyee.remove.btn</field>
         <field name="model">sale.order.line</field>
         <field name="inherit_id" ref="sale.view_order_line_tree"/>
         <field name="arch" type="xml">
 
-            <!-- Add button as a column inside the tree -->
-            <xpath expr="//tree" position="inside">
+            <xpath expr="//list" position="inside">
                 <button name="action_moyee_soft_remove"
                         type="object"
-                        string="Remove"
-                        class="btn btn-danger"
+                        icon="fa-trash"
+                        class="btn-link"
                         attrs="{'invisible':[('x_moyee_is_removed','=',True)]}"/>
             </xpath>
 
