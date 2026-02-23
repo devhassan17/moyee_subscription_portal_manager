@@ -1,31 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-  <data>
 
-    <template id="moyee_subscription_portal_delete_btn"
-              inherit_id="sale_subscription.subscription_portal_content">
+  <template id="moyee_subscription_portal_delete_btn"
+            inherit_id="sale_subscription.subscription_portal_content">
 
-      <!-- Hide removed / zero-qty lines only on subscription page -->
-      <xpath expr="//t[@t-foreach='lines_to_report']//tr[.//t[@name='product_line_row']]" position="attributes">
-        <attribute name="t-if">not getattr(line, 'x_moyee_is_removed', False) and line.product_uom_qty &gt; 0</attribute>
-      </xpath>
+    <!-- Hide removed / zero-qty lines only on subscription page -->
+    <xpath expr="//t[@name='product_line_row']" position="attributes">
+      <attribute name="t-if">
+        not line.display_type and line.product_type != 'combo'
+        and not getattr(line, 'x_moyee_is_removed', False)
+        and line.product_uom_qty &gt; 0
+      </attribute>
+    </xpath>
 
-      <!-- Add Delete column header -->
-      <xpath expr="//thead/tr" position="inside">
-        <th class="text-end">Action</th>
-      </xpath>
+    <!-- Add Delete column header (only on subscription page) -->
+    <xpath expr="//th[@id='subtotal_header']" position="after">
+      <th class="text-end">Action</th>
+    </xpath>
 
-      <!-- Add Delete button on each product line row -->
-      <xpath expr="//t[@name='product_line_row']/parent::tr" position="inside">
-        <td class="text-end">
-          <a t-attf-href="/my/subscription/#{sale_order.id}/line/#{line.id}/remove?access_token=#{sale_order.access_token}"
-             class="btn btn-sm btn-danger">
-            Delete
-          </a>
-        </td>
-      </xpath>
+    <!-- Add Delete button cell on each product line row -->
+    <xpath expr="//t[@name='product_line_row']/td[last()]" position="after">
+      <td class="text-end">
+        <a t-attf-href="/my/subscription/#{sale_order.id}/line/#{line.id}/remove?access_token=#{sale_order.access_token}"
+           class="btn btn-sm btn-danger">
+          Delete
+        </a>
+      </td>
+    </xpath>
 
-    </template>
+  </template>
 
-  </data>
 </odoo>
