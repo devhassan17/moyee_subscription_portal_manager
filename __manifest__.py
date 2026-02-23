@@ -11,9 +11,7 @@
         "website",
     ],
     "data": [
-        "views/portal_templates.xml",
         "views/sale_order_views.xml",
-        "reports/report_invoice_hide_removed_lines.xml",
     ],
     "installable": True,
     "application": False,
