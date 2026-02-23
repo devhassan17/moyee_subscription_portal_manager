@@ -1,40 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <odoo>
 
-    <!-- Hide removed lines server-side -->
-    <record id="view_order_form_moyee_subscription"
-            model="ir.ui.view">
-        <field name="name">sale.order.form.moyee.subscription</field>
+    <!-- Add "Remove" button on Sale Order lines (backend) -->
+    <record id="view_order_form_moyee_remove_btn" model="ir.ui.view">
+        <field name="name">sale.order.form.moyee.remove.btn</field>
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
 
-            <xpath expr="//field[@name='order_line']"
-                   position="attributes">
-                <attribute name="domain">
-                    [('x_moyee_is_removed','=',False),
-                     ('product_uom_qty','&gt;',0)]
-                </attribute>
-            </xpath>
-
-        </field>
-    </record>
-
-
-    <!-- Odoo 18 uses <list> not <tree> -->
-    <record id="view_order_line_tree_moyee_remove_btn"
-            model="ir.ui.view">
-        <field name="name">sale.order.line.list.moyee.remove.btn</field>
-        <field name="model">sale.order.line</field>
-        <field name="inherit_id" ref="sale.view_order_line_tree"/>
-        <field name="arch" type="xml">
-
-                <xpath expr="//list" position="inside">
-            <button name="action_moyee_soft_remove"
+            <!-- Add button column in the embedded order_line tree -->
+            <xpath expr="//field[@name='order_line']/tree/field[@name='product_uom_qty']" position="after">
+                <button
+                    name="action_moyee_soft_remove"
                     type="object"
-                    icon="fa-trash"
-                    class="btn-link"
-                    invisible="x_moyee_is_removed"/>
-        </xpath>
+                    string="Remove"
+                    class="btn btn-link text-danger"
+                    groups="sales_team.group_sale_manager"
+                    attrs="{
+                        'invisible': [
+                            '|','|',
+                            ('order_id.is_subscription','=',False),
+                            ('x_moyee_is_removed','=',True),
+                            ('state','not in',('sale','draft'))
+                        ]
+                    }"
+                />
+            </xpath>
 
         </field>
     </record>
