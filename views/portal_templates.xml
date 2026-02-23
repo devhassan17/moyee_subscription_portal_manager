@@ -1,6 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-  <template id="moyee_subscription_portal_delete_btn"
-            inherit_id="sale_subscription.subscription_portal_content">
+    <template id="moyee_subscription_portal_delete_btn"
+              inherit_id="sale_subscription.subscription_portal_content">
 
     <!-- Hide removed / zero-qty lines only on subscription page -->
     <xpath expr="//t[@t-foreach='lines_to_report']//tr[.//t[@name='product_line_row']]" position="attributes">
