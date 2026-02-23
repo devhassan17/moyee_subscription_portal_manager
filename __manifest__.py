@@ -2,6 +2,7 @@
     "name": "Moyee Subscription Portal Manager",
     "version": "18.0.1.1.0",
     "category": "Sales/Subscriptions",
+    "author" : "Managemyweb.co",
     "summary": "Soft delete and portal management for subscriptions",
     "depends": [
         "sale_management",
@@ -23,7 +24,7 @@
         ],
     },
     "installable": True,
-    "application": False,
+    "application": True,
     
     "license": "LGPL-3",
 }
