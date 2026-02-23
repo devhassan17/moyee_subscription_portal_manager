@@ -1,0 +1,23 @@
+<odoo>
+    <template id="moyee_subscription_portal_add_delete_button"
+              inherit_id="sale_subscription.subscription_portal_content">
+
+        <xpath expr="//t[@t-foreach='lines_to_report']//tr[.//td[@id='product_name']]//td[last()]"
+               position="inside">
+
+            <t t-if="page_name == 'subscription'
+                     and sale_order.is_subscription
+                     and sale_order._can_be_edited_on_portal()
+                     and not line.display_type">
+
+                <a class="btn btn-sm btn-danger ms-2"
+                   t-attf-href="/my/subscription/#{sale_order.id}/line/#{line.id}/remove?access_token=#{sale_order.access_token}">
+                    Delete
+                </a>
+
+            </t>
+
+        </xpath>
+
+    </template>
+</odoo>
