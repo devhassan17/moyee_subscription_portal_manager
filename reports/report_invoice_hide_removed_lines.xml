@@ -1,4 +1,4 @@
-<odoo>
+<!-- <odoo>
     <template id="moyee_subscription_portal_add_delete_button"
               inherit_id="sale_subscription.subscription_portal_content">
 
@@ -20,4 +20,4 @@
         </xpath>
 
     </template>
-</odoo>
+</odoo> -->
