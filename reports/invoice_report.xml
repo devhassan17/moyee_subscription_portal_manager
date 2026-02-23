@@ -1,12 +1,21 @@
 <odoo>
-    <template id="report_invoice_document_inherit_moyee"
-              inherit_id="account.report_invoice_document">
+  <template id="moyee_subscription_portal_content_inherit"
+            inherit_id="sale_subscription.subscription_portal_content">
 
-        <xpath expr="//t[@t-foreach='o.invoice_line_ids']" position="attributes">
-            <attribute name="t-foreach">
-                o.invoice_line_ids.filtered(lambda l: l.quantity &gt; 0)
-            </attribute>
-        </xpath>
+    <!-- Filter out removed/zero lines -->
+    <xpath expr="//t[@t-foreach='sale_order.order_line']" position="attributes">
+      <attribute name="t-foreach">
+        sale_order.order_line.filtered(lambda l: not l.x_moyee_is_removed and l.product_uom_qty &gt; 0)
+      </attribute>
+    </xpath>
 
-    </template>
+    <!-- Add Delete button in last column (adjust xpath if needed after you inspect template) -->
+    <xpath expr="//t[@t-foreach='sale_order.order_line']//tr/td[last()]" position="inside">
+      <a t-attf-href="/my/subscription/#{sale_order.id}/line/#{line.id}/remove"
+         class="btn btn-sm btn-danger">
+        Delete
+      </a>
+    </xpath>
+
+  </template>
 </odoo>
