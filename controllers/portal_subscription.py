@@ -1,42 +1,36 @@
-from odoo import http, _
+from odoo import http
 from odoo.http import request
 from odoo.exceptions import AccessError
 
 
-class MoyeeSubscriptionPortal(http.Controller):
-
-    def _get_order(self, order_id):
-        order = request.env["sale.order"].sudo().browse(order_id)
-        if not order.exists():
-            raise AccessError("Subscription not found.")
-        order._check_portal_access()
-        return order
+class PortalSubscriptionController(http.Controller):
 
     @http.route(
-        "/my/subscription/<int:order_id>/line/<int:line_id>/remove",
-        type="http", auth="user", website=True
+        ["/my/subscription/<int:order_id>/line/<int:line_id>/remove"],
+        type="http",
+        auth="public",
+        website=True,
+        csrf=False,
     )
-    def remove_line(self, order_id, line_id, **post):
-        order = self._get_order(order_id)
-        line = request.env["sale.order.line"].sudo().browse(line_id)
-        if line.order_id != order:
-            raise AccessError("Invalid line.")
+    def portal_subscription_line_remove(self, order_id, line_id, access_token=None, **kwargs):
+        order_sudo = request.env["sale.order"].sudo().browse(order_id)
+        if not order_sudo.exists():
+            return request.not_found()
 
-        line.action_moyee_soft_remove(
-            reason=post.get("reason")
-        )
-        return request.redirect(f"/my/subscription/{order_id}")
+        # Portal access check (token or logged-in owner)
+        try:
+            order_sudo._document_check_access("read", access_token=access_token)
+        except (AccessError, Exception):
+            return request.redirect("/my")
 
-    @http.route(
-        "/my/subscription/<int:order_id>/line/<int:line_id>/update_qty",
-        type="http", auth="user", website=True, methods=["POST"]
-    )
-    def update_qty(self, order_id, line_id, **post):
-        order = self._get_order(order_id)
-        line = request.env["sale.order.line"].sudo().browse(line_id)
-        qty = float(post.get("quantity", 1))
-        if qty <= 0:
-            line.action_moyee_soft_remove()
-        else:
-            line.write({"product_uom_qty": qty})
-        return request.redirect(f"/my/subscription/{order_id}")
+        line_sudo = request.env["sale.order.line"].sudo().browse(line_id)
+        if not line_sudo.exists() or line_sudo.order_id.id != order_sudo.id:
+            return request.redirect(order_sudo.get_portal_url(access_token=access_token))
+
+        # Mark as removed + set qty 0
+        line_sudo.write({
+            "x_moyee_is_removed": True,
+            "product_uom_qty": 0.0,
+        })
+
+        return request.redirect(order_sudo.get_portal_url(access_token=access_token))

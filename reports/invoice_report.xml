@@ -1,4 +1,4 @@
-<!-- <odoo>
+<odoo>
 <template id="moyee_subscription_filter_lines"
           inherit_id="sale_subscription.subscription_portal_content">
 
@@ -10,4 +10,4 @@
     </xpath>
 
 </template>
-</odoo> -->
+</odoo>
