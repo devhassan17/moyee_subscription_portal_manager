@@ -1,21 +1,25 @@
 <odoo>
 
-    <!-- Hide removed lines by default -->
+    <!-- Inherit the main sale order form (stable in Odoo 18) -->
     <record id="view_order_form_moyee" model="ir.ui.view">
-        <field name="name">sale.order.form.moyee</field>
+        <field name="name">sale.order.form.moyee.subscription</field>
         <field name="model">sale.order</field>
-        <field name="inherit_id" ref="sale_subscription.sale_subscription_order_view_form"/>
+        <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
 
-            <xpath expr="//field[@name='order_line']/tree" position="attributes">
-                <attribute name="domain">[('x_moyee_is_removed','=',False)]</attribute>
+            <!-- Add domain on order_line field itself -->
+            <xpath expr="//field[@name='order_line']" position="attributes">
+                <attribute name="domain">
+                    [('x_moyee_is_removed','=',False)]
+                </attribute>
             </xpath>
 
-            <xpath expr="//field[@name='order_line']/tree/field[@name='product_uom_qty']" position="after">
+            <!-- Inject remove button inside tree view -->
+            <xpath expr="//field[@name='order_line']//tree//field[@name='product_uom_qty']" position="after">
                 <button name="action_moyee_soft_remove"
                         type="object"
                         string="Remove"
-                        class="btn-danger"
+                        class="btn btn-danger"
                         attrs="{'invisible':[('x_moyee_is_removed','=',True)]}"/>
             </xpath>
 

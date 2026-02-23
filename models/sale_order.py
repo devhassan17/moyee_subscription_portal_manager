@@ -5,10 +5,6 @@ from odoo.exceptions import AccessError
 class SaleOrder(models.Model):
     _inherit = "sale.order"
 
-    is_subscription_order = fields.Boolean(
-        compute="_compute_is_subscription",
-        store=False
-    )
 
     def _compute_is_subscription(self):
         for order in self:
