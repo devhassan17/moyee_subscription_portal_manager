@@ -5,12 +5,16 @@ from odoo.exceptions import AccessError
 class SaleOrder(models.Model):
     _inherit = "sale.order"
 
-    # Compatibility field: some existing views in your DB reference this
-    allow_portal_product_change = fields.Boolean(
-        string="Allow Portal Product Change",
-        default=False,
-        help="Technical/compatibility field used by customized Sale Order views to control portal subscription edits."
-    )
+    # Compatibility flags referenced by existing DB views/customizations
+    allow_portal_product_change = fields.Boolean(default=False)
+    allow_portal_add_product = fields.Boolean(default=False)
+    allow_portal_change_address = fields.Boolean(default=False)
+    allow_portal_push_delivery_date = fields.Boolean(default=False)
+    allow_portal_pause = fields.Boolean(default=False)
+    allow_portal_stop = fields.Boolean(default=False)
+    allow_portal_change_frequency = fields.Boolean(default=False)
+    allow_portal_delete_product = fields.Boolean(default=False)
+    allow_portal_qty_change = fields.Boolean(default=False)
 
     def _check_portal_access(self):
         self.ensure_one()
