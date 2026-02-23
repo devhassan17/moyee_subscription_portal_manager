@@ -1,26 +1,22 @@
-<?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- Add Moyee fields to Sale Order form (used for subscription orders too) -->
-    <record id="view_sale_order_form_moyee" model="ir.ui.view">
+    <!-- Hide removed lines by default -->
+    <record id="view_order_form_moyee" model="ir.ui.view">
         <field name="name">sale.order.form.moyee</field>
         <field name="model">sale.order</field>
-        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="inherit_id" ref="sale_subscription.sale_subscription_order_view_form"/>
         <field name="arch" type="xml">
 
-            <!-- Add new tab inside notebook -->
-            <xpath expr="//sheet/notebook" position="inside">
-                <page string="Portal Controls (Moyee)">
-                    <group>
-                        <field name="allow_portal_product_change"/>
-                        <field name="allow_portal_add_product"/>
-                        <field name="allow_portal_remove_product"/>
-                        <field name="allow_portal_pause"/>
-                        <field name="allow_portal_frequency_change"/>
-                        <field name="allow_portal_address_change"/>
-                        <field name="allow_portal_push_delivery"/>
-                    </group>
-                </page>
+            <xpath expr="//field[@name='order_line']/tree" position="attributes">
+                <attribute name="domain">[('x_moyee_is_removed','=',False)]</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='order_line']/tree/field[@name='product_uom_qty']" position="after">
+                <button name="action_moyee_soft_remove"
+                        type="object"
+                        string="Remove"
+                        class="btn-danger"
+                        attrs="{'invisible':[('x_moyee_is_removed','=',True)]}"/>
             </xpath>
 
         </field>

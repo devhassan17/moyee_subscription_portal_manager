@@ -1,64 +1,19 @@
-<?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <template id="portal_subscription_lines_inherit"
+              inherit_id="sale_subscription.portal_subscription_page">
 
-    <!--
-      IMPORTANT:
-      We do NOT inherit sale_subscription.portal_my_subscription because it does not exist
-      in this Odoo 18 DB/build.
-      We only provide our own portal page for changing product.
-    -->
+        <xpath expr="//table//tbody/tr" position="attributes">
+            <attribute name="t-if">
+                not line.x_moyee_is_removed and line.product_uom_qty &gt; 0
+            </attribute>
+        </xpath>
 
-    <template id="moyee_portal_change_product" name="Moyee Portal Change Product">
-        <t t-call="portal.portal_layout">
-            <t t-set="title">Change Product</t>
-            <div class="container mt-4">
-                <h3>Change Product for Subscription <t t-esc="order.name"/></h3>
+        <xpath expr="//td[last()]" position="inside">
+            <a t-attf-href="/my/subscription/#{subscription.id}/line/#{line.id}/remove"
+               class="btn btn-sm btn-danger">
+                Delete
+            </a>
+        </xpath>
 
-                <form method="post">
-                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-
-                    <div class="form-group mt-3">
-                        <label>Current Line</label>
-                        <select class="form-control" name="old_line_id" required="required">
-                            <t t-foreach="lines" t-as="l">
-                                <option t-att-value="l.id">
-                                    <t t-esc="l.product_id.display_name"/> (Qty: <t t-esc="l.product_uom_qty"/>)
-                                </option>
-                            </t>
-                        </select>
-                    </div>
-
-                    <div class="form-group mt-3">
-                        <label>New Product</label>
-                        <select class="form-control" name="new_product_id" required="required">
-                            <t t-foreach="products" t-as="p">
-                                <option t-att-value="p.id"><t t-esc="p.display_name"/></option>
-                            </t>
-                        </select>
-                    </div>
-
-                    <div class="form-group mt-3">
-                        <label>Effective Date (optional)</label>
-                        <input type="date" class="form-control" name="effective_date"/>
-                    </div>
-
-                    <button type="submit" class="btn btn-success mt-3">Apply Change</button>
-                    <a t-att-href="'/my/subscriptions/%s' % order.id" class="btn btn-link mt-3">Back</a>
-                </form>
-            </div>
-        </t>
     </template>
-
-    <template id="moyee_portal_error" name="Moyee Portal Error">
-        <t t-call="portal.portal_layout">
-            <t t-set="title">Subscription Action</t>
-            <div class="container mt-4">
-                <div class="alert alert-danger" role="alert">
-                    <t t-esc="error"/>
-                </div>
-                <a href="/my/home" class="btn btn-link">Back to My Account</a>
-            </div>
-        </t>
-    </template>
-
 </odoo>
