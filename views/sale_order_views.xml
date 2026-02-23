@@ -1,21 +1,30 @@
 <odoo>
 
-    <!-- Inherit the main sale order form (stable in Odoo 18) -->
-    <record id="view_order_form_moyee" model="ir.ui.view">
+    <!-- 1) Filter removed lines server-side on the sale.order form -->
+    <record id="view_order_form_moyee_subscription" model="ir.ui.view">
         <field name="name">sale.order.form.moyee.subscription</field>
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
 
-            <!-- Add domain on order_line field itself -->
+            <!-- Hide removed lines by default (server-side domain, not CSS) -->
             <xpath expr="//field[@name='order_line']" position="attributes">
-                <attribute name="domain">
-                    [('x_moyee_is_removed','=',False)]
-                </attribute>
+                <attribute name="domain">[('x_moyee_is_removed','=',False), ('product_uom_qty','&gt;',0)]</attribute>
             </xpath>
 
-            <!-- Inject remove button inside tree view -->
-            <xpath expr="//field[@name='order_line']//tree//field[@name='product_uom_qty']" position="after">
+        </field>
+    </record>
+
+
+    <!-- 2) Add Remove button by inheriting the sale.order.line tree view -->
+    <record id="view_order_line_tree_moyee_remove_btn" model="ir.ui.view">
+        <field name="name">sale.order.line.tree.moyee.remove.btn</field>
+        <field name="model">sale.order.line</field>
+        <field name="inherit_id" ref="sale.view_order_line_tree"/>
+        <field name="arch" type="xml">
+
+            <!-- Add button as a column inside the tree -->
+            <xpath expr="//tree" position="inside">
                 <button name="action_moyee_soft_remove"
                         type="object"
                         string="Remove"
