@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<!-- <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
 
     <!-- Hide removed/zero-qty subscription lines from invoices (PDF/HTML) -->
@@ -12,4 +12,4 @@
 
     </template>
 
-</odoo>
+</odoo> -->
