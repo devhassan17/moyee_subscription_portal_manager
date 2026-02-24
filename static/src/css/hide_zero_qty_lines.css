@@ -1,0 +1,4 @@
+/* Hide rows that JS marks */
+.o_list_view .moyee_hide_line {
+    display: none !important;
+}

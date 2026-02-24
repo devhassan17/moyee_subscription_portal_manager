@@ -26,4 +26,10 @@ Manager-only build:
     ],
     "installable": True,
     "application": False,
+    'assets': {
+    'web.assets_backend': [
+        'moyee_subscription_portal_manager/static/src/js/hide_zero_qty_lines.js',
+        'moyee_subscription_portal_manager/static/src/css/hide_zero_qty_lines.css',
+    ],
+},
 }
