@@ -12,7 +12,7 @@
                 <field name="is_subscription_order" invisible="1"/>
             </xpath>
 
-            <!-- Hide removed / zero qty lines -->
+            <!-- Server-side filter: hide removed/zero lines by default -->
             <xpath expr="//field[@name='order_line']" position="attributes">
                 <attribute name="domain">
                     ['|',
@@ -24,22 +24,23 @@
                 </attribute>
             </xpath>
 
-            <!-- Add Remove Button -->
+            <!-- Ensure fields exist in the embedded list/tree architecture -->
             <xpath expr="//field[@name='order_line']/*[self::tree or self::list]" position="inside">
-
                 <field name="display_type" invisible="1"/>
                 <field name="x_moyee_is_removed" invisible="1"/>
+            </xpath>
 
+            <!-- Add Remove button (Admin + Moyee Manager) -->
+            <xpath expr="//field[@name='order_line']/*[self::tree or self::list]//field[@name='name']" position="after">
                 <button
                     name="action_moyee_soft_remove"
                     type="object"
                     string="Remove"
                     icon="fa-trash"
                     class="btn-link"
-                    groups="moyee_subscription_portal_manager.group_moyee_subscription_manager"
+                    groups="moyee_subscription_portal_manager.group_moyee_subscription_manager,base.group_system"
                     invisible="display_type != False or x_moyee_is_removed == True or parent.is_subscription_order == False"
                 />
-
             </xpath>
 
             <!-- Manager Tab -->
@@ -47,10 +48,9 @@
                 <page
                     string="Moyee Subscription Manager"
                     name="moyee_subscription_manager"
-                    groups="moyee_subscription_portal_manager.group_moyee_subscription_manager"
+                    groups="moyee_subscription_portal_manager.group_moyee_subscription_manager,base.group_system"
                     invisible="is_subscription_order == False"
                 >
-
                     <group>
                         <p>
                             Removed subscription lines are soft-removed (qty set to 0 and flagged removed).
@@ -66,7 +66,6 @@
                             domain="[('x_moyee_is_removed', '=', True)]"
                         />
                     </group>
-
                 </page>
             </xpath>
 

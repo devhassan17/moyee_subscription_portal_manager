@@ -32,11 +32,16 @@ class SaleOrderLine(models.Model):
     )
 
     def _moyee_check_manager_rights(self):
-        """Manager-only guard. Do not rely purely on view-level groups."""
+        """Allow Moyee managers + Odoo system admins."""
         if self.env.is_superuser():
             return
-        if not self.env.user.has_group("moyee_subscription_portal_manager.group_moyee_subscription_manager"):
-            raise AccessError(_("You do not have the required rights to manage subscription removals."))
+        # Odoo Admin / Settings
+        if self.env.user.has_group("base.group_system"):
+            return
+        # Moyee Subscription Manager group
+        if self.env.user.has_group("moyee_subscription_portal_manager.group_moyee_subscription_manager"):
+            return
+        raise AccessError(_("You do not have the required rights to manage subscription removals."))
 
     def action_moyee_soft_remove(self, reason=None):
         """
@@ -99,15 +104,14 @@ class SaleOrderLine(models.Model):
 
         In subscriptions, users will sometimes click the default trash icon on an order line.
         This override converts that delete action into a Moyee soft-remove for confirmed
-        subscription orders, so you can "remove" multiple products without hitting Odoo's
+        subscription orders, so you can remove multiple products without hitting Odoo's
         hard restriction.
 
         Rules:
         - Confirmed subscription orders (state in sale/done): convert unlink -> soft remove
         - Draft/quotation orders: allow normal unlink
-        - Section/note lines: allow normal unlink (keeps editing convenient)
+        - Section/note lines: allow normal unlink
         """
-        # Lines that the user is attempting to delete from a confirmed subscription
         to_soft_remove = self.filtered(lambda l: (
             not l.display_type
             and l.order_id
@@ -116,10 +120,9 @@ class SaleOrderLine(models.Model):
         ))
 
         if to_soft_remove:
-            # Manager-only build: enforce rights here too (trash icon bypasses our button groups)
+            # Trash icon bypasses view groups => enforce rights here too
             to_soft_remove._moyee_check_manager_rights()
 
-            # Convert delete to soft remove (idempotent)
             now = fields.Datetime.now()
             for line in to_soft_remove:
                 if line.x_moyee_is_removed and line.product_uom_qty == 0:
@@ -140,7 +143,6 @@ class SaleOrderLine(models.Model):
                     subtype_xmlid="mail.mt_note",
                 )
 
-        # For anything else (draft quotes, non-subscription, display_type lines), do normal unlink
         remaining = self - to_soft_remove
         if remaining:
             return super(SaleOrderLine, remaining).unlink()
