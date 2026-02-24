@@ -12,7 +12,7 @@
                 <field name="is_subscription_order" invisible="1"/>
             </xpath>
 
-            <!-- Server-side filter: hide removed/zero lines by default -->
+            <!-- ✅ MAIN FIX: hide removed/zero lines in the main Order Lines list -->
             <xpath expr="//field[@name='order_line']" position="attributes">
                 <attribute name="domain">
                     ['|',
@@ -24,13 +24,13 @@
                 </attribute>
             </xpath>
 
-            <!-- Ensure fields exist in the embedded list/tree architecture -->
+            <!-- Ensure fields exist -->
             <xpath expr="//field[@name='order_line']/*[self::tree or self::list]" position="inside">
                 <field name="display_type" invisible="1"/>
                 <field name="x_moyee_is_removed" invisible="1"/>
             </xpath>
 
-            <!-- Remove button visible to ALL INTERNAL USERS (dashboard users) -->
+            <!-- Remove button visible to ALL INTERNAL USERS -->
             <xpath expr="//field[@name='order_line']/*[self::tree or self::list]//field[@name='name']" position="after">
                 <button
                     name="action_moyee_soft_remove"
@@ -43,7 +43,7 @@
                 />
             </xpath>
 
-            <!-- Tab visible to ALL INTERNAL USERS -->
+            <!-- Moyee tab -->
             <xpath expr="//notebook" position="inside">
                 <page
                     string="Moyee Subscription Manager"
@@ -53,19 +53,26 @@
                 >
                     <group>
                         <p>
-                            Removed subscription lines are soft-removed (qty set to 0 and flagged removed).
-                            They are excluded from future recurring invoices.
+                            Removed subscription lines are hidden from Order Lines and excluded from future recurring invoices.
                         </p>
                     </group>
 
+                    <!-- ✅ Use dedicated field instead of reusing order_line -->
                     <group string="Removed Lines">
-                        <field
-                            name="order_line"
-                            nolabel="1"
-                            readonly="1"
-                            domain="[('x_moyee_is_removed', '=', True)]"
-                        />
+                        <field name="moyee_removed_line_ids" nolabel="1" readonly="1">
+                            <tree>
+                                <field name="product_id"/>
+                                <field name="name"/>
+                                <field name="product_uom_qty"/>
+                                <field name="price_unit"/>
+                                <field name="price_subtotal"/>
+                                <field name="x_moyee_removed_on"/>
+                                <field name="x_moyee_removed_by"/>
+                                <field name="x_moyee_remove_reason"/>
+                            </tree>
+                        </field>
                     </group>
+
                 </page>
             </xpath>
 

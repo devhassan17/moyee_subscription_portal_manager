@@ -11,16 +11,19 @@ class SaleOrder(models.Model):
         store=False,
     )
 
+    # ✅ NEW: dedicated one2many for removed lines (so we don't reuse order_line in the tab)
+    moyee_removed_line_ids = fields.One2many(
+        comodel_name="sale.order.line",
+        inverse_name="order_id",
+        string="Removed Lines",
+        domain=[("x_moyee_is_removed", "=", True)],
+        readonly=True,
+    )
+
     def _compute_is_subscription_order(self):
         """
-        Odoo Enterprise Subscriptions adds subscription-specific fields on sale.order.
-        Field technical names may vary across versions/editions, so we check the model
-        field registry defensively.
-
-        Heuristics:
-        - subscription_status (common in subscription sale flows) OR
-        - recurring_plan_id OR
-        - is_subscription
+        Enterprise subscriptions add fields on sale.order; field names can vary,
+        so we detect defensively.
         """
         for order in self:
             is_sub = False
@@ -36,15 +39,6 @@ class SaleOrder(models.Model):
         """
         Most important hook:
         Ensure removed/zero lines do NOT get invoiced (including recurring invoices).
-
-        We conservatively filter out:
-        - x_moyee_is_removed = True
-        - product_uom_qty <= 0
-
-        We keep display_type lines (sections/notes) intact if they are present
-        in the super result.
         """
         lines = super()._get_invoiceable_lines(final=final)
-        return lines.filtered(
-            lambda l: l.display_type or (not l.x_moyee_is_removed and l.product_uom_qty > 0)
-        )
+        return lines.filtered(lambda l: l.display_type or (not l.x_moyee_is_removed and l.product_uom_qty > 0))
