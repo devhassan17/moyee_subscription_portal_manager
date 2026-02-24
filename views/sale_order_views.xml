@@ -7,12 +7,12 @@
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
 
-            <!-- Helper field -->
+            <!-- Helper field available for attrs -->
             <xpath expr="//sheet" position="inside">
                 <field name="is_subscription_order" invisible="1"/>
             </xpath>
 
-            <!-- Hide removed / zero qty lines in main order_line -->
+            <!-- Server-side filter: hide removed/zero lines by default -->
             <xpath expr="//field[@name='order_line']" position="attributes">
                 <attribute name="domain">
                     ['|',
@@ -24,14 +24,12 @@
                 </attribute>
             </xpath>
 
-            <!-- Ensure required fields exist inside tree/list -->
+            <!-- Ensure fields exist in the embedded list/tree architecture -->
             <xpath expr="//field[@name='order_line']/*[self::tree or self::list]" position="inside">
                 <field name="display_type" invisible="1"/>
                 <field name="x_moyee_is_removed" invisible="1"/>
-            </xpath>
 
-            <!-- Add Remove button -->
-            <xpath expr="//field[@name='order_line']/*[self::tree or self::list]//field[@name='product_id']" position="after">
+                <!-- Add Remove button (no dependency on product_id column existing) -->
                 <button
                     name="action_moyee_soft_remove"
                     type="object"
@@ -51,7 +49,6 @@
                     groups="moyee_subscription_portal_manager.group_moyee_subscription_manager"
                     attrs="{'invisible': [('is_subscription_order', '=', False)]}"
                 >
-
                     <group>
                         <p>
                             Removed subscription lines are soft-removed (qty set to 0 and flagged removed).
@@ -59,24 +56,14 @@
                         </p>
                     </group>
 
+                    <!-- IMPORTANT: don't redefine a custom tree here (avoids product_id validation issues) -->
                     <group string="Removed Lines">
                         <field
                             name="order_line"
                             nolabel="1"
                             readonly="1"
                             domain="[('x_moyee_is_removed', '=', True)]"
-                        >
-                            <tree>
-                                <field name="product_id"/>
-                                <field name="name"/>
-                                <field name="product_uom_qty"/>
-                                <field name="price_unit"/>
-                                <field name="price_subtotal"/>
-                                <field name="x_moyee_removed_on"/>
-                                <field name="x_moyee_removed_by"/>
-                                <field name="x_moyee_remove_reason"/>
-                            </tree>
-                        </field>
+                        />
                     </group>
 
                 </page>
