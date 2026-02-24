@@ -12,7 +12,7 @@
                 <field name="is_subscription_order" invisible="1"/>
             </xpath>
 
-            <!-- ✅ MAIN FIX: hide removed/zero lines in the main Order Lines list -->
+            <!-- Hide removed / zero qty lines in main order lines -->
             <xpath expr="//field[@name='order_line']" position="attributes">
                 <attribute name="domain">
                     ['|',
@@ -24,7 +24,7 @@
                 </attribute>
             </xpath>
 
-            <!-- Ensure fields exist -->
+            <!-- Ensure fields exist in embedded list/tree -->
             <xpath expr="//field[@name='order_line']/*[self::tree or self::list]" position="inside">
                 <field name="display_type" invisible="1"/>
                 <field name="x_moyee_is_removed" invisible="1"/>
@@ -57,20 +57,9 @@
                         </p>
                     </group>
 
-                    <!-- ✅ Use dedicated field instead of reusing order_line -->
+                    <!-- IMPORTANT: No custom tree here (avoids Odoo 18 validation bug) -->
                     <group string="Removed Lines">
-                        <field name="moyee_removed_line_ids" nolabel="1" readonly="1">
-                            <tree>
-                                <field name="product_id"/>
-                                <field name="name"/>
-                                <field name="product_uom_qty"/>
-                                <field name="price_unit"/>
-                                <field name="price_subtotal"/>
-                                <field name="x_moyee_removed_on"/>
-                                <field name="x_moyee_removed_by"/>
-                                <field name="x_moyee_remove_reason"/>
-                            </tree>
-                        </field>
+                        <field name="moyee_removed_line_ids" nolabel="1" readonly="1"/>
                     </group>
 
                 </page>
