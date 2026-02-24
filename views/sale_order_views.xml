@@ -11,8 +11,8 @@
                 <field name="is_subscription_order" invisible="1"/>
             </xpath>
 
-            <!-- Hide removed / zero-qty lines by default in the backend order lines UI (server-side domain) -->
-            <xpath expr="//page[@name='order_lines']//field[@name='order_line']" position="attributes">
+            <!-- Server-side filter: hide removed / zero-qty lines by default -->
+            <xpath expr="//field[@name='order_line']" position="attributes">
                 <attribute name="domain">
                     ['|',
                         ('display_type', '!=', False),
@@ -23,14 +23,14 @@
                 </attribute>
             </xpath>
 
-            <!-- Ensure fields exist in tree for attrs -->
-            <xpath expr="//page[@name='order_lines']//field[@name='order_line']/tree" position="inside">
+            <!-- Ensure fields exist in the order_line list architecture (tree OR list) -->
+            <xpath expr="//field[@name='order_line']/*[self::tree or self::list]" position="inside">
                 <field name="display_type" invisible="1"/>
                 <field name="x_moyee_is_removed" invisible="1"/>
             </xpath>
 
-            <!-- Add per-line soft remove button -->
-            <xpath expr="//page[@name='order_lines']//field[@name='order_line']/tree//field[@name='product_id']" position="after">
+            <!-- Add per-line soft remove button after product_id (tree OR list) -->
+            <xpath expr="//field[@name='order_line']/*[self::tree or self::list]//field[@name='product_id']" position="after">
                 <button
                     name="action_moyee_soft_remove"
                     type="object"
@@ -42,7 +42,7 @@
                 />
             </xpath>
 
-            <!-- Manager tab showing removed lines -->
+            <!-- Manager tab -->
             <xpath expr="//notebook" position="inside">
                 <page
                     string="Moyee Subscription Manager"
