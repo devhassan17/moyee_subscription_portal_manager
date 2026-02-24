@@ -3,10 +3,10 @@
     <record id="view_sale_order_form_moyee_subscription_manager" model="ir.ui.view">
         <field name="name">sale.order.form.moyee.subscription.manager</field>
         <field name="model">sale.order</field>
-        <field name="inherit_id" ref="sale.view_order_form</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
 
-            <!-- Ensure helper field is available for attrs in embedded order_line tree -->
+            <!-- Make helper available for attrs -->
             <xpath expr="//sheet" position="inside">
                 <field name="is_subscription_order" invisible="1"/>
             </xpath>
@@ -23,13 +23,13 @@
                 </attribute>
             </xpath>
 
-            <!-- Add a per-line "Remove from Subscription" action for managers -->
+            <!-- Ensure fields exist in tree for attrs -->
             <xpath expr="//page[@name='order_lines']//field[@name='order_line']/tree" position="inside">
-                <!-- Ensure fields used by attrs exist in the list view architecture -->
                 <field name="display_type" invisible="1"/>
                 <field name="x_moyee_is_removed" invisible="1"/>
             </xpath>
 
+            <!-- Add per-line soft remove button -->
             <xpath expr="//page[@name='order_lines']//field[@name='order_line']/tree//field[@name='product_id']" position="after">
                 <button
                     name="action_moyee_soft_remove"
@@ -38,17 +38,11 @@
                     icon="fa-trash"
                     class="btn-link"
                     groups="moyee_subscription_portal_manager.group_moyee_subscription_manager"
-                    attrs="{
-                        'invisible': [
-                            '|', ('display_type', '!=', False),
-                            '|', ('x_moyee_is_removed', '=', True),
-                                 ('parent.is_subscription_order', '=', False)
-                        ]
-                    }"
+                    attrs="{'invisible': ['|', ('display_type', '!=', False), '|', ('x_moyee_is_removed', '=', True), ('parent.is_subscription_order', '=', False)]}"
                 />
             </xpath>
 
-            <!-- Manager tab showing removed lines (acts as the 'show removed' toggle for this build) -->
+            <!-- Manager tab showing removed lines -->
             <xpath expr="//notebook" position="inside">
                 <page
                     string="Moyee Subscription Manager"
@@ -68,7 +62,6 @@
                             nolabel="1"
                             readonly="1"
                             domain="[('x_moyee_is_removed', '=', True)]"
-                            context="{'default_display_type': False}"
                         >
                             <tree>
                                 <field name="sequence" widget="handle"/>
