@@ -32,16 +32,16 @@ class SaleOrderLine(models.Model):
     )
 
     def _moyee_check_manager_rights(self):
-        """Allow Moyee managers + Odoo system admins."""
+        """
+        Allow any INTERNAL user (dashboard access).
+        - Internal users are in base.group_user.
+        - Portal/public users are NOT in this group.
+        """
         if self.env.is_superuser():
             return
-        # Odoo Admin / Settings
-        if self.env.user.has_group("base.group_system"):
+        if self.env.user.has_group("base.group_user"):
             return
-        # Moyee Subscription Manager group
-        if self.env.user.has_group("moyee_subscription_portal_manager.group_moyee_subscription_manager"):
-            return
-        raise AccessError(_("You do not have the required rights to manage subscription removals."))
+        raise AccessError(_("You do not have access to manage subscription removals."))
 
     def action_moyee_soft_remove(self, reason=None):
         """
@@ -50,21 +50,16 @@ class SaleOrderLine(models.Model):
         - x_moyee_is_removed = True
         - track who/when/why
         - post a chatter note on the sale order
-
-        This method is intentionally idempotent.
         """
         self._moyee_check_manager_rights()
 
         for line in self:
-            # Never soft-remove section/note lines (keep UI structure clean).
             if line.display_type:
                 continue
 
-            # Restrict to subscription orders (manager-only build).
             if not getattr(line.order_id, "is_subscription_order", False):
                 raise UserError(_("This action is only available on subscription sale orders."))
 
-            # Already removed => idempotent
             if line.x_moyee_is_removed and line.product_uom_qty == 0:
                 continue
 
@@ -79,7 +74,6 @@ class SaleOrderLine(models.Model):
 
             line.write(vals)
 
-            # Chatter note on the order (audit trail).
             product_label = line.product_id.display_name if line.product_id else (line.name or _("(no product)"))
             body = _(
                 "Moyee soft removal applied.\n"
@@ -100,17 +94,8 @@ class SaleOrderLine(models.Model):
 
     def unlink(self):
         """
-        Odoo blocks unlink() on confirmed Sale Orders ("Oh snap! ... Set qty to 0 instead.").
-
-        In subscriptions, users will sometimes click the default trash icon on an order line.
-        This override converts that delete action into a Moyee soft-remove for confirmed
-        subscription orders, so you can remove multiple products without hitting Odoo's
-        hard restriction.
-
-        Rules:
-        - Confirmed subscription orders (state in sale/done): convert unlink -> soft remove
-        - Draft/quotation orders: allow normal unlink
-        - Section/note lines: allow normal unlink
+        If user clicks the default trash icon on confirmed subscription lines,
+        convert unlink() into soft-remove (qty=0 + removed flag) instead of showing "Oh snap!".
         """
         to_soft_remove = self.filtered(lambda l: (
             not l.display_type
@@ -120,8 +105,7 @@ class SaleOrderLine(models.Model):
         ))
 
         if to_soft_remove:
-            # Trash icon bypasses view groups => enforce rights here too
-            to_soft_remove._moyee_check_manager_rights()
+            self._moyee_check_manager_rights()
 
             now = fields.Datetime.now()
             for line in to_soft_remove:

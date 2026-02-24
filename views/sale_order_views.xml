@@ -30,7 +30,7 @@
                 <field name="x_moyee_is_removed" invisible="1"/>
             </xpath>
 
-            <!-- Add Remove button (Admin + Moyee Manager) -->
+            <!-- Remove button visible to ALL INTERNAL USERS (dashboard users) -->
             <xpath expr="//field[@name='order_line']/*[self::tree or self::list]//field[@name='name']" position="after">
                 <button
                     name="action_moyee_soft_remove"
@@ -38,17 +38,17 @@
                     string="Remove"
                     icon="fa-trash"
                     class="btn-link"
-                    groups="moyee_subscription_portal_manager.group_moyee_subscription_manager,base.group_system"
+                    groups="base.group_user"
                     invisible="display_type != False or x_moyee_is_removed == True or parent.is_subscription_order == False"
                 />
             </xpath>
 
-            <!-- Manager Tab -->
+            <!-- Tab visible to ALL INTERNAL USERS -->
             <xpath expr="//notebook" position="inside">
                 <page
                     string="Moyee Subscription Manager"
                     name="moyee_subscription_manager"
-                    groups="moyee_subscription_portal_manager.group_moyee_subscription_manager,base.group_system"
+                    groups="base.group_user"
                     invisible="is_subscription_order == False"
                 >
                     <group>
