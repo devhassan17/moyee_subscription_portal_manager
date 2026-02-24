@@ -7,12 +7,14 @@
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
 
-            <!-- Helper field -->
+            <!-- Helper fields (used by button visibility / tab visibility) -->
             <xpath expr="//sheet" position="inside">
                 <field name="is_subscription_order" invisible="1"/>
+                <!-- This one is optional but harmless; helps JS if you ever read it -->
+                <field name="state" invisible="1"/>
             </xpath>
 
-            <!-- Hide removed / zero qty lines in main order lines -->
+            <!-- (Best-effort) server-side filter: hide removed/zero lines by default -->
             <xpath expr="//field[@name='order_line']" position="attributes">
                 <attribute name="domain">
                     ['|',
@@ -24,10 +26,12 @@
                 </attribute>
             </xpath>
 
-            <!-- Ensure fields exist in embedded list/tree -->
+            <!-- Ensure fields are loaded in the embedded list/tree for JS + invisible conditions -->
             <xpath expr="//field[@name='order_line']/*[self::tree or self::list]" position="inside">
                 <field name="display_type" invisible="1"/>
                 <field name="x_moyee_is_removed" invisible="1"/>
+                <!-- IMPORTANT: make sure qty is always present in the record data for JS hiding -->
+                <field name="product_uom_qty" invisible="1"/>
             </xpath>
 
             <!-- Remove button visible to ALL INTERNAL USERS -->
