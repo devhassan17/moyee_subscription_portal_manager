@@ -90,3 +90,59 @@ class SaleOrderLine(models.Model):
                 reason or _("(no reason provided)"),
             )
             line.order_id.message_post(body=body, subtype_xmlid="mail.mt_note")
+
+        return True
+
+    def unlink(self):
+        """
+        Odoo blocks unlink() on confirmed Sale Orders ("Oh snap! ... Set qty to 0 instead.").
+
+        In subscriptions, users will sometimes click the default trash icon on an order line.
+        This override converts that delete action into a Moyee soft-remove for confirmed
+        subscription orders, so you can "remove" multiple products without hitting Odoo's
+        hard restriction.
+
+        Rules:
+        - Confirmed subscription orders (state in sale/done): convert unlink -> soft remove
+        - Draft/quotation orders: allow normal unlink
+        - Section/note lines: allow normal unlink (keeps editing convenient)
+        """
+        # Lines that the user is attempting to delete from a confirmed subscription
+        to_soft_remove = self.filtered(lambda l: (
+            not l.display_type
+            and l.order_id
+            and getattr(l.order_id, "is_subscription_order", False)
+            and l.order_id.state in ("sale", "done")
+        ))
+
+        if to_soft_remove:
+            # Manager-only build: enforce rights here too (trash icon bypasses our button groups)
+            to_soft_remove._moyee_check_manager_rights()
+
+            # Convert delete to soft remove (idempotent)
+            now = fields.Datetime.now()
+            for line in to_soft_remove:
+                if line.x_moyee_is_removed and line.product_uom_qty == 0:
+                    continue
+
+                line.write({
+                    "product_uom_qty": 0.0,
+                    "x_moyee_is_removed": True,
+                    "x_moyee_removed_on": now,
+                    "x_moyee_removed_by": self.env.user.id,
+                    "x_moyee_remove_reason": line.x_moyee_remove_reason
+                        or _("Removed via line delete (auto converted to soft remove)."),
+                })
+
+                product_label = line.product_id.display_name if line.product_id else (line.name or _("(no product)"))
+                line.order_id.message_post(
+                    body=_("Moyee: '%s' was removed (delete action converted to soft remove).") % product_label,
+                    subtype_xmlid="mail.mt_note",
+                )
+
+        # For anything else (draft quotes, non-subscription, display_type lines), do normal unlink
+        remaining = self - to_soft_remove
+        if remaining:
+            return super(SaleOrderLine, remaining).unlink()
+
+        return True
