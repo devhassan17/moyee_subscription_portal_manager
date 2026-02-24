@@ -1,31 +1,91 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<!-- File: moyee_subscription_portal_manager/views/sale_order_views.xml -->
 <odoo>
-
-    <record id="view_order_form_moyee_remove_btn" model="ir.ui.view">
-        <field name="name">sale.order.form.moyee.remove.btn</field>
+    <record id="view_sale_order_form_moyee_subscription_manager" model="ir.ui.view">
+        <field name="name">sale.order.form.moyee.subscription.manager</field>
         <field name="model">sale.order</field>
-        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="inherit_id" ref="sale.view_order_form</field>
         <field name="arch" type="xml">
 
-            <xpath expr="//field[@name='order_line']/tree/field[@name='product_uom_qty']" position="after">
+            <!-- Ensure helper field is available for attrs in embedded order_line tree -->
+            <xpath expr="//sheet" position="inside">
+                <field name="is_subscription_order" invisible="1"/>
+            </xpath>
+
+            <!-- Hide removed / zero-qty lines by default in the backend order lines UI (server-side domain) -->
+            <xpath expr="//page[@name='order_lines']//field[@name='order_line']" position="attributes">
+                <attribute name="domain">
+                    ['|',
+                        ('display_type', '!=', False),
+                        '&amp;',
+                            ('x_moyee_is_removed', '=', False),
+                            ('product_uom_qty', '&gt;', 0)
+                    ]
+                </attribute>
+            </xpath>
+
+            <!-- Add a per-line "Remove from Subscription" action for managers -->
+            <xpath expr="//page[@name='order_lines']//field[@name='order_line']/tree" position="inside">
+                <!-- Ensure fields used by attrs exist in the list view architecture -->
+                <field name="display_type" invisible="1"/>
+                <field name="x_moyee_is_removed" invisible="1"/>
+            </xpath>
+
+            <xpath expr="//page[@name='order_lines']//field[@name='order_line']/tree//field[@name='product_id']" position="after">
                 <button
                     name="action_moyee_soft_remove"
                     type="object"
-                    string="Remove"
-                    class="btn btn-link text-danger"
-                    groups="sales_team.group_sale_manager"
+                    string="Remove from Subscription"
+                    icon="fa-trash"
+                    class="btn-link"
+                    groups="moyee_subscription_portal_manager.group_moyee_subscription_manager"
                     attrs="{
                         'invisible': [
-                            '|','|',
-                            ('order_id.is_subscription','=',False),
-                            ('x_moyee_is_removed','=',True),
-                            ('state','not in',('sale','draft'))
+                            '|', ('display_type', '!=', False),
+                            '|', ('x_moyee_is_removed', '=', True),
+                                 ('parent.is_subscription_order', '=', False)
                         ]
                     }"
                 />
             </xpath>
 
+            <!-- Manager tab showing removed lines (acts as the 'show removed' toggle for this build) -->
+            <xpath expr="//notebook" position="inside">
+                <page
+                    string="Moyee Subscription Manager"
+                    name="moyee_subscription_manager"
+                    groups="moyee_subscription_portal_manager.group_moyee_subscription_manager"
+                    attrs="{'invisible': [('is_subscription_order', '=', False)]}"
+                >
+                    <group>
+                        <p>
+                            Removed subscription lines are soft-removed (qty set to 0, flagged removed) and excluded from future invoicing.
+                        </p>
+                    </group>
+
+                    <group string="Removed lines">
+                        <field
+                            name="order_line"
+                            nolabel="1"
+                            readonly="1"
+                            domain="[('x_moyee_is_removed', '=', True)]"
+                            context="{'default_display_type': False}"
+                        >
+                            <tree>
+                                <field name="sequence" widget="handle"/>
+                                <field name="product_id"/>
+                                <field name="name"/>
+                                <field name="product_uom_qty"/>
+                                <field name="price_unit"/>
+                                <field name="price_subtotal"/>
+                                <field name="x_moyee_removed_on"/>
+                                <field name="x_moyee_removed_by"/>
+                                <field name="x_moyee_remove_reason"/>
+                            </tree>
+                        </field>
+                    </group>
+                </page>
+            </xpath>
+
         </field>
     </record>
-
 </odoo>

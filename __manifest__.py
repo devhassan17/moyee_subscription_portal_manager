@@ -1,16 +1,29 @@
+# File: moyee_subscription_portal_manager/__manifest__.py
 {
-    "name": "Moyee - Subscription Portal Manager",
+    "name": "Moyee Subscription Portal Manager",
     "version": "18.0.1.0.0",
     "category": "Sales",
-    "summary": "Backend subscription line soft remove for managers",
+    "summary": "Soft-remove subscription sale order lines and prevent future recurring invoicing.",
+    "description": """
+Manager-only build:
+- Soft remove subscription products (qty=0 + metadata)
+- Hide removed lines in backend UI (server-side domains)
+- Exclude removed lines from invoice creation
+- Filter invoice PDF lines for safety
+""",
+    "author": "Moyee",
+    "license": "LGPL-3",
     "depends": [
-        "sale",
-        "sale_subscription"
+        "sale_management",
+        "sale_subscription",  # Enterprise app: subscription sale orders
+        "account",
     ],
     "data": [
-        "views/sale_order_views.xml"
+        "security/security.xml",
+        "security/ir.model.access.csv",
+        "views/sale_order_views.xml",
+        "reports/report_invoice.xml",
     ],
     "installable": True,
     "application": False,
-    "license": "LGPL-3"
 }
