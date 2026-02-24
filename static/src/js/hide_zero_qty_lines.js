@@ -1,5 +1,7 @@
 /** @odoo-module **/
 
+console.log("✅ Moyee hide_zero_qty_lines loaded");
+
 const HIDE_CLASS = "moyee_hide_line";
 
 function parseQty(td) {
