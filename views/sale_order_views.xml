@@ -1,17 +1,18 @@
-<!-- File: moyee_subscription_portal_manager/views/sale_order_views.xml -->
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
+
     <record id="view_sale_order_form_moyee_subscription_manager" model="ir.ui.view">
         <field name="name">sale.order.form.moyee.subscription.manager</field>
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
 
-            <!-- Make helper available for attrs -->
+            <!-- Helper field -->
             <xpath expr="//sheet" position="inside">
                 <field name="is_subscription_order" invisible="1"/>
             </xpath>
 
-            <!-- Server-side filter: hide removed / zero-qty lines by default -->
+            <!-- Hide removed / zero qty lines in main order_line -->
             <xpath expr="//field[@name='order_line']" position="attributes">
                 <attribute name="domain">
                     ['|',
@@ -23,13 +24,13 @@
                 </attribute>
             </xpath>
 
-            <!-- Ensure fields exist in the order_line list architecture (tree OR list) -->
+            <!-- Ensure required fields exist inside tree/list -->
             <xpath expr="//field[@name='order_line']/*[self::tree or self::list]" position="inside">
                 <field name="display_type" invisible="1"/>
                 <field name="x_moyee_is_removed" invisible="1"/>
             </xpath>
 
-            <!-- Add per-line soft remove button after product_id (tree OR list) -->
+            <!-- Add Remove button -->
             <xpath expr="//field[@name='order_line']/*[self::tree or self::list]//field[@name='product_id']" position="after">
                 <button
                     name="action_moyee_soft_remove"
@@ -42,7 +43,7 @@
                 />
             </xpath>
 
-            <!-- Manager tab -->
+            <!-- Manager Tab -->
             <xpath expr="//notebook" position="inside">
                 <page
                     string="Moyee Subscription Manager"
@@ -50,13 +51,15 @@
                     groups="moyee_subscription_portal_manager.group_moyee_subscription_manager"
                     attrs="{'invisible': [('is_subscription_order', '=', False)]}"
                 >
+
                     <group>
                         <p>
-                            Removed subscription lines are soft-removed (qty set to 0, flagged removed) and excluded from future invoicing.
+                            Removed subscription lines are soft-removed (qty set to 0 and flagged removed).
+                            They are excluded from future recurring invoices.
                         </p>
                     </group>
 
-                    <group string="Removed lines">
+                    <group string="Removed Lines">
                         <field
                             name="order_line"
                             nolabel="1"
@@ -64,7 +67,6 @@
                             domain="[('x_moyee_is_removed', '=', True)]"
                         >
                             <tree>
-                                <field name="sequence" widget="handle"/>
                                 <field name="product_id"/>
                                 <field name="name"/>
                                 <field name="product_uom_qty"/>
@@ -76,9 +78,11 @@
                             </tree>
                         </field>
                     </group>
+
                 </page>
             </xpath>
 
         </field>
     </record>
+
 </odoo>
