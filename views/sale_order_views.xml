@@ -7,12 +7,12 @@
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
 
-            <!-- Helper field available for attrs -->
+            <!-- Helper field -->
             <xpath expr="//sheet" position="inside">
                 <field name="is_subscription_order" invisible="1"/>
             </xpath>
 
-            <!-- Server-side filter: hide removed/zero lines by default -->
+            <!-- Hide removed / zero qty lines -->
             <xpath expr="//field[@name='order_line']" position="attributes">
                 <attribute name="domain">
                     ['|',
@@ -24,21 +24,22 @@
                 </attribute>
             </xpath>
 
-            <!-- Ensure fields exist in the embedded list/tree architecture -->
+            <!-- Add Remove Button -->
             <xpath expr="//field[@name='order_line']/*[self::tree or self::list]" position="inside">
+
                 <field name="display_type" invisible="1"/>
                 <field name="x_moyee_is_removed" invisible="1"/>
 
-                <!-- Add Remove button (no dependency on product_id column existing) -->
                 <button
                     name="action_moyee_soft_remove"
                     type="object"
-                    string="Remove from Subscription"
+                    string="Remove"
                     icon="fa-trash"
                     class="btn-link"
                     groups="moyee_subscription_portal_manager.group_moyee_subscription_manager"
-                    attrs="{'invisible': ['|', ('display_type', '!=', False), '|', ('x_moyee_is_removed', '=', True), ('parent.is_subscription_order', '=', False)]}"
+                    invisible="display_type != False or x_moyee_is_removed == True or parent.is_subscription_order == False"
                 />
+
             </xpath>
 
             <!-- Manager Tab -->
@@ -47,8 +48,9 @@
                     string="Moyee Subscription Manager"
                     name="moyee_subscription_manager"
                     groups="moyee_subscription_portal_manager.group_moyee_subscription_manager"
-                    attrs="{'invisible': [('is_subscription_order', '=', False)]}"
+                    invisible="is_subscription_order == False"
                 >
+
                     <group>
                         <p>
                             Removed subscription lines are soft-removed (qty set to 0 and flagged removed).
@@ -56,7 +58,6 @@
                         </p>
                     </group>
 
-                    <!-- IMPORTANT: don't redefine a custom tree here (avoids product_id validation issues) -->
                     <group string="Removed Lines">
                         <field
                             name="order_line"
