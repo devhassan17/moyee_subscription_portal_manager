@@ -14,29 +14,11 @@ class SaleOrderLine(models.Model):
         help="If enabled, the line is considered soft-removed: it is hidden in the backend "
              "subscription UI, excluded from future invoices, and (optionally) filtered from PDFs.",
     )
-    x_moyee_removed_on = fields.Datetime(
-        string="Removed on",
-        copy=False,
-        readonly=True,
-    )
-    x_moyee_removed_by = fields.Many2one(
-        comodel_name="res.users",
-        string="Removed by",
-        copy=False,
-        readonly=True,
-    )
-    x_moyee_remove_reason = fields.Text(
-        string="Remove reason",
-        copy=False,
-        readonly=True,
-    )
+    x_moyee_removed_on = fields.Datetime(string="Removed On", copy=False)
+    x_moyee_removed_by = fields.Many2one("res.users", string="Removed By", copy=False)
+    x_moyee_remove_reason = fields.Text(string="Remove Reason", copy=False)
 
     def _moyee_check_manager_rights(self):
-        """
-        Allow any INTERNAL user (dashboard access).
-        - Internal users are in base.group_user.
-        - Portal/public users are NOT in this group.
-        """
         if self.env.is_superuser():
             return
         if self.env.user.has_group("base.group_user"):
@@ -92,6 +74,61 @@ class SaleOrderLine(models.Model):
 
         return True
 
+    def action_moyee_soft_remove_portal(self, portal_user_id, reason=None):
+        """Portal-safe soft remove.
+
+        Called by portal controllers in sudo() mode.
+        Performs explicit ownership checks on the subscription order.
+        """
+        portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
+        if not portal_user:
+            raise AccessError(_("Invalid user."))
+
+        for line in self:
+            if not line.order_id:
+                raise UserError(_("Invalid subscription line."))
+            line.order_id._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
+
+        now = fields.Datetime.now()
+        for line in self:
+            if line.display_type:
+                continue
+            if line.x_moyee_is_removed and line.product_uom_qty == 0:
+                continue
+
+            vals = {
+                "product_uom_qty": 0.0,
+                "x_moyee_is_removed": True,
+                "x_moyee_removed_on": now,
+                "x_moyee_removed_by": portal_user.id,
+            }
+            if reason:
+                vals["x_moyee_remove_reason"] = reason
+
+            line.sudo().write(vals)
+
+            product_label = line.product_id.display_name if line.product_id else (line.name or _("(no product)"))
+            body = _(
+                "Moyee soft removal applied via portal.\n"
+                "- Item: %s\n"
+                "- By: %s\n"
+                "- When: %s\n"
+                "- Reason: %s"
+            ) % (
+                product_label,
+                portal_user.display_name,
+                fields.Datetime.to_string(now),
+                reason or _("(no reason provided)"),
+            )
+
+            line.order_id.with_user(1).message_post(
+                body=body,
+                subtype_xmlid="mail.mt_note",
+                author_id=portal_user.partner_id.id,
+            )
+
+        return True
+
     def unlink(self):
         """
         If user clicks the default trash icon on confirmed subscription lines,
@@ -109,9 +146,6 @@ class SaleOrderLine(models.Model):
 
             now = fields.Datetime.now()
             for line in to_soft_remove:
-                if line.x_moyee_is_removed and line.product_uom_qty == 0:
-                    continue
-
                 line.write({
                     "product_uom_qty": 0.0,
                     "x_moyee_is_removed": True,

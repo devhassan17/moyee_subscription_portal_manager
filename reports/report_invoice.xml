@@ -1,16 +1,8 @@
-<!-- File: moyee_subscription_portal_manager/reports/report_invoice.xml -->
+<!-- File: moyee_subscription_portal_manager/security/security.xml -->
 <odoo>
-    <!-- Safety filter in the invoice PDF:
-         Hide lines that are:
-         - standard invoice lines with quantity <= 0
-         - OR linked to removed sale order lines (sale_line_ids.x_moyee_is_removed = True)
-         Keep display_type lines (sections/notes) untouched.
-    -->
-    <template id="report_invoice_document_moyee_filter_lines" inherit_id="account.report_invoice_document">
-        <xpath expr="//table[@name='invoice_line_table']//t[@t-foreach='lines']" position="attributes">
-            <attribute name="t-foreach">
-                lines.filtered(lambda l: l.display_type or (l.quantity &gt; 0 and not l.sale_line_ids.filtered(lambda sol: sol.x_moyee_is_removed)))
-            </attribute>
-        </xpath>
-    </template>
+    <record id="group_moyee_subscription_manager" model="res.groups">
+        <field name="name">Moyee Subscription Manager</field>
+        <field name="category_id" ref="base.module_category_sales_management"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
 </odoo>

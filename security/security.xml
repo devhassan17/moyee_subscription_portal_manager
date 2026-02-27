@@ -1,16 +1,8 @@
 <!-- File: moyee_subscription_portal_manager/security/security.xml -->
 <odoo>
-    <data noupdate="0">
-
-        <record id="group_moyee_subscription_manager" model="res.groups">
-            <field name="name">Moyee Subscription Manager</field>
-
-            <!-- FIX: Odoo 18 correct category -->
-            <field name="category_id" ref="base.module_category_sales"/>
-
-            <!-- Make it manager-level -->
-            <field name="implied_ids" eval="[(4, ref('sales_team.group_sale_manager'))]"/>
-        </record>
-
-    </data>
+    <record id="group_moyee_subscription_manager" model="res.groups">
+        <field name="name">Moyee Subscription Manager</field>
+        <field name="category_id" ref="base.module_category_sales_management"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
 </odoo>
