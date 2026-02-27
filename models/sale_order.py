@@ -93,18 +93,28 @@ class SaleOrder(models.Model):
 
         return Product.search(domain, order="name, id", limit=200)
 
-    def _moyee_portal_validate_address(self, portal_user, partner_id):
-        partner = self.env["res.partner"].sudo().browse(int(partner_id)).exists()
-        if not partner:
-            raise ValidationError(_("Invalid address."))
-        if partner.commercial_partner_id != portal_user.partner_id.commercial_partner_id:
-            raise ValidationError(_("Invalid address."))
-        return partner
+    # -----------------------
+    # FULL ADDRESS (create/update child contact safely)
+    # -----------------------
+    def _moyee_portal_upsert_child_address(self, portal_user, vals, addr_type):
+        """Create or update a child address under the commercial partner."""
+        self.ensure_one()
+        commercial = portal_user.partner_id.commercial_partner_id
 
-    # -----------------------
-    # Portal actions
-    # -----------------------
-    def moyee_portal_change_address(self, *, portal_user_id, shipping_partner_id=None, invoice_partner_id=None):
+        clean = {k: v for k, v in (vals or {}).items() if v not in (None, "", False)}
+        if not clean:
+            return False
+
+        clean.update({"parent_id": commercial.id, "type": addr_type})
+
+        current = self.partner_shipping_id if addr_type == "delivery" else self.partner_invoice_id
+        if current and current.parent_id == commercial:
+            current.sudo().write(clean)
+            return current
+
+        return self.env["res.partner"].sudo().create(clean)
+
+    def moyee_portal_change_address_full(self, *, portal_user_id, shipping_vals=None, invoice_vals=None):
         self.ensure_one()
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
         if not portal_user:
@@ -112,24 +122,29 @@ class SaleOrder(models.Model):
 
         self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
 
+        ship_partner = self._moyee_portal_upsert_child_address(portal_user, shipping_vals, "delivery")
+        inv_partner = self._moyee_portal_upsert_child_address(portal_user, invoice_vals, "invoice")
+
         vals = {}
-        if shipping_partner_id:
-            ship = self._moyee_portal_validate_address(portal_user, shipping_partner_id)
-            vals["partner_shipping_id"] = ship.id
-        if invoice_partner_id:
-            inv = self._moyee_portal_validate_address(portal_user, invoice_partner_id)
-            vals["partner_invoice_id"] = inv.id
+        if ship_partner:
+            vals["partner_shipping_id"] = ship_partner.id
+        if inv_partner:
+            vals["partner_invoice_id"] = inv_partner.id
+
         if not vals:
-            raise UserError(_("Please select at least one address."))
+            raise UserError(_("Please fill at least one address field."))
 
         self.sudo().write(vals)
         self.with_user(1).message_post(
-            body=_("Moyee: customer updated subscription addresses via portal."),
+            body=_("Moyee: customer updated full addresses via portal."),
             subtype_xmlid="mail.mt_note",
             author_id=portal_user.partner_id.id,
         )
         return True
 
+    # -----------------------
+    # Portal actions (existing)
+    # -----------------------
     def moyee_portal_push_next_date(self, *, portal_user_id, next_date):
         self.ensure_one()
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
@@ -201,9 +216,7 @@ class SaleOrder(models.Model):
             return True
 
         SaleOrderLine = self.env["sale.order.line"].sudo()
-        new_line = SaleOrderLine.new(
-            {"order_id": self.id, "product_id": product.id, "product_uom_qty": qty}
-        )
+        new_line = SaleOrderLine.new({"order_id": self.id, "product_id": product.id, "product_uom_qty": qty})
         new_line._onchange_product_id()
         new_line.product_uom_qty = qty
         if hasattr(new_line, "_onchange_product_uom_qty"):

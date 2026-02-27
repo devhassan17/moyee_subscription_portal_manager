@@ -7,7 +7,6 @@ from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.http import request
 from werkzeug.exceptions import NotFound
 
-
 _logger = logging.getLogger(__name__)
 
 
@@ -23,7 +22,6 @@ class MoyeeSubscriptionPortal(http.Controller):
         if not order:
             raise NotFound()
 
-        # Explicit ownership checks (DO NOT rely on sudo() alone).
         try:
             order._moyee_portal_check_access(require_subscription=require_subscription)
         except AccessError:
@@ -65,32 +63,25 @@ class MoyeeSubscriptionPortal(http.Controller):
     def moyee_subscription_manage(self, order_id, **kw):
         order = self._moyee_get_order_sudo(order_id, require_subscription=True)
 
-        user = request.env.user
-        partner = user.partner_id.commercial_partner_id
-
-        addresses = request.env["res.partner"].sudo().search(
-            [("id", "child_of", [partner.id])],
-            order="type, name, id",
-        )
-
         next_date_field = order._moyee_get_subscription_next_date_field_name()
         next_date_value = order[next_date_field] if next_date_field else False
 
         available_products = order._moyee_get_portal_addable_products()
 
-        # Visible lines are filtered server-side
         visible_lines = order.order_line.filtered(
             lambda l: l.display_type or (not l.x_moyee_is_removed and l.product_uom_qty > 0)
         )
 
+        countries = request.env["res.country"].sudo().search([], order="name, id")
+
         values = {
-            "sale_order": order,  # keep 'sale_order' naming for consistency with base portal templates
+            "sale_order": order,
             "order": order,
-            "addresses": addresses,
             "next_date_field": next_date_field,
             "next_date_value": next_date_value,
             "available_products": available_products,
             "visible_lines": visible_lines,
+            "countries": countries,
             "moyee_message": kw.get("moyee_message"),
             "moyee_error": kw.get("moyee_error"),
         }
@@ -112,16 +103,32 @@ class MoyeeSubscriptionPortal(http.Controller):
     )
     def moyee_change_address(self, order_id, **post):
         order = self._moyee_get_order_sudo(order_id, require_subscription=True)
+
         try:
-            shipping_id = int(post.get("shipping_partner_id") or 0) or False
-            invoice_id = int(post.get("invoice_partner_id") or 0) or False
-            order.moyee_portal_change_address(
+            order.moyee_portal_change_address_full(
                 portal_user_id=request.env.user.id,
-                shipping_partner_id=shipping_id,
-                invoice_partner_id=invoice_id,
+                shipping_vals={
+                    "name": (post.get("ship_name") or "").strip(),
+                    "phone": (post.get("ship_phone") or "").strip(),
+                    "street": (post.get("ship_street") or "").strip(),
+                    "street2": (post.get("ship_street2") or "").strip(),
+                    "city": (post.get("ship_city") or "").strip(),
+                    "zip": (post.get("ship_zip") or "").strip(),
+                    "country_id": int(post.get("ship_country_id") or 0) or False,
+                },
+                invoice_vals={
+                    "name": (post.get("inv_name") or "").strip(),
+                    "phone": (post.get("inv_phone") or "").strip(),
+                    "street": (post.get("inv_street") or "").strip(),
+                    "street2": (post.get("inv_street2") or "").strip(),
+                    "city": (post.get("inv_city") or "").strip(),
+                    "zip": (post.get("inv_zip") or "").strip(),
+                    "country_id": int(post.get("inv_country_id") or 0) or False,
+                },
             )
         except (AccessError, UserError, ValidationError, ValueError) as e:
             return self._moyee_redirect_back(order, error=str(e))
+
         return self._moyee_redirect_back(order, message=_("Address updated successfully."))
 
     @http.route(
