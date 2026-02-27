@@ -1,14 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- 
-        Invoice PDF Filter
-        ------------------
-        Hide lines that:
-        - Have quantity <= 0
-        - OR are linked to removed sale.order.line
-        Keep display_type lines (sections / notes)
-    -->
+    
 
     <template id="report_invoice_document_moyee_filter_lines"
               inherit_id="account.report_invoice_document">
@@ -20,7 +13,7 @@
                 lines.filtered(
                     lambda l: l.display_type
                     or (
-                        l.quantity > 0
+                        l.quantity &gt; 0
                         and not l.sale_line_ids.filtered(
                             lambda sol: sol.x_moyee_is_removed
                         )
