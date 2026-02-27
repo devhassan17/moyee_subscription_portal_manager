@@ -1,8 +1,7 @@
-<!-- File: moyee_subscription_portal_manager/security/security.xml -->
 <odoo>
     <record id="group_moyee_subscription_manager" model="res.groups">
         <field name="name">Moyee Subscription Manager</field>
-        <field name="category_id" ref="base.module_category_sales_management"/>
+        <field name="category_id" ref="base.module_category_sales"/>
         <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
     </record>
 </odoo>
