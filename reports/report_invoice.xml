@@ -1,8 +1,35 @@
-<!-- File: moyee_subscription_portal_manager/security/security.xml -->
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="group_moyee_subscription_manager" model="res.groups">
-        <field name="name">Moyee Subscription Manager</field>
-        <field name="category_id" ref="base.module_category_sales_management"/>
-        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
-    </record>
+
+    <!-- 
+        Invoice PDF Filter
+        ------------------
+        Hide lines that:
+        - Have quantity <= 0
+        - OR are linked to removed sale.order.line
+        Keep display_type lines (sections / notes)
+    -->
+
+    <template id="report_invoice_document_moyee_filter_lines"
+              inherit_id="account.report_invoice_document">
+
+        <xpath expr="//table[@name='invoice_line_table']//t[@t-foreach='lines']"
+               position="attributes">
+
+            <attribute name="t-foreach">
+                lines.filtered(
+                    lambda l: l.display_type
+                    or (
+                        l.quantity > 0
+                        and not l.sale_line_ids.filtered(
+                            lambda sol: sol.x_moyee_is_removed
+                        )
+                    )
+                )
+            </attribute>
+
+        </xpath>
+
+    </template>
+
 </odoo>
