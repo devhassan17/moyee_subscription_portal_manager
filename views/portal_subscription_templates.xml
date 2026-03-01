@@ -339,7 +339,7 @@
                             <div class="d-flex gap-2">
                                 <form t-attf-action="/my/subscriptions/{{ order.id }}/pause" method="post">
                                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                    <button class="btn btn-warning" type="submit">Pause</button>
+                                    <button class="btn btn-warning" type="submit">Pause Subscription</button>
                                 </form>
                                 <form t-attf-action="/my/subscriptions/{{ order.id }}/resume" method="post">
                                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
