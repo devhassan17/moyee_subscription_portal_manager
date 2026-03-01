@@ -94,6 +94,75 @@ class SaleOrder(models.Model):
         return Product.search(domain, order="name, id", limit=200)
 
     # -----------------------
+    # NEW: Interval/Plan (Portal)
+    # -----------------------
+    def _moyee_get_portal_changeable_plans(self):
+        """
+        Return the subscription plans the customer can choose from.
+        Intended: 1 month / 2 month / 3 month plans.
+        Works with different plan field names across subscription implementations.
+        """
+        self.ensure_one()
+
+        if "recurring_plan_id" not in self._fields:
+            return self.env["ir.model"].browse()  # empty recordset
+
+        plan_model = self._fields["recurring_plan_id"].comodel_name
+        Plan = self.env[plan_model].sudo()
+
+        domain = []
+        if "company_id" in Plan._fields and self.company_id:
+            domain.append(("company_id", "in", [False, self.company_id.id]))
+
+        plans = Plan.search(domain, order="name, id")
+
+        # Try to filter to month plans and interval 1/2/3 if fields exist.
+        def _is_allowed(p):
+            # Rule type month?
+            if "recurring_rule_type" in p._fields and p.recurring_rule_type:
+                if p.recurring_rule_type != "month":
+                    return False
+
+            # Interval field names differ by version/module
+            if "recurring_interval" in p._fields and p.recurring_interval:
+                return p.recurring_interval in (1, 2, 3)
+            if "billing_period" in p._fields and p.billing_period:
+                return p.billing_period in (1, 2, 3)
+
+            # Fallback: if no interval fields, allow all
+            return True
+
+        return plans.filtered(_is_allowed)
+
+    def moyee_portal_change_interval(self, *, portal_user_id, plan_id):
+        self.ensure_one()
+
+        portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
+        if not portal_user:
+            raise AccessError(_("Invalid user."))
+
+        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
+
+        if "recurring_plan_id" not in self._fields:
+            raise UserError(_("This subscription does not support interval change."))
+
+        plan_id = int(plan_id or 0)
+        if not plan_id:
+            raise ValidationError(_("Please select an interval."))
+
+        allowed_plans = self._moyee_get_portal_changeable_plans()
+        if not allowed_plans.filtered(lambda p: p.id == plan_id):
+            raise AccessError(_("Selected interval is not allowed."))
+
+        self.sudo().write({"recurring_plan_id": plan_id})
+        self.with_user(1).message_post(
+            body=_("Moyee: customer changed subscription interval via portal."),
+            subtype_xmlid="mail.mt_note",
+            author_id=portal_user.partner_id.id,
+        )
+        return True
+
+    # -----------------------
     # FULL ADDRESS (create/update child contact safely)
     # -----------------------
     def _moyee_portal_upsert_child_address(self, portal_user, vals, addr_type):

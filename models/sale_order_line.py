@@ -80,6 +80,13 @@ class SaleOrderLine(models.Model):
         Called by portal controllers in sudo() mode.
         Performs explicit ownership checks on the subscription order.
         """
+
+        # ✅ BLOCK DELIVERY PRODUCTS (server-side security)
+        for line in self:
+            pname = (line.product_id.display_name or line.name or "").lower()
+            if "delivery" in pname:
+                raise UserError(_("You can not delete delivery product."))
+
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
         if not portal_user:
             raise AccessError(_("Invalid user."))

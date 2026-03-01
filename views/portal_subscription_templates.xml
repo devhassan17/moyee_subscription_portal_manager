@@ -56,6 +56,41 @@
                     </div>
                 </div>
 
+                <!-- ✅ Change subscription interval -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <strong>Change subscription interval</strong>
+                    </div>
+                    <div class="card-body">
+                        <t t-if="not available_plans">
+                            <div class="alert alert-warning mb-0">
+                                No intervals are available for this subscription.
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <form t-attf-action="/my/subscriptions/{{ order.id }}/change_interval" method="post" class="row g-3">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                                <div class="col-12 col-lg-6">
+                                    <label class="form-label">Interval</label>
+                                    <select class="form-select" name="plan_id" required="required">
+                                        <t t-foreach="available_plans" t-as="pl">
+                                            <option t-att-value="pl.id"
+                                                    t-att-selected="order.recurring_plan_id and order.recurring_plan_id.id == pl.id">
+                                                <t t-esc="pl.display_name"/>
+                                            </option>
+                                        </t>
+                                    </select>
+                                </div>
+
+                                <div class="col-12">
+                                    <button class="btn btn-primary" type="submit">Update interval</button>
+                                </div>
+                            </form>
+                        </t>
+                    </div>
+                </div>
+
                 <!-- Change address (FULL FORM) -->
                 <div class="card mb-3">
                     <div class="card-header">
@@ -259,15 +294,27 @@
                                                     <td><t t-esc="line.product_id.display_name or line.name"/></td>
                                                     <td class="text-end"><t t-esc="line.product_uom_qty"/></td>
                                                     <td class="text-end">
-                                                        <form t-attf-action="/my/subscriptions/{{ order.id }}/line/{{ line.id }}/remove"
-                                                              method="post" class="d-inline">
-                                                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                                            <input type="hidden" name="reason" value="Removed by customer"/>
-                                                            <button class="btn btn-sm btn-outline-danger" type="submit"
-                                                                    onclick="return confirm('Remove this product from your subscription?');">
+
+                                                        <!-- ✅ Block remove for delivery products (UI) -->
+                                                        <t t-set="lname" t-value="(line.product_id.display_name or line.name or '').lower()"/>
+                                                        <t t-if="'delivery' in lname">
+                                                            <button class="btn btn-sm btn-outline-secondary" type="button"
+                                                                    onclick="alert('You can not delete delivery product.');">
                                                                 Remove
                                                             </button>
-                                                        </form>
+                                                        </t>
+                                                        <t t-else="">
+                                                            <form t-attf-action="/my/subscriptions/{{ order.id }}/line/{{ line.id }}/remove"
+                                                                  method="post" class="d-inline">
+                                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                                <input type="hidden" name="reason" value="Removed by customer"/>
+                                                                <button class="btn btn-sm btn-outline-danger" type="submit"
+                                                                        onclick="return confirm('Remove this product from your subscription?');">
+                                                                    Remove
+                                                                </button>
+                                                            </form>
+                                                        </t>
+
                                                     </td>
                                                 </tr>
                                             </t>

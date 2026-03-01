@@ -67,6 +67,7 @@ class MoyeeSubscriptionPortal(http.Controller):
         next_date_value = order[next_date_field] if next_date_field else False
 
         available_products = order._moyee_get_portal_addable_products()
+        available_plans = order._moyee_get_portal_changeable_plans()
 
         visible_lines = order.order_line.filtered(
             lambda l: l.display_type or (not l.x_moyee_is_removed and l.product_uom_qty > 0)
@@ -80,6 +81,7 @@ class MoyeeSubscriptionPortal(http.Controller):
             "next_date_field": next_date_field,
             "next_date_value": next_date_value,
             "available_products": available_products,
+            "available_plans": available_plans,
             "visible_lines": visible_lines,
             "countries": countries,
             "moyee_message": kw.get("moyee_message"),
@@ -90,6 +92,26 @@ class MoyeeSubscriptionPortal(http.Controller):
     # ------------------------------------------------------------
     # Actions
     # ------------------------------------------------------------
+    @http.route(
+        [
+            "/my/subscriptions/<int:order_id>/change_interval",
+            "/my/subscription/<int:order_id>/change_interval",
+        ],
+        type="http",
+        auth="user",
+        website=True,
+        methods=["POST"],
+        csrf=True,
+    )
+    def moyee_change_interval(self, order_id, **post):
+        order = self._moyee_get_order_sudo(order_id, require_subscription=True)
+        try:
+            plan_id = int(post.get("plan_id") or 0)
+            order.moyee_portal_change_interval(portal_user_id=request.env.user.id, plan_id=plan_id)
+        except (AccessError, UserError, ValidationError, ValueError) as e:
+            return self._moyee_redirect_back(order, error=str(e))
+        return self._moyee_redirect_back(order, message=_("Subscription interval updated successfully."))
+
     @http.route(
         [
             "/my/subscriptions/<int:order_id>/change_address",
