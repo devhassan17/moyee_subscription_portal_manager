@@ -1,5 +1,5 @@
 # File: moyee_subscription_portal_manager/models/sale_order.py
-from odoo import _, api, fields, models
+from odoo import _, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 
 
@@ -35,7 +35,6 @@ class SaleOrder(models.Model):
         return lines.filtered(lambda l: l.display_type or (not l.x_moyee_is_removed and l.product_uom_qty > 0))
 
     def _get_order_lines_to_report(self):
-        """Filter portal/order report lines (server-side) to hide soft-removed items."""
         try:
             lines = super()._get_order_lines_to_report()
         except AttributeError:
@@ -94,18 +93,25 @@ class SaleOrder(models.Model):
         return Product.search(domain, order="name, id", limit=200)
 
     # -----------------------
-    # NEW: Interval/Plan (Portal)
+    # ✅ Interval/Plan (Portal) - FIXED
     # -----------------------
     def _moyee_get_portal_changeable_plans(self):
         """
         Return the subscription plans the customer can choose from.
-        Intended: 1 month / 2 month / 3 month plans.
-        Works with different plan field names across subscription implementations.
+
+        IMPORTANT FIX:
+        Your system clearly uses recurring_plan_id (Monthly / 2 Monthly / 3 Monthly),
+        but earlier logic could return empty due to field mismatches.
+        So we:
+        - fetch plans from recurring_plan_id comodel
+        - company-filter if possible
+        - prefer "month/monthly" plans with interval 1/2/3 if detectable
+        - otherwise return all plans (never wrongly empty)
         """
         self.ensure_one()
 
         if "recurring_plan_id" not in self._fields:
-            return self.env["ir.model"].browse()  # empty recordset
+            return self.env["ir.model"].browse()
 
         plan_model = self._fields["recurring_plan_id"].comodel_name
         Plan = self.env[plan_model].sudo()
@@ -114,29 +120,35 @@ class SaleOrder(models.Model):
         if "company_id" in Plan._fields and self.company_id:
             domain.append(("company_id", "in", [False, self.company_id.id]))
 
-        plans = Plan.search(domain, order="name, id")
+        order_by = "sequence, name, id" if "sequence" in Plan._fields else "name, id"
+        plans = Plan.search(domain, order=order_by)
 
-        # Try to filter to month plans and interval 1/2/3 if fields exist.
-        def _is_allowed(p):
-            # Rule type month?
+        def _interval_value(p):
+            for f in ("recurring_interval", "recurrence_interval", "recurring_rule_count", "billing_period"):
+                if f in p._fields and p[f]:
+                    try:
+                        return int(p[f])
+                    except Exception:
+                        return None
+            return None
+
+        def _looks_monthly(p):
             if "recurring_rule_type" in p._fields and p.recurring_rule_type:
-                if p.recurring_rule_type != "month":
+                if str(p.recurring_rule_type).lower() not in ("month", "monthly", "months"):
                     return False
+            name = (p.display_name or p.name or "").lower()
+            if "month" in name or "monthly" in name:
+                return True
+            if "recurring_rule_type" in p._fields and p.recurring_rule_type:
+                return True
+            return False
 
-            # Interval field names differ by version/module
-            if "recurring_interval" in p._fields and p.recurring_interval:
-                return p.recurring_interval in (1, 2, 3)
-            if "billing_period" in p._fields and p.billing_period:
-                return p.billing_period in (1, 2, 3)
+        preferred = plans.filtered(lambda p: _looks_monthly(p) and (_interval_value(p) in (None, 1, 2, 3)))
 
-            # Fallback: if no interval fields, allow all
-            return True
-
-        return plans.filtered(_is_allowed)
+        return preferred if preferred else plans
 
     def moyee_portal_change_interval(self, *, portal_user_id, plan_id):
         self.ensure_one()
-
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
         if not portal_user:
             raise AccessError(_("Invalid user."))
@@ -157,6 +169,97 @@ class SaleOrder(models.Model):
         self.sudo().write({"recurring_plan_id": plan_id})
         self.with_user(1).message_post(
             body=_("Moyee: customer changed subscription interval via portal."),
+            subtype_xmlid="mail.mt_note",
+            author_id=portal_user.partner_id.id,
+        )
+        return True
+
+    # -----------------------
+    # ✅ Pause / Resume - ROBUST
+    # -----------------------
+    def _moyee_set_subscription_paused_state(self, paused=True):
+        """
+        Tries multiple implementations:
+        1) known methods (action_pause/action_resume/etc)
+        2) stage_id (common in subscriptions)
+        3) subscription_status selections
+        """
+        self.ensure_one()
+
+        # 1) method-based
+        if paused:
+            for m in ("action_pause", "action_suspend", "action_subscription_pause", "action_set_to_pause"):
+                if hasattr(self, m):
+                    getattr(self.sudo(), m)()
+                    return True
+        else:
+            for m in ("action_resume", "action_reactivate", "action_subscription_resume", "action_set_to_progress"):
+                if hasattr(self, m):
+                    getattr(self.sudo(), m)()
+                    return True
+
+        # 2) stage-based (most common)
+        if "stage_id" in self._fields:
+            Stage = self.env[self._fields["stage_id"].comodel_name].sudo()
+
+            if paused:
+                target = Stage.search([("name", "ilike", "pause")], limit=1) or Stage.search(
+                    [("name", "ilike", "suspend")], limit=1
+                )
+            else:
+                target = Stage.search([("name", "ilike", "progress")], limit=1) or Stage.search(
+                    [("name", "ilike", "in progress")], limit=1
+                )
+
+            if target:
+                self.sudo().write({"stage_id": target.id})
+                return True
+
+        # 3) subscription_status selection-based
+        if "subscription_status" in self._fields:
+            selection = self._fields["subscription_status"].selection or []
+            keys = {k for k, _lbl in selection}
+
+            if paused:
+                for k in ("paused", "pause", "suspended", "hold"):
+                    if k in keys:
+                        self.sudo().write({"subscription_status": k})
+                        return True
+            else:
+                for k in ("in_progress", "progress", "running", "active"):
+                    if k in keys:
+                        self.sudo().write({"subscription_status": k})
+                        return True
+
+        raise UserError(_("Pause/resume is not available for this subscription implementation."))
+
+    def moyee_portal_pause(self, *, portal_user_id):
+        self.ensure_one()
+        portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
+        if not portal_user:
+            raise AccessError(_("Invalid user."))
+
+        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
+        self._moyee_set_subscription_paused_state(paused=True)
+
+        self.with_user(1).message_post(
+            body=_("Moyee: customer paused the subscription via portal."),
+            subtype_xmlid="mail.mt_note",
+            author_id=portal_user.partner_id.id,
+        )
+        return True
+
+    def moyee_portal_resume(self, *, portal_user_id):
+        self.ensure_one()
+        portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
+        if not portal_user:
+            raise AccessError(_("Invalid user."))
+
+        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
+        self._moyee_set_subscription_paused_state(paused=False)
+
+        self.with_user(1).message_post(
+            body=_("Moyee: customer resumed the subscription via portal."),
             subtype_xmlid="mail.mt_note",
             author_id=portal_user.partner_id.id,
         )
@@ -206,159 +309,6 @@ class SaleOrder(models.Model):
         self.sudo().write(vals)
         self.with_user(1).message_post(
             body=_("Moyee: customer updated full addresses via portal."),
-            subtype_xmlid="mail.mt_note",
-            author_id=portal_user.partner_id.id,
-        )
-        return True
-
-    # -----------------------
-    # Portal actions (existing)
-    # -----------------------
-    def moyee_portal_push_next_date(self, *, portal_user_id, next_date):
-        self.ensure_one()
-        portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
-        if not portal_user:
-            raise AccessError(_("Invalid user."))
-
-        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
-
-        field_name = self._moyee_get_subscription_next_date_field_name()
-        if not field_name:
-            raise UserError(_("No 'next date' field was found on this subscription."))
-
-        next_date = (next_date or "").strip()
-        if not next_date:
-            raise ValidationError(_("Please provide a date."))
-
-        field = self._fields[field_name]
-        if isinstance(field, fields.Date):
-            value = fields.Date.from_string(next_date)
-            if not value:
-                raise ValidationError(_("Invalid date format."))
-            if value < fields.Date.today():
-                raise ValidationError(_("The next date cannot be in the past."))
-        else:
-            value = fields.Datetime.from_string(next_date)
-            if not value:
-                raise ValidationError(_("Invalid date/time format."))
-            if value < fields.Datetime.now():
-                raise ValidationError(_("The next date cannot be in the past."))
-
-        self.sudo().write({field_name: value})
-        self.with_user(1).message_post(
-            body=_("Moyee: customer updated the next date via portal."),
-            subtype_xmlid="mail.mt_note",
-            author_id=portal_user.partner_id.id,
-        )
-        return True
-
-    def moyee_portal_add_product(self, *, portal_user_id, product_id, qty):
-        self.ensure_one()
-        portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
-        if not portal_user:
-            raise AccessError(_("Invalid user."))
-
-        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
-
-        if qty <= 0:
-            raise ValidationError(_("Quantity must be greater than 0."))
-
-        product = self.env["product.product"].sudo().browse(int(product_id)).exists()
-        if not product:
-            raise ValidationError(_("Invalid product."))
-
-        allowed = self._moyee_get_portal_addable_products()
-        if product not in allowed:
-            raise AccessError(_("This product cannot be added to your subscription."))
-
-        existing = self.order_line.filtered(
-            lambda l: (not l.display_type) and (not l.x_moyee_is_removed) and l.product_id == product
-        )
-        if existing:
-            line = existing[0]
-            line.sudo().write({"product_uom_qty": line.product_uom_qty + qty})
-            self.with_user(1).message_post(
-                body=_("Moyee: customer increased quantity for %s via portal.") % product.display_name,
-                subtype_xmlid="mail.mt_note",
-                author_id=portal_user.partner_id.id,
-            )
-            return True
-
-        SaleOrderLine = self.env["sale.order.line"].sudo()
-        new_line = SaleOrderLine.new({"order_id": self.id, "product_id": product.id, "product_uom_qty": qty})
-        new_line._onchange_product_id()
-        new_line.product_uom_qty = qty
-        if hasattr(new_line, "_onchange_product_uom_qty"):
-            new_line._onchange_product_uom_qty()
-
-        vals = new_line._convert_to_write(new_line._cache)
-        vals.update(
-            {
-                "order_id": self.id,
-                "product_id": product.id,
-                "product_uom_qty": qty,
-                "x_moyee_is_removed": False,
-                "x_moyee_removed_on": False,
-                "x_moyee_removed_by": False,
-                "x_moyee_remove_reason": False,
-            }
-        )
-        SaleOrderLine.create(vals)
-
-        self.with_user(1).message_post(
-            body=_("Moyee: customer added %s (qty %s) via portal.") % (product.display_name, qty),
-            subtype_xmlid="mail.mt_note",
-            author_id=portal_user.partner_id.id,
-        )
-        return True
-
-    def _moyee_set_subscription_paused_state(self, paused=True):
-        self.ensure_one()
-
-        if paused:
-            for method_name in ("action_pause", "action_suspend"):
-                if hasattr(self, method_name):
-                    getattr(self.sudo(), method_name)()
-                    return True
-        else:
-            for method_name in ("action_resume", "action_reactivate"):
-                if hasattr(self, method_name):
-                    getattr(self.sudo(), method_name)()
-                    return True
-
-        if "subscription_status" in self._fields:
-            self.sudo().write({"subscription_status": "paused" if paused else "in_progress"})
-            return True
-
-        raise UserError(_("Pause/resume is not available for this subscription implementation."))
-
-    def moyee_portal_pause(self, *, portal_user_id):
-        self.ensure_one()
-        portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
-        if not portal_user:
-            raise AccessError(_("Invalid user."))
-
-        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
-        self._moyee_set_subscription_paused_state(paused=True)
-
-        self.with_user(1).message_post(
-            body=_("Moyee: customer paused the subscription via portal."),
-            subtype_xmlid="mail.mt_note",
-            author_id=portal_user.partner_id.id,
-        )
-        return True
-
-    def moyee_portal_resume(self, *, portal_user_id):
-        self.ensure_one()
-        portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
-        if not portal_user:
-            raise AccessError(_("Invalid user."))
-
-        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
-        self._moyee_set_subscription_paused_state(paused=False)
-
-        self.with_user(1).message_post(
-            body=_("Moyee: customer resumed the subscription via portal."),
             subtype_xmlid="mail.mt_note",
             author_id=portal_user.partner_id.id,
         )
