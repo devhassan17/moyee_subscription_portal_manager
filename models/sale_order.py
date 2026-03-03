@@ -19,6 +19,9 @@ class SaleOrder(models.Model):
         domain=[("x_moyee_is_removed", "=", True)],
     )
 
+    # -----------------------
+    # Subscription detection
+    # -----------------------
     def _compute_is_subscription_order(self):
         for order in self:
             is_sub = False
@@ -26,12 +29,21 @@ class SaleOrder(models.Model):
                 is_sub = True
             elif "recurring_plan_id" in order._fields and order.recurring_plan_id:
                 is_sub = True
+            elif "subscription_pricing_id" in order._fields and order.subscription_pricing_id:
+                is_sub = True
+            elif "subscription_plan_id" in order._fields and order.subscription_plan_id:
+                is_sub = True
+            elif "recurring_pricing_id" in order._fields and order.recurring_pricing_id:
+                is_sub = True
             elif "subscription_state" in order._fields and order.subscription_state:
                 is_sub = True
             elif "subscription_status" in order._fields and order.subscription_status:
                 is_sub = True
             order.is_subscription_order = is_sub
 
+    # -----------------------
+    # Hide removed lines in invoices / reports
+    # -----------------------
     def _get_invoiceable_lines(self, final=False):
         lines = super()._get_invoiceable_lines(final=final)
         return lines.filtered(lambda l: l.display_type or (not l.x_moyee_is_removed and l.product_uom_qty > 0))
@@ -50,6 +62,7 @@ class SaleOrder(models.Model):
         self.ensure_one()
         portal_user = portal_user or self.env.user
 
+        # Employees are allowed
         if portal_user.has_group("base.group_user"):
             return True
 
@@ -78,6 +91,9 @@ class SaleOrder(models.Model):
                 return fname
         return False
 
+    # -----------------------
+    # Products allowed for portal add
+    # -----------------------
     def _moyee_get_portal_addable_products(self):
         self.ensure_one()
         Product = self.env["product.product"].sudo()
@@ -95,28 +111,51 @@ class SaleOrder(models.Model):
         return Product.search(domain, order="name, id", limit=200)
 
     # -----------------------
-    # ✅ Interval/Plan (Portal) - FIXED (NO EMPTY IN PORTAL)
+    # ✅ Recurring plan field resolver (Odoo 17/18 safe)
+    # -----------------------
+    def _moyee_get_recurring_plan_field_name(self):
+        """
+        Different Odoo 17/18 builds use different field names for recurring plan/pricing.
+        This returns the first field that exists on sale.order.
+        """
+        self.ensure_one()
+        for fname in (
+            "recurring_plan_id",          # common
+            "subscription_pricing_id",    # some builds
+            "subscription_plan_id",       # some builds
+            "recurring_pricing_id",       # some builds
+        ):
+            if fname in self._fields:
+                return fname
+        return False
+
+    # -----------------------
+    # ✅ Interval/Plan (Portal) - UNIVERSAL FIX
     # -----------------------
     def _moyee_get_portal_changeable_plans(self):
         """
-        Return the subscription plans the customer can choose from.
+        Return plans the customer can choose from (Monthly / 2 Monthly / 3 Monthly).
 
-        IMPORTANT:
-        In portal/website context, record rules + allowed_company_ids context can hide plans,
-        even with sudo(). So we:
-        1) Try optional plans on the current plan (if that feature exists)
-        2) Otherwise return ALL plans using forced allowed_company_ids (all companies) + active_test=False
+        ROOT FIX:
+        - Don't assume 'recurring_plan_id' exists.
+        - Detect the actual plan field used by this Odoo 18 build.
+        - Force portal-safe company context (allowed_company_ids) + active_test=False.
         """
         self.ensure_one()
 
-        if "recurring_plan_id" not in self._fields:
+        plan_field = self._moyee_get_recurring_plan_field_name()
+        if not plan_field:
             return self.env["ir.model"].browse([])
 
-        plan_model = self._fields["recurring_plan_id"].comodel_name
-        Plan = self.env[plan_model].sudo()
+        PlanModel = self._fields[plan_field].comodel_name
+        Plan = self.env[PlanModel].sudo()
 
-        # 1) Prefer optional plans if the current plan supports it
-        current_plan = self.recurring_plan_id
+        # Portal-safe context: include all companies & include inactive if any
+        company_ids = self.env["res.company"].sudo().search([]).ids
+        Plan = Plan.with_context(allowed_company_ids=company_ids, active_test=False)
+
+        # Prefer optional plans on current plan if that exists
+        current_plan = self[plan_field]
         if current_plan:
             for fname in (
                 "optional_plans",
@@ -128,10 +167,6 @@ class SaleOrder(models.Model):
                     optional = current_plan[fname]
                     if optional:
                         return optional.sudo()
-
-        # 2) HARD fallback: return all plans (portal-safe)
-        company_ids = self.env["res.company"].sudo().search([]).ids
-        Plan = Plan.with_context(allowed_company_ids=company_ids, active_test=False)
 
         domain = []
         if "company_id" in Plan._fields and self.company_id:
@@ -148,7 +183,8 @@ class SaleOrder(models.Model):
 
         self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
 
-        if "recurring_plan_id" not in self._fields:
+        plan_field = self._moyee_get_recurring_plan_field_name()
+        if not plan_field:
             raise UserError(_("This subscription does not support interval change."))
 
         plan_id = int(plan_id or 0)
@@ -159,7 +195,9 @@ class SaleOrder(models.Model):
         if not allowed_plans.filtered(lambda p: p.id == plan_id):
             raise AccessError(_("Selected interval is not allowed."))
 
-        self.sudo().write({"recurring_plan_id": plan_id})
+        # ✅ Write to the correct field used by this build
+        self.sudo().write({plan_field: plan_id})
+
         self.with_user(1).message_post(
             body=_("Moyee: customer changed subscription interval via portal."),
             subtype_xmlid="mail.mt_note",
