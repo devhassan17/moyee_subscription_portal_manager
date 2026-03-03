@@ -49,6 +49,33 @@ class MoyeeSubscriptionPortal(http.Controller):
         return request.redirect(self._moyee_manage_url(order, params=params or None))
 
     # ------------------------------------------------------------
+    # Helpers (Plans)
+    # ------------------------------------------------------------
+    def _moyee_get_all_recurring_plans_portal_safe(self, order):
+        """
+        HARD FIX:
+        In portal/website context, even sudo() searches may be constrained by allowed_company_ids/context.
+        This helper forces allowed_company_ids to ALL companies and returns all plans (optionally filtered by company).
+        """
+        if "recurring_plan_id" not in order._fields:
+            return request.env["ir.model"].browse([])
+
+        plan_model = order._fields["recurring_plan_id"].comodel_name
+        Plan = request.env[plan_model].sudo()
+
+        # Force company context to include all companies (portal can be very restrictive)
+        company_ids = request.env["res.company"].sudo().search([]).ids
+        Plan = Plan.with_context(allowed_company_ids=company_ids, active_test=False)
+
+        domain = []
+        # Keep sane company filter if plan model has company_id
+        if "company_id" in Plan._fields and order.company_id:
+            domain = [("company_id", "in", [False, order.company_id.id])]
+
+        order_by = "sequence, name, id" if "sequence" in Plan._fields else "name, id"
+        return Plan.search(domain, order=order_by)
+
+    # ------------------------------------------------------------
     # Page
     # ------------------------------------------------------------
     @http.route(
@@ -68,19 +95,12 @@ class MoyeeSubscriptionPortal(http.Controller):
 
         available_products = order._moyee_get_portal_addable_products()
 
-        # ✅ FIX: Portal sometimes returns empty plans due to company/context/record rules
-        # even though plans exist in backend (Monthly / 2 Monthly / 3 Monthly).
-        # Keep model logic first, but add a hard sudo fallback so portal never shows empty.
+        # ✅ Try your model-level logic first
         available_plans = order._moyee_get_portal_changeable_plans()
-        if not available_plans and "recurring_plan_id" in order._fields:
-            try:
-                plan_model = order._fields["recurring_plan_id"].comodel_name
-                Plan = request.env[plan_model].sudo()
-                order_by = "sequence, name, id" if "sequence" in Plan._fields else "name, id"
-                available_plans = Plan.search([], order=order_by)
-            except Exception:
-                # fail-safe: don't break portal page
-                available_plans = order._moyee_get_portal_changeable_plans()
+
+        # ✅ HARD fallback: show all plans even if portal context makes it empty
+        if not available_plans:
+            available_plans = self._moyee_get_all_recurring_plans_portal_safe(order)
 
         visible_lines = order.order_line.filtered(
             lambda l: l.display_type or (not l.x_moyee_is_removed and l.product_uom_qty > 0)

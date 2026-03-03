@@ -22,8 +22,6 @@ class SaleOrder(models.Model):
     def _compute_is_subscription_order(self):
         for order in self:
             is_sub = False
-            # Odoo 16+ merged subscriptions into sale.order; implementations differ a bit per edition.
-            # We detect subscription orders by checking the most common fields.
             if "is_subscription" in order._fields and order.is_subscription:
                 is_sub = True
             elif "recurring_plan_id" in order._fields and order.recurring_plan_id:
@@ -97,15 +95,17 @@ class SaleOrder(models.Model):
         return Product.search(domain, order="name, id", limit=200)
 
     # -----------------------
-    # ✅ Interval/Plan (Portal) - FIXED
+    # ✅ Interval/Plan (Portal) - FIXED (NO EMPTY IN PORTAL)
     # -----------------------
     def _moyee_get_portal_changeable_plans(self):
         """
         Return the subscription plans the customer can choose from.
 
-        FIX:
-        - Prefer current plan's "Optional Plans" (if configured).
-        - Otherwise fall back to ALL plans (avoid empty dropdown from company filters).
+        IMPORTANT:
+        In portal/website context, record rules + allowed_company_ids context can hide plans,
+        even with sudo(). So we:
+        1) Try optional plans on the current plan (if that feature exists)
+        2) Otherwise return ALL plans using forced allowed_company_ids (all companies) + active_test=False
         """
         self.ensure_one()
 
@@ -115,11 +115,11 @@ class SaleOrder(models.Model):
         plan_model = self._fields["recurring_plan_id"].comodel_name
         Plan = self.env[plan_model].sudo()
 
-        # 1) Prefer Odoo's "Optional Plans" configuration if present on the current plan.
+        # 1) Prefer optional plans if the current plan supports it
         current_plan = self.recurring_plan_id
         if current_plan:
             for fname in (
-                "optional_plans",  # common name
+                "optional_plans",
                 "optional_plan_ids",
                 "optional_recurring_plan_ids",
                 "optional_recurring_plans",
@@ -129,32 +129,16 @@ class SaleOrder(models.Model):
                     if optional:
                         return optional.sudo()
 
-        # 2) Otherwise fall back to *all* recurring plans.
+        # 2) HARD fallback: return all plans (portal-safe)
+        company_ids = self.env["res.company"].sudo().search([]).ids
+        Plan = Plan.with_context(allowed_company_ids=company_ids, active_test=False)
+
+        domain = []
+        if "company_id" in Plan._fields and self.company_id:
+            domain = [("company_id", "in", [False, self.company_id.id])]
+
         order_by = "sequence, name, id" if "sequence" in Plan._fields else "name, id"
-        plans = Plan.search([], order=order_by)
-
-        def _interval_value(p):
-            for f in ("recurring_interval", "recurrence_interval", "recurring_rule_count", "billing_period"):
-                if f in p._fields and p[f]:
-                    try:
-                        return int(p[f])
-                    except Exception:
-                        return None
-            return None
-
-        def _looks_monthly(p):
-            if "recurring_rule_type" in p._fields and p.recurring_rule_type:
-                if str(p.recurring_rule_type).lower() not in ("month", "monthly", "months"):
-                    return False
-            name = (p.display_name or p.name or "").lower()
-            if "month" in name or "monthly" in name:
-                return True
-            if "recurring_rule_type" in p._fields and p.recurring_rule_type:
-                return True
-            return False
-
-        preferred = plans.filtered(lambda p: _looks_monthly(p) and (_interval_value(p) in (None, 1, 2, 3)))
-        return preferred if preferred else plans
+        return Plan.search(domain, order=order_by)
 
     def moyee_portal_change_interval(self, *, portal_user_id, plan_id):
         self.ensure_one()
@@ -241,7 +225,6 @@ class SaleOrder(models.Model):
                     for k in keys:
                         if k == cand:
                             return k
-                # substring match for keys like '3_paused'
                 for cand in candidates:
                     for k in keys:
                         if cand in str(k).lower():
