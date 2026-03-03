@@ -22,11 +22,15 @@ class SaleOrder(models.Model):
     def _compute_is_subscription_order(self):
         for order in self:
             is_sub = False
-            if "subscription_status" in order._fields and order.subscription_status:
+            # Odoo 16+ merged subscriptions into sale.order; implementations differ a bit per edition.
+            # We detect subscription orders by checking the most common fields.
+            if "is_subscription" in order._fields and order.is_subscription:
                 is_sub = True
             elif "recurring_plan_id" in order._fields and order.recurring_plan_id:
                 is_sub = True
-            elif "is_subscription" in order._fields and order.is_subscription:
+            elif "subscription_state" in order._fields and order.subscription_state:
+                is_sub = True
+            elif "subscription_status" in order._fields and order.subscription_status:
                 is_sub = True
             order.is_subscription_order = is_sub
 
@@ -99,29 +103,35 @@ class SaleOrder(models.Model):
         """
         Return the subscription plans the customer can choose from.
 
-        IMPORTANT FIX:
-        Your system clearly uses recurring_plan_id (Monthly / 2 Monthly / 3 Monthly),
-        but earlier logic could return empty due to field mismatches.
-        So we:
-        - fetch plans from recurring_plan_id comodel
-        - company-filter if possible
-        - prefer "month/monthly" plans with interval 1/2/3 if detectable
-        - otherwise return all plans (never wrongly empty)
+        FIX:
+        - Prefer current plan's "Optional Plans" (if configured).
+        - Otherwise fall back to ALL plans (avoid empty dropdown from company filters).
         """
         self.ensure_one()
 
         if "recurring_plan_id" not in self._fields:
-            return self.env["ir.model"].browse()
+            return self.env["ir.model"].browse([])
 
         plan_model = self._fields["recurring_plan_id"].comodel_name
         Plan = self.env[plan_model].sudo()
 
-        domain = []
-        if "company_id" in Plan._fields and self.company_id:
-            domain.append(("company_id", "in", [False, self.company_id.id]))
+        # 1) Prefer Odoo's "Optional Plans" configuration if present on the current plan.
+        current_plan = self.recurring_plan_id
+        if current_plan:
+            for fname in (
+                "optional_plans",  # common name
+                "optional_plan_ids",
+                "optional_recurring_plan_ids",
+                "optional_recurring_plans",
+            ):
+                if fname in current_plan._fields:
+                    optional = current_plan[fname]
+                    if optional:
+                        return optional.sudo()
 
+        # 2) Otherwise fall back to *all* recurring plans.
         order_by = "sequence, name, id" if "sequence" in Plan._fields else "name, id"
-        plans = Plan.search(domain, order=order_by)
+        plans = Plan.search([], order=order_by)
 
         def _interval_value(p):
             for f in ("recurring_interval", "recurrence_interval", "recurring_rule_count", "billing_period"):
@@ -144,7 +154,6 @@ class SaleOrder(models.Model):
             return False
 
         preferred = plans.filtered(lambda p: _looks_monthly(p) and (_interval_value(p) in (None, 1, 2, 3)))
-
         return preferred if preferred else plans
 
     def moyee_portal_change_interval(self, *, portal_user_id, plan_id):
@@ -175,14 +184,14 @@ class SaleOrder(models.Model):
         return True
 
     # -----------------------
-    # ✅ Pause / Resume - ROBUST
+    # ✅ Pause / Resume - ROBUST (Odoo 18 compatible)
     # -----------------------
     def _moyee_set_subscription_paused_state(self, paused=True):
         """
-        Tries multiple implementations:
-        1) known methods (action_pause/action_resume/etc)
-        2) stage_id (common in subscriptions)
-        3) subscription_status selections
+        Tries multiple implementations (Odoo editions/customizations differ):
+        1) Known methods (action_pause/action_resume/etc)
+        2) Stage-based transitions (stage_id / subscription_stage_id)
+        3) Selection field transitions (subscription_state / subscription_status)
         """
         self.ensure_one()
 
@@ -198,38 +207,61 @@ class SaleOrder(models.Model):
                     getattr(self.sudo(), m)()
                     return True
 
-        # 2) stage-based (most common)
-        if "stage_id" in self._fields:
-            Stage = self.env[self._fields["stage_id"].comodel_name].sudo()
+        # 2) stage-based
+        for stage_field in ("subscription_stage_id", "stage_id"):
+            if stage_field in self._fields:
+                Stage = self.env[self._fields[stage_field].comodel_name].sudo()
+
+                if paused:
+                    target = (
+                        Stage.search([("name", "ilike", "pause")], limit=1)
+                        or Stage.search([("name", "ilike", "suspend")], limit=1)
+                        or Stage.search([("name", "ilike", "hold")], limit=1)
+                    )
+                else:
+                    target = (
+                        Stage.search([("name", "ilike", "progress")], limit=1)
+                        or Stage.search([("name", "ilike", "in progress")], limit=1)
+                        or Stage.search([("name", "ilike", "running")], limit=1)
+                        or Stage.search([("name", "ilike", "active")], limit=1)
+                    )
+
+                if target:
+                    self.sudo().write({stage_field: target.id})
+                    return True
+
+        def _set_selection(field_name):
+            if field_name not in self._fields:
+                return False
+            selection = self._fields[field_name].selection or []
+            keys = [k for k, _lbl in selection]
+
+            def _pick(candidates):
+                for cand in candidates:
+                    for k in keys:
+                        if k == cand:
+                            return k
+                # substring match for keys like '3_paused'
+                for cand in candidates:
+                    for k in keys:
+                        if cand in str(k).lower():
+                            return k
+                return None
 
             if paused:
-                target = Stage.search([("name", "ilike", "pause")], limit=1) or Stage.search(
-                    [("name", "ilike", "suspend")], limit=1
-                )
+                key = _pick(("paused", "pause", "suspended", "suspend", "hold"))
             else:
-                target = Stage.search([("name", "ilike", "progress")], limit=1) or Stage.search(
-                    [("name", "ilike", "in progress")], limit=1
-                )
+                key = _pick(("in_progress", "progress", "running", "active", "open"))
 
-            if target:
-                self.sudo().write({"stage_id": target.id})
+            if key:
+                self.sudo().write({field_name: key})
                 return True
+            return False
 
-        # 3) subscription_status selection-based
-        if "subscription_status" in self._fields:
-            selection = self._fields["subscription_status"].selection or []
-            keys = {k for k, _lbl in selection}
-
-            if paused:
-                for k in ("paused", "pause", "suspended", "hold"):
-                    if k in keys:
-                        self.sudo().write({"subscription_status": k})
-                        return True
-            else:
-                for k in ("in_progress", "progress", "running", "active"):
-                    if k in keys:
-                        self.sudo().write({"subscription_status": k})
-                        return True
+        if _set_selection("subscription_state"):
+            return True
+        if _set_selection("subscription_status"):
+            return True
 
         raise UserError(_("Pause/resume is not available for this subscription implementation."))
 
@@ -260,6 +292,80 @@ class SaleOrder(models.Model):
 
         self.with_user(1).message_post(
             body=_("Moyee: customer resumed the subscription via portal."),
+            subtype_xmlid="mail.mt_note",
+            author_id=portal_user.partner_id.id,
+        )
+        return True
+
+    # -----------------------
+    # Push next date (portal)
+    # -----------------------
+    def moyee_portal_push_next_date(self, *, portal_user_id, next_date):
+        """Update the next recurring date on the subscription order."""
+        self.ensure_one()
+        portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
+        if not portal_user:
+            raise AccessError(_("Invalid user."))
+
+        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
+
+        field_name = self._moyee_get_subscription_next_date_field_name()
+        if not field_name:
+            raise UserError(_("This subscription does not expose a next date field."))
+
+        try:
+            value = fields.Date.from_string(next_date)
+        except Exception:
+            raise ValidationError(_("Invalid date."))
+
+        if not value:
+            raise ValidationError(_("Please select a date."))
+
+        self.sudo().write({field_name: value})
+        self.with_user(1).message_post(
+            body=_("Moyee: customer updated next date via portal (%s).") % field_name,
+            subtype_xmlid="mail.mt_note",
+            author_id=portal_user.partner_id.id,
+        )
+        return True
+
+    # -----------------------
+    # Add product (portal)
+    # -----------------------
+    def moyee_portal_add_product(self, *, portal_user_id, product_id, qty=1.0):
+        self.ensure_one()
+        portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
+        if not portal_user:
+            raise AccessError(_("Invalid user."))
+
+        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
+
+        product = self.env["product.product"].sudo().browse(int(product_id)).exists()
+        if not product:
+            raise ValidationError(_("Invalid product."))
+
+        try:
+            qty = float(qty or 0.0)
+        except Exception:
+            qty = 0.0
+        if qty <= 0:
+            raise ValidationError(_("Quantity must be greater than 0."))
+
+        line = self.order_line.filtered(
+            lambda l: (not l.display_type) and l.product_id.id == product.id and not l.x_moyee_is_removed
+        )
+        if line:
+            line[:1].sudo().write({"product_uom_qty": line[:1].product_uom_qty + qty})
+        else:
+            self.env["sale.order.line"].sudo().create({
+                "order_id": self.id,
+                "product_id": product.id,
+                "product_uom_qty": qty,
+                "name": product.display_name,
+            })
+
+        self.with_user(1).message_post(
+            body=_("Moyee: customer added product via portal (%s x %s).") % (product.display_name, qty),
             subtype_xmlid="mail.mt_note",
             author_id=portal_user.partner_id.id,
         )
