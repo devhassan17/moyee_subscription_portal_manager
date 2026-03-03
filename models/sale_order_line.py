@@ -11,20 +11,73 @@ class SaleOrderLine(models.Model):
         default=False,
         index=True,
         copy=False,
-        help="If enabled, the line is considered soft-removed: it is hidden in the backend "
-             "subscription UI, excluded from future invoices, and (optionally) filtered from PDFs.",
+        help=(
+            "If enabled, the line is considered soft-removed: it is hidden in the backend "
+            "subscription UI, excluded from future invoices, and (optionally) filtered from PDFs."
+        ),
     )
     x_moyee_removed_on = fields.Datetime(string="Removed On", copy=False)
     x_moyee_removed_by = fields.Many2one("res.users", string="Removed By", copy=False)
     x_moyee_remove_reason = fields.Text(string="Remove Reason", copy=False)
 
+    # -----------------------
+    # Internal helpers
+    # -----------------------
     def _moyee_check_manager_rights(self):
+        """Backend-only: allow employees (and superuser)."""
         if self.env.is_superuser():
             return
         if self.env.user.has_group("base.group_user"):
             return
         raise AccessError(_("You do not have access to manage subscription removals."))
 
+    def _moyee_is_subscription_line(self):
+        """Robust check: treat line as subscription if its order says it is."""
+        self.ensure_one()
+        order = self.order_id
+        if not order:
+            return False
+
+        # Prefer your computed helper if present
+        if "is_subscription_order" in order._fields:
+            return bool(order.is_subscription_order)
+
+        # Fallback checks (different Odoo builds)
+        for fname in (
+            "is_subscription",
+            "recurring_plan_id",
+            "subscription_pricing_id",
+            "subscription_plan_id",
+            "recurring_pricing_id",
+            "subscription_state",
+            "subscription_status",
+        ):
+            if fname in order._fields and getattr(order, fname, False):
+                return True
+        return False
+
+    def _moyee_block_delivery_product(self):
+        """Server-side protection: never allow 'delivery' product removal."""
+        for line in self:
+            pname = (line.product_id.display_name or line.name or "").lower()
+            if "delivery" in pname:
+                raise UserError(_("You can not delete delivery product."))
+
+    def _moyee_soft_remove_vals(self, removed_by_user_id, reason=None, now=None):
+        now = now or fields.Datetime.now()
+        vals = {
+            "product_uom_qty": 0.0,
+            "x_moyee_is_removed": True,
+            "x_moyee_removed_on": now,
+            "x_moyee_removed_by": removed_by_user_id,
+        }
+        if reason:
+            vals["x_moyee_remove_reason"] = reason
+        return vals
+
+    # -----------------------
+    # Backend action (employees)
+    # -----------------------
     def action_moyee_soft_remove(self, reason=None):
         """
         Soft remove a subscription product line:
@@ -34,26 +87,20 @@ class SaleOrderLine(models.Model):
         - post a chatter note on the sale order
         """
         self._moyee_check_manager_rights()
+        self._moyee_block_delivery_product()
 
+        now = fields.Datetime.now()
         for line in self:
             if line.display_type:
                 continue
 
-            if not getattr(line.order_id, "is_subscription_order", False):
+            if not line._moyee_is_subscription_line():
                 raise UserError(_("This action is only available on subscription sale orders."))
 
-            if line.x_moyee_is_removed and line.product_uom_qty == 0:
+            if line.x_moyee_is_removed and float(line.product_uom_qty or 0.0) == 0.0:
                 continue
 
-            vals = {
-                "product_uom_qty": 0.0,
-                "x_moyee_is_removed": True,
-                "x_moyee_removed_on": fields.Datetime.now(),
-                "x_moyee_removed_by": self.env.user.id,
-            }
-            if reason:
-                vals["x_moyee_remove_reason"] = reason
-
+            vals = line._moyee_soft_remove_vals(self.env.user.id, reason=reason, now=now)
             line.write(vals)
 
             product_label = line.product_id.display_name if line.product_id else (line.name or _("(no product)"))
@@ -67,30 +114,25 @@ class SaleOrderLine(models.Model):
             ) % (
                 product_label,
                 self.env.user.display_name,
-                fields.Datetime.to_string(vals["x_moyee_removed_on"]),
+                fields.Datetime.to_string(now),
                 reason or _("(no reason provided)"),
             )
             line.order_id.message_post(body=body, subtype_xmlid="mail.mt_note")
 
         return True
 
+    # -----------------------
+    # Portal action (customers)
+    # -----------------------
     def action_moyee_soft_remove_portal(self, portal_user_id, reason=None):
-        """Portal-safe soft remove.
-
-        Called by portal controllers in sudo() mode.
-        Performs explicit ownership checks on the subscription order.
-        """
-
-        # ✅ BLOCK DELIVERY PRODUCTS (server-side security)
-        for line in self:
-            pname = (line.product_id.display_name or line.name or "").lower()
-            if "delivery" in pname:
-                raise UserError(_("You can not delete delivery product."))
+        """Portal-safe soft remove (called by portal controllers in sudo)."""
+        self._moyee_block_delivery_product()
 
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
         if not portal_user:
             raise AccessError(_("Invalid user."))
 
+        # Ownership / access check (uses your sale.order helper)
         for line in self:
             if not line.order_id:
                 raise UserError(_("Invalid subscription line."))
@@ -100,18 +142,10 @@ class SaleOrderLine(models.Model):
         for line in self:
             if line.display_type:
                 continue
-            if line.x_moyee_is_removed and line.product_uom_qty == 0:
+            if line.x_moyee_is_removed and float(line.product_uom_qty or 0.0) == 0.0:
                 continue
 
-            vals = {
-                "product_uom_qty": 0.0,
-                "x_moyee_is_removed": True,
-                "x_moyee_removed_on": now,
-                "x_moyee_removed_by": portal_user.id,
-            }
-            if reason:
-                vals["x_moyee_remove_reason"] = reason
-
+            vals = line._moyee_soft_remove_vals(portal_user.id, reason=reason, now=now)
             line.sudo().write(vals)
 
             product_label = line.product_id.display_name if line.product_id else (line.name or _("(no product)"))
@@ -136,31 +170,39 @@ class SaleOrderLine(models.Model):
 
         return True
 
+    # -----------------------
+    # Convert backend "trash" into soft remove for subscriptions
+    # -----------------------
     def unlink(self):
         """
         If user clicks the default trash icon on confirmed subscription lines,
-        convert unlink() into soft-remove (qty=0 + removed flag) instead of showing "Oh snap!".
+        convert unlink() into soft-remove instead of error.
         """
-        to_soft_remove = self.filtered(lambda l: (
-            not l.display_type
-            and l.order_id
-            and getattr(l.order_id, "is_subscription_order", False)
-            and l.order_id.state in ("sale", "done")
-        ))
+        # only subscription lines on confirmed orders
+        to_soft_remove = self.filtered(
+            lambda l: (
+                not l.display_type
+                and l.order_id
+                and l._moyee_is_subscription_line()
+                and l.order_id.state in ("sale", "done")
+            )
+        )
 
         if to_soft_remove:
             self._moyee_check_manager_rights()
+            to_soft_remove._moyee_block_delivery_product()
 
             now = fields.Datetime.now()
             for line in to_soft_remove:
-                line.write({
-                    "product_uom_qty": 0.0,
-                    "x_moyee_is_removed": True,
-                    "x_moyee_removed_on": now,
-                    "x_moyee_removed_by": self.env.user.id,
-                    "x_moyee_remove_reason": line.x_moyee_remove_reason
+                # write as employee user
+                line.write(
+                    line._moyee_soft_remove_vals(
+                        self.env.user.id,
+                        reason=line.x_moyee_remove_reason
                         or _("Removed via line delete (auto converted to soft remove)."),
-                })
+                        now=now,
+                    )
+                )
 
                 product_label = line.product_id.display_name if line.product_id else (line.name or _("(no product)"))
                 line.order_id.message_post(

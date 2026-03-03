@@ -49,26 +49,29 @@ class MoyeeSubscriptionPortal(http.Controller):
         return request.redirect(self._moyee_manage_url(order, params=params or None))
 
     # ------------------------------------------------------------
-    # Helpers (Plans)
+    # Helpers (Plans) - UNIVERSAL + PORTAL SAFE
     # ------------------------------------------------------------
-    def _moyee_get_all_recurring_plans_portal_safe(self, order):
+    def _moyee_get_all_plans_portal_safe(self, order):
         """
-        HARD FIX:
-        In portal/website context, even sudo() searches may be constrained by allowed_company_ids/context.
-        This helper forces allowed_company_ids to ALL companies and returns all plans (optionally filtered by company).
+        Universal fallback:
+        - Detect which plan field exists on sale.order (recurring_plan_id / subscription_pricing_id / etc.)
+        - Search the corresponding plan model with portal-safe context (allowed_company_ids=ALL, active_test=False)
         """
-        if "recurring_plan_id" not in order._fields:
+        plan_field = False
+        if hasattr(order, "_moyee_get_recurring_plan_field_name"):
+            plan_field = order._moyee_get_recurring_plan_field_name()
+
+        if not plan_field or plan_field not in order._fields:
             return request.env["ir.model"].browse([])
 
-        plan_model = order._fields["recurring_plan_id"].comodel_name
+        plan_model = order._fields[plan_field].comodel_name
         Plan = request.env[plan_model].sudo()
 
-        # Force company context to include all companies (portal can be very restrictive)
+        # portal-safe context: include all companies and inactive plans
         company_ids = request.env["res.company"].sudo().search([]).ids
         Plan = Plan.with_context(allowed_company_ids=company_ids, active_test=False)
 
         domain = []
-        # Keep sane company filter if plan model has company_id
         if "company_id" in Plan._fields and order.company_id:
             domain = [("company_id", "in", [False, order.company_id.id])]
 
@@ -95,12 +98,26 @@ class MoyeeSubscriptionPortal(http.Controller):
 
         available_products = order._moyee_get_portal_addable_products()
 
-        # ✅ Try your model-level logic first
+        # ✅ Try model-level logic first
         available_plans = order._moyee_get_portal_changeable_plans()
 
-        # ✅ HARD fallback: show all plans even if portal context makes it empty
+        # ✅ Universal HARD fallback if empty
         if not available_plans:
-            available_plans = self._moyee_get_all_recurring_plans_portal_safe(order)
+            available_plans = self._moyee_get_all_plans_portal_safe(order)
+
+        # ✅ Provide template-friendly current plan id (works with any plan field name)
+        plan_field_name = False
+        current_plan_id = False
+        if hasattr(order, "_moyee_get_recurring_plan_field_name"):
+            plan_field_name = order._moyee_get_recurring_plan_field_name()
+        if plan_field_name and plan_field_name in order._fields and order[plan_field_name]:
+            current_plan_id = order[plan_field_name].id
+
+        # Helpful debugging (check server logs)
+        _logger.info(
+            "MOYEE portal manage: order=%s id=%s plan_field=%s current_plan_id=%s plans_count=%s",
+            order.name, order.id, plan_field_name, current_plan_id, len(available_plans)
+        )
 
         visible_lines = order.order_line.filtered(
             lambda l: l.display_type or (not l.x_moyee_is_removed and l.product_uom_qty > 0)
@@ -115,6 +132,11 @@ class MoyeeSubscriptionPortal(http.Controller):
             "next_date_value": next_date_value,
             "available_products": available_products,
             "available_plans": available_plans,
+
+            # ✅ new values for the template
+            "plan_field_name": plan_field_name,
+            "current_plan_id": current_plan_id,
+
             "visible_lines": visible_lines,
             "countries": countries,
             "moyee_message": kw.get("moyee_message"),

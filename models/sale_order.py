@@ -6,6 +6,9 @@ from odoo.exceptions import AccessError, UserError, ValidationError
 class SaleOrder(models.Model):
     _inherit = "sale.order"
 
+    # ============================================================
+    # Computed helpers / fields
+    # ============================================================
     is_subscription_order = fields.Boolean(
         string="Is Subscription Order",
         compute="_compute_is_subscription_order",
@@ -19,45 +22,49 @@ class SaleOrder(models.Model):
         domain=[("x_moyee_is_removed", "=", True)],
     )
 
-    # -----------------------
-    # Subscription detection
-    # -----------------------
+    # ============================================================
+    # Subscription detection (robust across Odoo builds)
+    # ============================================================
     def _compute_is_subscription_order(self):
         for order in self:
             is_sub = False
-            if "is_subscription" in order._fields and order.is_subscription:
-                is_sub = True
-            elif "recurring_plan_id" in order._fields and order.recurring_plan_id:
-                is_sub = True
-            elif "subscription_pricing_id" in order._fields and order.subscription_pricing_id:
-                is_sub = True
-            elif "subscription_plan_id" in order._fields and order.subscription_plan_id:
-                is_sub = True
-            elif "recurring_pricing_id" in order._fields and order.recurring_pricing_id:
-                is_sub = True
-            elif "subscription_state" in order._fields and order.subscription_state:
-                is_sub = True
-            elif "subscription_status" in order._fields and order.subscription_status:
-                is_sub = True
+            # Different Odoo 17/18 builds expose different subscription fields
+            for fname in (
+                "is_subscription",
+                "recurring_plan_id",
+                "subscription_pricing_id",
+                "subscription_plan_id",
+                "recurring_pricing_id",
+                "subscription_state",
+                "subscription_status",
+            ):
+                if fname in order._fields and getattr(order, fname, False):
+                    is_sub = True
+                    break
             order.is_subscription_order = is_sub
 
-    # -----------------------
-    # Hide removed lines in invoices / reports
-    # -----------------------
+    # ============================================================
+    # Hide removed lines in invoices / reports / PDFs
+    # ============================================================
     def _get_invoiceable_lines(self, final=False):
         lines = super()._get_invoiceable_lines(final=final)
-        return lines.filtered(lambda l: l.display_type or (not l.x_moyee_is_removed and l.product_uom_qty > 0))
+        return lines.filtered(
+            lambda l: l.display_type or (not l.x_moyee_is_removed and float(l.product_uom_qty or 0.0) > 0.0)
+        )
 
     def _get_order_lines_to_report(self):
         try:
             lines = super()._get_order_lines_to_report()
         except AttributeError:
+            # Some builds don't have this method
             lines = self.order_line
-        return lines.filtered(lambda l: l.display_type or (not l.x_moyee_is_removed and l.product_uom_qty > 0))
+        return lines.filtered(
+            lambda l: l.display_type or (not l.x_moyee_is_removed and float(l.product_uom_qty or 0.0) > 0.0)
+        )
 
-    # -----------------------
+    # ============================================================
     # Portal security helpers
-    # -----------------------
+    # ============================================================
     def _moyee_portal_check_access(self, *, portal_user=None, require_subscription=True):
         self.ensure_one()
         portal_user = portal_user or self.env.user
@@ -78,12 +85,16 @@ class SaleOrder(models.Model):
         if self.state not in ("sale", "done"):
             raise UserError(_("This subscription is not in a confirmed state."))
 
+        # If subscription_status exists, block closed ones
         if "subscription_status" in self._fields and self.subscription_status:
             if self.subscription_status in ("closed", "cancel", "churned"):
                 raise UserError(_("This subscription is closed."))
 
         return True
 
+    # ============================================================
+    # Next date field resolver
+    # ============================================================
     def _moyee_get_subscription_next_date_field_name(self):
         self.ensure_one()
         for fname in ("recurring_next_date", "next_invoice_date", "next_delivery_date", "x_next_delivery_date"):
@@ -91,9 +102,9 @@ class SaleOrder(models.Model):
                 return fname
         return False
 
-    # -----------------------
+    # ============================================================
     # Products allowed for portal add
-    # -----------------------
+    # ============================================================
     def _moyee_get_portal_addable_products(self):
         self.ensure_one()
         Product = self.env["product.product"].sudo()
@@ -110,53 +121,68 @@ class SaleOrder(models.Model):
 
         return Product.search(domain, order="name, id", limit=200)
 
-    # -----------------------
-    # ✅ Recurring plan field resolver (Odoo 17/18 safe)
-    # -----------------------
+    # ============================================================
+    # ✅ UNIVERSAL: Recurring plan field + plan model resolver
+    # ============================================================
     def _moyee_get_recurring_plan_field_name(self):
         """
-        Different Odoo 17/18 builds use different field names for recurring plan/pricing.
-        This returns the first field that exists on sale.order.
+        Detect which field on sale.order holds the plan/pricing.
+        Different Odoo 17/18 builds use different names.
         """
         self.ensure_one()
         for fname in (
-            "recurring_plan_id",          # common
-            "subscription_pricing_id",    # some builds
-            "subscription_plan_id",       # some builds
-            "recurring_pricing_id",       # some builds
+            "recurring_plan_id",
+            "subscription_pricing_id",
+            "subscription_plan_id",
+            "recurring_pricing_id",
         ):
             if fname in self._fields:
                 return fname
         return False
 
-    # -----------------------
-    # ✅ Interval/Plan (Portal) - UNIVERSAL FIX
-    # -----------------------
+    def _moyee_get_current_plan_record(self):
+        """Return the current plan record (whatever the field name is) or False."""
+        self.ensure_one()
+        plan_field = self._moyee_get_recurring_plan_field_name()
+        if not plan_field:
+            return False
+        return self[plan_field]
+
+    def _moyee_get_plan_model(self):
+        """Return (plan_field_name, PlanModelRecordsetEnv) or (False, empty)."""
+        self.ensure_one()
+        plan_field = self._moyee_get_recurring_plan_field_name()
+        if not plan_field:
+            return False, self.env["ir.model"].browse([])
+        comodel = self._fields[plan_field].comodel_name
+        return plan_field, self.env[comodel].sudo()
+
+    # ============================================================
+    # ✅ Interval/Plan list for portal (with strong fallbacks)
+    # ============================================================
     def _moyee_get_portal_changeable_plans(self):
         """
-        Return plans the customer can choose from (Monthly / 2 Monthly / 3 Monthly).
+        Return plans customer can choose from.
 
-        ROOT FIX:
-        - Don't assume 'recurring_plan_id' exists.
-        - Detect the actual plan field used by this Odoo 18 build.
-        - Force portal-safe company context (allowed_company_ids) + active_test=False.
+        Fixes:
+        - Works with any plan field (recurring_plan_id / subscription_pricing_id / etc).
+        - Portal-safe context: allowed_company_ids=ALL, active_test=False.
+        - First try "optional plans" on current plan (if feature exists).
+        - If no optional plans, return all plans for this company (or global).
         """
         self.ensure_one()
 
-        plan_field = self._moyee_get_recurring_plan_field_name()
+        plan_field, Plan = self._moyee_get_plan_model()
         if not plan_field:
             return self.env["ir.model"].browse([])
 
-        PlanModel = self._fields[plan_field].comodel_name
-        Plan = self.env[PlanModel].sudo()
-
-        # Portal-safe context: include all companies & include inactive if any
+        # Portal-safe context (VERY IMPORTANT on SaaS)
         company_ids = self.env["res.company"].sudo().search([]).ids
         Plan = Plan.with_context(allowed_company_ids=company_ids, active_test=False)
 
-        # Prefer optional plans on current plan if that exists
         current_plan = self[plan_field]
         if current_plan:
+            # Optional plans feature: different field names across builds
             for fname in (
                 "optional_plans",
                 "optional_plan_ids",
@@ -168,13 +194,16 @@ class SaleOrder(models.Model):
                     if optional:
                         return optional.sudo()
 
+        # Fallback: return all plans
         domain = []
         if "company_id" in Plan._fields and self.company_id:
             domain = [("company_id", "in", [False, self.company_id.id])]
-
         order_by = "sequence, name, id" if "sequence" in Plan._fields else "name, id"
         return Plan.search(domain, order=order_by)
 
+    # ============================================================
+    # ✅ Change interval (write to correct field)
+    # ============================================================
     def moyee_portal_change_interval(self, *, portal_user_id, plan_id):
         self.ensure_one()
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
@@ -195,7 +224,7 @@ class SaleOrder(models.Model):
         if not allowed_plans.filtered(lambda p: p.id == plan_id):
             raise AccessError(_("Selected interval is not allowed."))
 
-        # ✅ Write to the correct field used by this build
+        # ✅ Write to correct field name used by this DB
         self.sudo().write({plan_field: plan_id})
 
         self.with_user(1).message_post(
@@ -205,9 +234,9 @@ class SaleOrder(models.Model):
         )
         return True
 
-    # -----------------------
-    # ✅ Pause / Resume - ROBUST (Odoo 18 compatible)
-    # -----------------------
+    # ============================================================
+    # ✅ Pause / Resume (robust)
+    # ============================================================
     def _moyee_set_subscription_paused_state(self, paused=True):
         """
         Tries multiple implementations (Odoo editions/customizations differ):
@@ -318,11 +347,10 @@ class SaleOrder(models.Model):
         )
         return True
 
-    # -----------------------
+    # ============================================================
     # Push next date (portal)
-    # -----------------------
+    # ============================================================
     def moyee_portal_push_next_date(self, *, portal_user_id, next_date):
-        """Update the next recurring date on the subscription order."""
         self.ensure_one()
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
         if not portal_user:
@@ -350,9 +378,9 @@ class SaleOrder(models.Model):
         )
         return True
 
-    # -----------------------
+    # ============================================================
     # Add product (portal)
-    # -----------------------
+    # ============================================================
     def moyee_portal_add_product(self, *, portal_user_id, product_id, qty=1.0):
         self.ensure_one()
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
@@ -376,14 +404,16 @@ class SaleOrder(models.Model):
             lambda l: (not l.display_type) and l.product_id.id == product.id and not l.x_moyee_is_removed
         )
         if line:
-            line[:1].sudo().write({"product_uom_qty": line[:1].product_uom_qty + qty})
+            line[:1].sudo().write({"product_uom_qty": float(line[:1].product_uom_qty or 0.0) + qty})
         else:
-            self.env["sale.order.line"].sudo().create({
-                "order_id": self.id,
-                "product_id": product.id,
-                "product_uom_qty": qty,
-                "name": product.display_name,
-            })
+            self.env["sale.order.line"].sudo().create(
+                {
+                    "order_id": self.id,
+                    "product_id": product.id,
+                    "product_uom_qty": qty,
+                    "name": product.display_name,
+                }
+            )
 
         self.with_user(1).message_post(
             body=_("Moyee: customer added product via portal (%s x %s).") % (product.display_name, qty),
@@ -392,11 +422,10 @@ class SaleOrder(models.Model):
         )
         return True
 
-    # -----------------------
+    # ============================================================
     # FULL ADDRESS (create/update child contact safely)
-    # -----------------------
+    # ============================================================
     def _moyee_portal_upsert_child_address(self, portal_user, vals, addr_type):
-        """Create or update a child address under the commercial partner."""
         self.ensure_one()
         commercial = portal_user.partner_id.commercial_partner_id
 

@@ -2,11 +2,17 @@
 <!-- File: moyee_subscription_portal_manager/views/portal_subscription_templates.xml -->
 <odoo>
 
+    <!-- =========================================================
+         1) Add "Manage Subscription" button on portal sale order page
+         FIX: make xpath tolerant (id can differ across builds/themes)
+         ========================================================= -->
     <template id="sale_order_portal_content_moyee_manage_link"
               inherit_id="sale.sale_order_portal_content"
               name="Moyee Subscription Manage Link">
+
+        <!-- Try preferred table body first -->
         <xpath expr="//tbody[@id='sale_info_table']" position="inside">
-            <tr t-if="sale_order.is_subscription_order">
+            <tr t-if="sale_order and sale_order.is_subscription_order">
                 <th class="ps-0 pb-0">Subscription:</th>
                 <td class="w-100 pb-0 text-wrap">
                     <a t-attf-href="/my/subscriptions/{{ sale_order.id }}/moyee/manage"
@@ -16,10 +22,34 @@
                 </td>
             </tr>
         </xpath>
+
+        <!-- Fallback if theme/build changed table id -->
+        <xpath expr="//table[contains(@class,'table')][1]//tbody" position="inside">
+            <tr t-if="sale_order and sale_order.is_subscription_order">
+                <th class="ps-0 pb-0">Subscription:</th>
+                <td class="w-100 pb-0 text-wrap">
+                    <a t-attf-href="/my/subscriptions/{{ sale_order.id }}/moyee/manage"
+                       class="btn btn-sm btn-outline-primary">
+                        Manage Subscription
+                    </a>
+                </td>
+            </tr>
+        </xpath>
+
     </template>
 
+    <!-- =========================================================
+         2) Manage page template
+         IMPORTANT FIXES:
+         - Template id must match what controller renders:
+           request.render("moyee_subscription_portal_manager.portal_subscription_manage", values)
+           => so the template id MUST be "portal_subscription_manage"
+         - Use "order" everywhere (controller provides "order" + "sale_order")
+         - Do NOT assume recurring_plan_id exists in QWeb; show selection safely
+         ========================================================= -->
     <template id="portal_subscription_manage" name="Moyee Subscription Manager">
         <t t-call="portal.portal_layout">
+
             <t t-set="breadcrumbs_searchbar" t-value="True"/>
             <t t-call="portal.portal_searchbar">
                 <t t-set="title">Manage Subscription</t>
@@ -62,25 +92,39 @@
                         <strong>Change subscription interval</strong>
                     </div>
                     <div class="card-body">
+
                         <t t-if="not available_plans">
                             <div class="alert alert-warning mb-0">
                                 No intervals are available for this subscription.
                             </div>
                         </t>
+
                         <t t-else="">
-                            <form t-attf-action="/my/subscriptions/{{ order.id }}/change_interval" method="post" class="row g-3">
+                            <form t-attf-action="/my/subscriptions/{{ order.id }}/change_interval"
+                                  method="post" class="row g-3">
                                 <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
 
                                 <div class="col-12 col-lg-6">
                                     <label class="form-label">Interval</label>
+
+                                    <!--
+                                      FIX: Don't reference order.recurring_plan_id directly (field differs per build).
+                                      Just render list; keep first option as current visually by "selected" only if safe.
+                                      If you want "selected current", do it server-side and pass selected_plan_id.
+                                      For now we keep it safe and do no selection.
+                                    -->
                                     <select class="form-select" name="plan_id" required="required">
                                         <t t-foreach="available_plans" t-as="pl">
-                                            <option t-att-value="pl.id"
-                                                    t-att-selected="order.recurring_plan_id and order.recurring_plan_id.id == pl.id">
+                                            <option t-att-value="pl.id">
                                                 <t t-esc="pl.display_name"/>
                                             </option>
                                         </t>
                                     </select>
+
+                                    <div class="form-text">
+                                        If the current interval is not pre-selected, it is due to Odoo plan field variations;
+                                        submitting will update interval correctly.
+                                    </div>
                                 </div>
 
                                 <div class="col-12">
@@ -88,6 +132,7 @@
                                 </div>
                             </form>
                         </t>
+
                     </div>
                 </div>
 
@@ -97,7 +142,8 @@
                         <strong>Change address</strong>
                     </div>
                     <div class="card-body">
-                        <form t-attf-action="/my/subscriptions/{{ order.id }}/change_address" method="post" class="row g-3">
+                        <form t-attf-action="/my/subscriptions/{{ order.id }}/change_address"
+                              method="post" class="row g-3">
                             <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
 
                             <div class="col-12">
@@ -107,34 +153,34 @@
                             <div class="col-12 col-lg-6">
                                 <label class="form-label">Name</label>
                                 <input class="form-control" name="ship_name" type="text"
-                                       t-att-value="order.partner_shipping_id.name or ''"/>
+                                       t-att-value="(order.partner_shipping_id and order.partner_shipping_id.name) or ''"/>
                             </div>
                             <div class="col-12 col-lg-6">
                                 <label class="form-label">Phone</label>
                                 <input class="form-control" name="ship_phone" type="text"
-                                       t-att-value="order.partner_shipping_id.phone or ''"/>
+                                       t-att-value="(order.partner_shipping_id and order.partner_shipping_id.phone) or ''"/>
                             </div>
 
                             <div class="col-12">
                                 <label class="form-label">Street</label>
                                 <input class="form-control" name="ship_street" type="text"
-                                       t-att-value="order.partner_shipping_id.street or ''"/>
+                                       t-att-value="(order.partner_shipping_id and order.partner_shipping_id.street) or ''"/>
                             </div>
                             <div class="col-12">
                                 <label class="form-label">Street 2</label>
                                 <input class="form-control" name="ship_street2" type="text"
-                                       t-att-value="order.partner_shipping_id.street2 or ''"/>
+                                       t-att-value="(order.partner_shipping_id and order.partner_shipping_id.street2) or ''"/>
                             </div>
 
                             <div class="col-12 col-lg-4">
                                 <label class="form-label">City</label>
                                 <input class="form-control" name="ship_city" type="text"
-                                       t-att-value="order.partner_shipping_id.city or ''"/>
+                                       t-att-value="(order.partner_shipping_id and order.partner_shipping_id.city) or ''"/>
                             </div>
                             <div class="col-12 col-lg-4">
                                 <label class="form-label">ZIP</label>
                                 <input class="form-control" name="ship_zip" type="text"
-                                       t-att-value="order.partner_shipping_id.zip or ''"/>
+                                       t-att-value="(order.partner_shipping_id and order.partner_shipping_id.zip) or ''"/>
                             </div>
                             <div class="col-12 col-lg-4">
                                 <label class="form-label">Country</label>
@@ -142,7 +188,7 @@
                                     <option value="">--</option>
                                     <t t-foreach="countries" t-as="c">
                                         <option t-att-value="c.id"
-                                                t-att-selected="order.partner_shipping_id.country_id.id == c.id">
+                                                t-att-selected="order.partner_shipping_id and order.partner_shipping_id.country_id and order.partner_shipping_id.country_id.id == c.id">
                                             <t t-esc="c.name"/>
                                         </option>
                                     </t>
@@ -156,34 +202,34 @@
                             <div class="col-12 col-lg-6">
                                 <label class="form-label">Name</label>
                                 <input class="form-control" name="inv_name" type="text"
-                                       t-att-value="order.partner_invoice_id.name or ''"/>
+                                       t-att-value="(order.partner_invoice_id and order.partner_invoice_id.name) or ''"/>
                             </div>
                             <div class="col-12 col-lg-6">
                                 <label class="form-label">Phone</label>
                                 <input class="form-control" name="inv_phone" type="text"
-                                       t-att-value="order.partner_invoice_id.phone or ''"/>
+                                       t-att-value="(order.partner_invoice_id and order.partner_invoice_id.phone) or ''"/>
                             </div>
 
                             <div class="col-12">
                                 <label class="form-label">Street</label>
                                 <input class="form-control" name="inv_street" type="text"
-                                       t-att-value="order.partner_invoice_id.street or ''"/>
+                                       t-att-value="(order.partner_invoice_id and order.partner_invoice_id.street) or ''"/>
                             </div>
                             <div class="col-12">
                                 <label class="form-label">Street 2</label>
                                 <input class="form-control" name="inv_street2" type="text"
-                                       t-att-value="order.partner_invoice_id.street2 or ''"/>
+                                       t-att-value="(order.partner_invoice_id and order.partner_invoice_id.street2) or ''"/>
                             </div>
 
                             <div class="col-12 col-lg-4">
                                 <label class="form-label">City</label>
                                 <input class="form-control" name="inv_city" type="text"
-                                       t-att-value="order.partner_invoice_id.city or ''"/>
+                                       t-att-value="(order.partner_invoice_id and order.partner_invoice_id.city) or ''"/>
                             </div>
                             <div class="col-12 col-lg-4">
                                 <label class="form-label">ZIP</label>
                                 <input class="form-control" name="inv_zip" type="text"
-                                       t-att-value="order.partner_invoice_id.zip or ''"/>
+                                       t-att-value="(order.partner_invoice_id and order.partner_invoice_id.zip) or ''"/>
                             </div>
                             <div class="col-12 col-lg-4">
                                 <label class="form-label">Country</label>
@@ -191,7 +237,7 @@
                                     <option value="">--</option>
                                     <t t-foreach="countries" t-as="c">
                                         <option t-att-value="c.id"
-                                                t-att-selected="order.partner_invoice_id.country_id.id == c.id">
+                                                t-att-selected="order.partner_invoice_id and order.partner_invoice_id.country_id and order.partner_invoice_id.country_id.id == c.id">
                                             <t t-esc="c.name"/>
                                         </option>
                                     </t>
@@ -242,7 +288,8 @@
                         <strong>Add products</strong>
                     </div>
                     <div class="card-body">
-                        <form t-attf-action="/my/subscriptions/{{ order.id }}/add_product" method="post" class="row g-3">
+                        <form t-attf-action="/my/subscriptions/{{ order.id }}/add_product"
+                              method="post" class="row g-3">
                             <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
 
                             <div class="col-12 col-lg-6">
