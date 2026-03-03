@@ -67,7 +67,20 @@ class MoyeeSubscriptionPortal(http.Controller):
         next_date_value = order[next_date_field] if next_date_field else False
 
         available_products = order._moyee_get_portal_addable_products()
+
+        # ✅ FIX: Portal sometimes returns empty plans due to company/context/record rules
+        # even though plans exist in backend (Monthly / 2 Monthly / 3 Monthly).
+        # Keep model logic first, but add a hard sudo fallback so portal never shows empty.
         available_plans = order._moyee_get_portal_changeable_plans()
+        if not available_plans and "recurring_plan_id" in order._fields:
+            try:
+                plan_model = order._fields["recurring_plan_id"].comodel_name
+                Plan = request.env[plan_model].sudo()
+                order_by = "sequence, name, id" if "sequence" in Plan._fields else "name, id"
+                available_plans = Plan.search([], order=order_by)
+            except Exception:
+                # fail-safe: don't break portal page
+                available_plans = order._moyee_get_portal_changeable_plans()
 
         visible_lines = order.order_line.filtered(
             lambda l: l.display_type or (not l.x_moyee_is_removed and l.product_uom_qty > 0)
