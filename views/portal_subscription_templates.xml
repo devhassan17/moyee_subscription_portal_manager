@@ -46,6 +46,7 @@
            => so the template id MUST be "portal_subscription_manage"
          - Use "order" everywhere (controller provides "order" + "sale_order")
          - Do NOT assume recurring_plan_id exists in QWeb; show selection safely
+         - ✅ NEW: pre-select current plan using current_plan_id
          ========================================================= -->
     <template id="portal_subscription_manage" name="Moyee Subscription Manager">
         <t t-call="portal.portal_layout">
@@ -107,23 +108,17 @@
                                 <div class="col-12 col-lg-6">
                                     <label class="form-label">Interval</label>
 
-                                    <!--
-                                      FIX: Don't reference order.recurring_plan_id directly (field differs per build).
-                                      Just render list; keep first option as current visually by "selected" only if safe.
-                                      If you want "selected current", do it server-side and pass selected_plan_id.
-                                      For now we keep it safe and do no selection.
-                                    -->
                                     <select class="form-select" name="plan_id" required="required">
                                         <t t-foreach="available_plans" t-as="pl">
-                                            <option t-att-value="pl.id">
+                                            <option t-att-value="pl.id"
+                                                    t-att-selected="current_plan_id and current_plan_id == pl.id">
                                                 <t t-esc="pl.display_name"/>
                                             </option>
                                         </t>
                                     </select>
 
                                     <div class="form-text">
-                                        If the current interval is not pre-selected, it is due to Odoo plan field variations;
-                                        submitting will update interval correctly.
+                                        If you don't see the correct intervals, it is usually due to company filtering in the plan search.
                                     </div>
                                 </div>
 
@@ -342,7 +337,6 @@
                                                     <td class="text-end"><t t-esc="line.product_uom_qty"/></td>
                                                     <td class="text-end">
 
-                                                        <!-- ✅ Block remove for delivery products (UI) -->
                                                         <t t-set="lname" t-value="(line.product_id.display_name or line.name or '').lower()"/>
                                                         <t t-if="'delivery' in lname">
                                                             <button class="btn btn-sm btn-outline-secondary" type="button"
