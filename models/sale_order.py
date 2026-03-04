@@ -28,14 +28,17 @@ class SaleOrder(models.Model):
     def _compute_is_subscription_order(self):
         for order in self:
             is_sub = False
+            # Odoo 18 in your DB uses: is_subscription + plan_id + subscription_state
             for fname in (
                 "is_subscription",
+                "plan_id",  # ✅ IMPORTANT (your DB)
+                "subscription_state",
+                "subscription_status",
+                # Other builds / customizations
                 "recurring_plan_id",
                 "subscription_pricing_id",
                 "subscription_plan_id",
                 "recurring_pricing_id",
-                "subscription_state",
-                "subscription_status",
             ):
                 if fname in order._fields and getattr(order, fname, False):
                     is_sub = True
@@ -55,6 +58,7 @@ class SaleOrder(models.Model):
         try:
             lines = super()._get_order_lines_to_report()
         except AttributeError:
+            # Some builds don't have this method
             lines = self.order_line
         return lines.filtered(
             lambda l: l.display_type or (not l.x_moyee_is_removed and float(l.product_uom_qty or 0.0) > 0.0)
@@ -67,6 +71,7 @@ class SaleOrder(models.Model):
         self.ensure_one()
         portal_user = portal_user or self.env.user
 
+        # Employees are allowed
         if portal_user.has_group("base.group_user"):
             return True
 
@@ -82,6 +87,13 @@ class SaleOrder(models.Model):
         if self.state not in ("sale", "done"):
             raise UserError(_("This subscription is not in a confirmed state."))
 
+        # In your DB: subscription_state looks like "3_progress"
+        if "subscription_state" in self._fields and self.subscription_state:
+            state_val = str(self.subscription_state).lower()
+            if state_val in ("closed", "cancel", "churned", "4_closed") or "closed" in state_val:
+                raise UserError(_("This subscription is closed."))
+
+        # If subscription_status exists in some builds, block closed ones
         if "subscription_status" in self._fields and self.subscription_status:
             if self.subscription_status in ("closed", "cancel", "churned"):
                 raise UserError(_("This subscription is closed."))
@@ -118,11 +130,18 @@ class SaleOrder(models.Model):
         return Product.search(domain, order="name, id", limit=200)
 
     # ============================================================
-    # ✅ UNIVERSAL: Recurring plan field + plan model resolver
+    # ✅ UNIVERSAL: Plan field + plan model resolver (FIXED)
     # ============================================================
     def _moyee_get_recurring_plan_field_name(self):
+        """
+        Detect which field on sale.order holds the plan/pricing.
+
+        ✅ Your DB uses: plan_id (sale.subscription.plan)
+        """
         self.ensure_one()
         for fname in (
+            "plan_id",  # ✅ IMPORTANT (your DB)
+            # other builds / customizations:
             "recurring_plan_id",
             "subscription_pricing_id",
             "subscription_plan_id",
@@ -148,15 +167,15 @@ class SaleOrder(models.Model):
         return plan_field, self.env[comodel].sudo()
 
     # ============================================================
-    # ✅ Interval/Plan list for portal (with strong fallbacks)
+    # ✅ Interval/Plan list for portal (works with plan_id)
     # ============================================================
     def _moyee_get_portal_changeable_plans(self):
         """
         Return plans customer can choose from.
 
-        FIX:
-        - Multi-company safe (do NOT restrict to order.company_id only)
-        - Includes inactive plans (active_test=False) to avoid empty list
+        ✅ Works with plan_id (sale.subscription.plan) in your DB
+        ✅ Includes inactive plans (active_test=False) to avoid empty list
+        ✅ Multi-company safe context for SaaS
         """
         self.ensure_one()
 
@@ -180,13 +199,13 @@ class SaleOrder(models.Model):
                 if fname in current_plan._fields:
                     optional = current_plan[fname]
                     if optional:
-                        # include inactive optional plans too
                         return optional.with_context(active_test=False).sudo()
 
-        # Fallback: return all plans (global + ANY allowed company)
+        # Fallback: return all plans
         domain = []
-        if "company_id" in Plan._fields:
-            domain = [("company_id", "in", [False] + company_ids)]
+        if "company_id" in Plan._fields and self.company_id:
+            # ✅ safest default: order company + global (company_id False)
+            domain = [("company_id", "in", [False, self.company_id.id])]
 
         order_by = "sequence, name, id" if "sequence" in Plan._fields else "name, id"
         return Plan.search(domain, order=order_by)
@@ -214,6 +233,7 @@ class SaleOrder(models.Model):
         if not allowed_plans.filtered(lambda p: p.id == plan_id):
             raise AccessError(_("Selected interval is not allowed."))
 
+        # ✅ Write to correct field name used by this DB (plan_id)
         self.sudo().write({plan_field: plan_id})
 
         self.with_user(1).message_post(
@@ -229,6 +249,7 @@ class SaleOrder(models.Model):
     def _moyee_set_subscription_paused_state(self, paused=True):
         self.ensure_one()
 
+        # 1) method-based
         if paused:
             for m in ("action_pause", "action_suspend", "action_subscription_pause", "action_set_to_pause"):
                 if hasattr(self, m):
@@ -240,6 +261,7 @@ class SaleOrder(models.Model):
                     getattr(self.sudo(), m)()
                     return True
 
+        # 2) stage-based
         for stage_field in ("subscription_stage_id", "stage_id"):
             if stage_field in self._fields:
                 Stage = self.env[self._fields[stage_field].comodel_name].sudo()
@@ -262,6 +284,7 @@ class SaleOrder(models.Model):
                     self.sudo().write({stage_field: target.id})
                     return True
 
+        # 3) selection field transitions
         def _set_selection(field_name):
             if field_name not in self._fields:
                 return False

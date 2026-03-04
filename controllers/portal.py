@@ -53,7 +53,7 @@ class MoyeeSubscriptionPortal(http.Controller):
     def _moyee_get_all_plans_portal_safe(self, order):
         """
         Universal fallback:
-        - Detect which plan field exists on sale.order
+        - Detect which plan field exists on sale.order (your DB uses plan_id)
         - Search plan model with portal-safe context (all companies, include inactive)
         """
         plan_field = False
@@ -66,13 +66,15 @@ class MoyeeSubscriptionPortal(http.Controller):
         plan_model = order._fields[plan_field].comodel_name
         Plan = request.env[plan_model].sudo()
 
+        # portal-safe context
         company_ids = request.env["res.company"].sudo().search([]).ids
         Plan = Plan.with_context(allowed_company_ids=company_ids, active_test=False)
 
-        # ✅ FIX: do NOT restrict to order.company_id only (multi-company safe)
+        # ✅ IMPORTANT: for sale.subscription.plan, company_id may exist (depends on build/customizations)
+        # Default: global + order company
         domain = []
-        if "company_id" in Plan._fields:
-            domain = [("company_id", "in", [False] + company_ids)]
+        if "company_id" in Plan._fields and getattr(order, "company_id", False):
+            domain = [("company_id", "in", [False, order.company_id.id])]
 
         order_by = "sequence, name, id" if "sequence" in Plan._fields else "name, id"
         return Plan.search(domain, order=order_by)
@@ -97,10 +99,14 @@ class MoyeeSubscriptionPortal(http.Controller):
 
         available_products = order._moyee_get_portal_addable_products()
 
+        # Try model-level logic first
         available_plans = order._moyee_get_portal_changeable_plans()
+
+        # Hard fallback
         if not available_plans:
             available_plans = self._moyee_get_all_plans_portal_safe(order)
 
+        # template-friendly plan info
         plan_field_name = False
         current_plan_id = False
         if hasattr(order, "_moyee_get_recurring_plan_field_name"):
@@ -110,11 +116,15 @@ class MoyeeSubscriptionPortal(http.Controller):
 
         _logger.info(
             "MOYEE portal manage: order=%s id=%s plan_field=%s current_plan_id=%s plans_count=%s",
-            order.name, order.id, plan_field_name, current_plan_id, len(available_plans)
+            order.name,
+            order.id,
+            plan_field_name,
+            current_plan_id,
+            len(available_plans),
         )
 
         visible_lines = order.order_line.filtered(
-            lambda l: l.display_type or (not l.x_moyee_is_removed and l.product_uom_qty > 0)
+            lambda l: l.display_type or (not l.x_moyee_is_removed and float(l.product_uom_qty or 0.0) > 0.0)
         )
 
         countries = request.env["res.country"].sudo().search([], order="name, id")
@@ -171,7 +181,6 @@ class MoyeeSubscriptionPortal(http.Controller):
     )
     def moyee_change_address(self, order_id, **post):
         order = self._moyee_get_order_sudo(order_id, require_subscription=True)
-
         try:
             order.moyee_portal_change_address_full(
                 portal_user_id=request.env.user.id,
@@ -196,7 +205,6 @@ class MoyeeSubscriptionPortal(http.Controller):
             )
         except (AccessError, UserError, ValidationError, ValueError) as e:
             return self._moyee_redirect_back(order, error=str(e))
-
         return self._moyee_redirect_back(order, message=_("Address updated successfully."))
 
     @http.route(
@@ -258,13 +266,11 @@ class MoyeeSubscriptionPortal(http.Controller):
     def moyee_remove_line(self, order_id, line_id, **post):
         order = self._moyee_get_order_sudo(order_id, require_subscription=True)
         line = self._moyee_get_line_sudo(order, line_id)
-
         try:
             reason = (post.get("reason") or "").strip() or None
             line.action_moyee_soft_remove_portal(portal_user_id=request.env.user.id, reason=reason)
         except (AccessError, UserError, ValidationError) as e:
             return self._moyee_redirect_back(order, error=str(e))
-
         return self._moyee_redirect_back(order, message=_("Product removed from subscription."))
 
     @http.route(
