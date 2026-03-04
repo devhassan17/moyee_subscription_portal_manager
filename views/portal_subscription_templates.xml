@@ -4,7 +4,6 @@
 
     <!-- =========================================================
          1) Add "Manage Subscription" button on portal sale order page
-         FIX: make xpath tolerant (id can differ across builds/themes)
          ========================================================= -->
     <template id="sale_order_portal_content_moyee_manage_link"
               inherit_id="sale.sale_order_portal_content"
@@ -39,14 +38,11 @@
     </template>
 
     <!-- =========================================================
-         2) Manage page template
-         IMPORTANT FIXES:
-         - Template id must match what controller renders:
-           request.render("moyee_subscription_portal_manager.portal_subscription_manage", values)
-           => so the template id MUST be "portal_subscription_manage"
-         - Use "order" everywhere (controller provides "order" + "sale_order")
-         - Do NOT assume recurring_plan_id exists in QWeb; show selection safely
-         - ✅ NEW: pre-select current plan using current_plan_id
+         2) Manage page template (UPDATED DESIGN)
+         - Pink sections like screenshot
+         - Product rows with image + input style
+         - Remove SKU from product names (display_default_code=False)
+         - Shipping/Invoice address as FAQ dropdown (collapse)
          ========================================================= -->
     <template id="portal_subscription_manage" name="Moyee Subscription Manager">
         <t t-call="portal.portal_layout">
@@ -58,6 +54,7 @@
 
             <div class="container o_portal_wrap my-4">
 
+                <!-- Alerts -->
                 <t t-if="moyee_error">
                     <div class="alert alert-danger" role="alert">
                         <t t-esc="moyee_error"/>
@@ -69,6 +66,7 @@
                     </div>
                 </t>
 
+                <!-- Page header -->
                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
                     <div>
                         <h2 class="h4 mb-0">
@@ -87,310 +85,373 @@
                     </div>
                 </div>
 
-                <!-- ✅ Change subscription interval -->
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <strong>Change subscription interval</strong>
-                    </div>
-                    <div class="card-body">
+                <!-- TOP ROW like screenshot: Push next date (left) + Manage subscription (right) -->
+                <div class="row g-3 mb-3">
 
-                        <t t-if="not available_plans">
-                            <div class="alert alert-warning mb-0">
-                                No intervals are available for this subscription.
+                    <!-- Push next date -->
+                    <div class="col-12 col-lg-6">
+                        <div class="moyee-section">
+                            <div class="moyee-section-header">
+                                <span>Push next date</span>
+                                <span class="small opacity-75">Manage next date</span>
                             </div>
-                        </t>
 
-                        <t t-else="">
-                            <form t-attf-action="/my/subscriptions/{{ order.id }}/change_interval"
-                                  method="post" class="row g-3">
-                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-
-                                <div class="col-12 col-lg-6">
-                                    <label class="form-label">Interval</label>
-
-                                    <select class="form-select" name="plan_id" required="required">
-                                        <t t-foreach="available_plans" t-as="pl">
-                                            <option t-att-value="pl.id"
-                                                    t-att-selected="current_plan_id and current_plan_id == pl.id">
-                                                <t t-esc="pl.display_name"/>
-                                            </option>
-                                        </t>
-                                    </select>
-
-                                    <div class="form-text">
-                                        If you don't see the correct intervals, it is usually due to company filtering in the plan search.
+                            <div class="moyee-section-body">
+                                <t t-if="not next_date_field">
+                                    <div class="alert alert-warning mb-0">
+                                        This system does not expose a configured next date field for subscriptions.
                                     </div>
+                                </t>
+                                <t t-else="">
+                                    <form t-attf-action="/my/subscriptions/{{ order.id }}/push_delivery_date"
+                                          method="post" class="row g-3 align-items-end">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                                        <div class="col-12 col-md-8">
+                                            <label class="form-label moyee-label">Next date</label>
+                                            <input class="form-control moyee-input" type="date" name="next_date"
+                                                   t-att-value="next_date_value and next_date_value.strftime('%Y-%m-%d') or ''"/>
+                                        </div>
+
+                                        <div class="col-12 col-md-4 d-grid">
+                                            <button class="btn btn-primary" type="submit">Update</button>
+                                        </div>
+                                    </form>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Manage subscription (interval + pause/resume) -->
+                    <div class="col-12 col-lg-6">
+                        <div class="moyee-section">
+                            <div class="moyee-section-header">
+                                <span>Manage subscription</span>
+                                <span class="small opacity-75">Manage subscription</span>
+                            </div>
+
+                            <div class="moyee-section-body">
+
+                                <!-- Interval -->
+                                <t t-if="not available_plans">
+                                    <div class="alert alert-warning mb-3">
+                                        No intervals are available for this subscription.
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <form t-attf-action="/my/subscriptions/{{ order.id }}/change_interval"
+                                          method="post" class="row g-3 align-items-end">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                                        <div class="col-12 col-md-7">
+                                            <label class="form-label moyee-label">Current plan</label>
+                                            <select class="form-select moyee-input" name="plan_id" required="required">
+                                                <t t-foreach="available_plans" t-as="pl">
+                                                    <option t-att-value="pl.id"
+                                                            t-att-selected="current_plan_id and current_plan_id == pl.id">
+                                                        <t t-esc="pl.display_name"/>
+                                                    </option>
+                                                </t>
+                                            </select>
+                                        </div>
+
+                                        <div class="col-12 col-md-5 d-grid">
+                                            <button class="btn btn-primary" type="submit">Change plan</button>
+                                        </div>
+                                    </form>
+                                </t>
+
+                                <hr class="my-3"/>
+
+                                <!-- Pause/Resume -->
+                                <div class="d-flex flex-wrap gap-2 justify-content-end">
+                                    <form t-attf-action="/my/subscriptions/{{ order.id }}/pause" method="post">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <button class="btn btn-warning" type="submit">Pause</button>
+                                    </form>
+                                    <form t-attf-action="/my/subscriptions/{{ order.id }}/resume" method="post">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <button class="btn btn-success" type="submit">Resume</button>
+                                    </form>
                                 </div>
 
-                                <div class="col-12">
-                                    <button class="btn btn-primary" type="submit">Update interval</button>
-                                </div>
-                            </form>
-                        </t>
-
+                            </div>
+                        </div>
                     </div>
+
                 </div>
 
-                <!-- Change address (FULL FORM) -->
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <strong>Change address</strong>
+                <!-- PRODUCTS IN SUBSCRIPTION (UPDATED DESIGN with IMAGE + SKU removed) -->
+                <div class="moyee-section mb-3">
+                    <div class="moyee-section-header">
+                        <span>Products in subscription</span>
+                        <span class="small opacity-75">Manage products in subscription</span>
                     </div>
-                    <div class="card-body">
-                        <form t-attf-action="/my/subscriptions/{{ order.id }}/change_address"
-                              method="post" class="row g-3">
-                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
 
-                            <div class="col-12">
-                                <h6 class="mb-2">Shipping address</h6>
-                            </div>
-
-                            <div class="col-12 col-lg-6">
-                                <label class="form-label">Name</label>
-                                <input class="form-control" name="ship_name" type="text"
-                                       t-att-value="(order.partner_shipping_id and order.partner_shipping_id.name) or ''"/>
-                            </div>
-                            <div class="col-12 col-lg-6">
-                                <label class="form-label">Phone</label>
-                                <input class="form-control" name="ship_phone" type="text"
-                                       t-att-value="(order.partner_shipping_id and order.partner_shipping_id.phone) or ''"/>
-                            </div>
-
-                            <div class="col-12">
-                                <label class="form-label">Street</label>
-                                <input class="form-control" name="ship_street" type="text"
-                                       t-att-value="(order.partner_shipping_id and order.partner_shipping_id.street) or ''"/>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label">Street 2</label>
-                                <input class="form-control" name="ship_street2" type="text"
-                                       t-att-value="(order.partner_shipping_id and order.partner_shipping_id.street2) or ''"/>
-                            </div>
-
-                            <div class="col-12 col-lg-4">
-                                <label class="form-label">City</label>
-                                <input class="form-control" name="ship_city" type="text"
-                                       t-att-value="(order.partner_shipping_id and order.partner_shipping_id.city) or ''"/>
-                            </div>
-                            <div class="col-12 col-lg-4">
-                                <label class="form-label">ZIP</label>
-                                <input class="form-control" name="ship_zip" type="text"
-                                       t-att-value="(order.partner_shipping_id and order.partner_shipping_id.zip) or ''"/>
-                            </div>
-                            <div class="col-12 col-lg-4">
-                                <label class="form-label">Country</label>
-                                <select class="form-select" name="ship_country_id">
-                                    <option value="">--</option>
-                                    <t t-foreach="countries" t-as="c">
-                                        <option t-att-value="c.id"
-                                                t-att-selected="order.partner_shipping_id and order.partner_shipping_id.country_id and order.partner_shipping_id.country_id.id == c.id">
-                                            <t t-esc="c.name"/>
-                                        </option>
-                                    </t>
-                                </select>
-                            </div>
-
-                            <div class="col-12 mt-3">
-                                <h6 class="mb-2">Invoice address</h6>
-                            </div>
-
-                            <div class="col-12 col-lg-6">
-                                <label class="form-label">Name</label>
-                                <input class="form-control" name="inv_name" type="text"
-                                       t-att-value="(order.partner_invoice_id and order.partner_invoice_id.name) or ''"/>
-                            </div>
-                            <div class="col-12 col-lg-6">
-                                <label class="form-label">Phone</label>
-                                <input class="form-control" name="inv_phone" type="text"
-                                       t-att-value="(order.partner_invoice_id and order.partner_invoice_id.phone) or ''"/>
-                            </div>
-
-                            <div class="col-12">
-                                <label class="form-label">Street</label>
-                                <input class="form-control" name="inv_street" type="text"
-                                       t-att-value="(order.partner_invoice_id and order.partner_invoice_id.street) or ''"/>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label">Street 2</label>
-                                <input class="form-control" name="inv_street2" type="text"
-                                       t-att-value="(order.partner_invoice_id and order.partner_invoice_id.street2) or ''"/>
-                            </div>
-
-                            <div class="col-12 col-lg-4">
-                                <label class="form-label">City</label>
-                                <input class="form-control" name="inv_city" type="text"
-                                       t-att-value="(order.partner_invoice_id and order.partner_invoice_id.city) or ''"/>
-                            </div>
-                            <div class="col-12 col-lg-4">
-                                <label class="form-label">ZIP</label>
-                                <input class="form-control" name="inv_zip" type="text"
-                                       t-att-value="(order.partner_invoice_id and order.partner_invoice_id.zip) or ''"/>
-                            </div>
-                            <div class="col-12 col-lg-4">
-                                <label class="form-label">Country</label>
-                                <select class="form-select" name="inv_country_id">
-                                    <option value="">--</option>
-                                    <t t-foreach="countries" t-as="c">
-                                        <option t-att-value="c.id"
-                                                t-att-selected="order.partner_invoice_id and order.partner_invoice_id.country_id and order.partner_invoice_id.country_id.id == c.id">
-                                            <t t-esc="c.name"/>
-                                        </option>
-                                    </t>
-                                </select>
-                            </div>
-
-                            <div class="col-12">
-                                <button class="btn btn-primary" type="submit">Update address</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Push next date -->
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <strong>Push next date</strong>
-                        <span class="text-muted small" t-if="next_date_field">
-                            (<t t-esc="next_date_field"/>)
-                        </span>
-                    </div>
-                    <div class="card-body">
-                        <t t-if="not next_date_field">
-                            <div class="alert alert-warning mb-0">
-                                This system does not expose a configured next date field for subscriptions.
-                            </div>
+                    <div class="moyee-section-body">
+                        <t t-if="not visible_lines">
+                            <div class="text-muted">No active product lines.</div>
                         </t>
+
                         <t t-else="">
-                            <form t-attf-action="/my/subscriptions/{{ order.id }}/push_delivery_date"
-                                  method="post" class="row g-3">
-                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                <div class="col-12 col-lg-4">
-                                    <label class="form-label">Next date</label>
-                                    <input class="form-control" type="date" name="next_date"
-                                           t-att-value="next_date_value and next_date_value.strftime('%Y-%m-%d') or ''"/>
-                                </div>
-                                <div class="col-12">
-                                    <button class="btn btn-primary" type="submit">Update next date</button>
-                                </div>
-                            </form>
+                            <div class="d-flex flex-column gap-3">
+                                <t t-foreach="visible_lines" t-as="line">
+                                    <t t-if="not line.display_type">
+                                        <div class="moyee-product-row">
+
+                                            <!-- Image -->
+                                            <div class="moyee-product-img">
+                                                <img t-att-src="'/web/image/product.product/%s/image_128' % line.product_id.id"
+                                                     alt="Product"
+                                                     class="img-fluid rounded"/>
+                                            </div>
+
+                                            <!-- Product -->
+                                            <div class="flex-grow-1">
+                                                <label class="form-label moyee-label">Product</label>
+                                                <input class="form-control moyee-input"
+                                                       type="text"
+                                                       readonly="readonly"
+                                                       t-att-value="line.product_id.with_context(display_default_code=False).display_name or line.name"/>
+                                            </div>
+
+                                            <!-- Qty -->
+                                            <div class="moyee-qty">
+                                                <label class="form-label moyee-label">Quantity</label>
+                                                <input class="form-control moyee-input text-center"
+                                                       type="text"
+                                                       readonly="readonly"
+                                                       t-att-value="line.product_uom_qty"/>
+                                            </div>
+
+                                            <!-- Remove -->
+                                            <div class="moyee-actions">
+                                                <label class="form-label moyee-label d-none d-md-block">&nbsp;</label>
+
+                                                <t t-set="lname" t-value="(line.product_id.with_context(display_default_code=False).display_name or line.name or '').lower()"/>
+                                                <t t-if="'delivery' in lname">
+                                                    <button class="btn btn-outline-secondary moyee-btn-remove"
+                                                            type="button"
+                                                            onclick="alert('You can not delete delivery product.');">
+                                                        Remove
+                                                    </button>
+                                                </t>
+                                                <t t-else="">
+                                                    <form t-attf-action="/my/subscriptions/{{ order.id }}/line/{{ line.id }}/remove"
+                                                          method="post" class="d-inline">
+                                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                        <input type="hidden" name="reason" value="Removed by customer"/>
+                                                        <button class="btn btn-outline-danger moyee-btn-remove"
+                                                                type="submit"
+                                                                onclick="return confirm('Remove this product from your subscription?');">
+                                                            Remove
+                                                        </button>
+                                                    </form>
+                                                </t>
+                                            </div>
+
+                                        </div>
+                                    </t>
+                                </t>
+                            </div>
                         </t>
                     </div>
                 </div>
 
-                <!-- Add products -->
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <strong>Add products</strong>
+                <!-- ADD PRODUCTS (SKU removed in dropdown) -->
+                <div class="moyee-section mb-3">
+                    <div class="moyee-section-header">
+                        <span>Add products</span>
+                        <span class="small opacity-75">Manage products</span>
                     </div>
-                    <div class="card-body">
+
+                    <div class="moyee-section-body">
                         <form t-attf-action="/my/subscriptions/{{ order.id }}/add_product"
-                              method="post" class="row g-3">
+                              method="post" class="row g-3 align-items-end">
                             <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
 
-                            <div class="col-12 col-lg-6">
-                                <label class="form-label">Product</label>
-                                <select class="form-select" name="product_id" required="required">
+                            <div class="col-12 col-lg-7">
+                                <label class="form-label moyee-label">Product</label>
+                                <select class="form-select moyee-input" name="product_id" required="required">
                                     <t t-foreach="available_products" t-as="p">
                                         <option t-att-value="p.id">
-                                            <t t-esc="p.display_name"/>
+                                            <t t-esc="p.with_context(display_default_code=False).display_name"/>
                                         </option>
                                     </t>
                                 </select>
                             </div>
 
                             <div class="col-12 col-lg-2">
-                                <label class="form-label">Quantity</label>
-                                <input class="form-control" name="qty" type="number" step="0.01" min="0.01" value="1"/>
+                                <label class="form-label moyee-label">Quantity</label>
+                                <input class="form-control moyee-input" name="qty" type="number" step="0.01" min="0.01" value="1"/>
                             </div>
 
-                            <div class="col-12">
-                                <button class="btn btn-primary" type="submit">Add product</button>
+                            <div class="col-12 col-lg-3 d-grid">
+                                <button class="btn btn-primary" type="submit">Update</button>
                             </div>
                         </form>
                     </div>
                 </div>
 
-                <!-- Subscription lines -->
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <strong>Products in subscription</strong>
+                <!-- ADDRESSES (FAQ / DROPDOWN STYLE) -->
+                <div class="moyee-section mb-3">
+                    <div class="moyee-section-header">
+                        <span>Addresses</span>
+                        <span class="small opacity-75">Manage addresses</span>
                     </div>
-                    <div class="card-body">
-                        <t t-if="not visible_lines">
-                            <div class="text-muted">No active product lines.</div>
-                        </t>
-                        <t t-else="">
-                            <div class="table-responsive">
-                                <table class="table table-sm align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th>Product</th>
-                                            <th class="text-end">Qty</th>
-                                            <th class="text-end">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <t t-foreach="visible_lines" t-as="line">
-                                            <t t-if="not line.display_type">
-                                                <tr>
-                                                    <td><t t-esc="line.product_id.display_name or line.name"/></td>
-                                                    <td class="text-end"><t t-esc="line.product_uom_qty"/></td>
-                                                    <td class="text-end">
 
-                                                        <t t-set="lname" t-value="(line.product_id.display_name or line.name or '').lower()"/>
-                                                        <t t-if="'delivery' in lname">
-                                                            <button class="btn btn-sm btn-outline-secondary" type="button"
-                                                                    onclick="alert('You can not delete delivery product.');">
-                                                                Remove
-                                                            </button>
-                                                        </t>
-                                                        <t t-else="">
-                                                            <form t-attf-action="/my/subscriptions/{{ order.id }}/line/{{ line.id }}/remove"
-                                                                  method="post" class="d-inline">
-                                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                                                <input type="hidden" name="reason" value="Removed by customer"/>
-                                                                <button class="btn btn-sm btn-outline-danger" type="submit"
-                                                                        onclick="return confirm('Remove this product from your subscription?');">
-                                                                    Remove
-                                                                </button>
-                                                            </form>
-                                                        </t>
+                    <div class="moyee-section-body">
+                        <form t-attf-action="/my/subscriptions/{{ order.id }}/change_address"
+                              method="post" class="row g-3">
+                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
 
-                                                    </td>
-                                                </tr>
-                                            </t>
-                                        </t>
-                                    </tbody>
-                                </table>
+                            <!-- Shipping dropdown -->
+                            <div class="col-12">
+                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                    <div class="fw-bold">Shipping address</div>
+                                    <button class="btn btn-sm btn-light moyee-dropdown-btn"
+                                            type="button"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#moyeeShipAddress"
+                                            aria-expanded="false"
+                                            aria-controls="moyeeShipAddress">
+                                        Manage shipping address ▾
+                                    </button>
+                                </div>
                             </div>
-                        </t>
+
+                            <div class="col-12">
+                                <div id="moyeeShipAddress" class="collapse">
+                                    <div class="row g-3 mt-1">
+
+                                        <div class="col-12 col-lg-6">
+                                            <label class="form-label moyee-label">Name</label>
+                                            <input class="form-control moyee-input" name="ship_name" type="text"
+                                                   t-att-value="(order.partner_shipping_id and order.partner_shipping_id.name) or ''"/>
+                                        </div>
+                                        <div class="col-12 col-lg-6">
+                                            <label class="form-label moyee-label">Phone</label>
+                                            <input class="form-control moyee-input" name="ship_phone" type="text"
+                                                   t-att-value="(order.partner_shipping_id and order.partner_shipping_id.phone) or ''"/>
+                                        </div>
+
+                                        <div class="col-12">
+                                            <label class="form-label moyee-label">Street</label>
+                                            <input class="form-control moyee-input" name="ship_street" type="text"
+                                                   t-att-value="(order.partner_shipping_id and order.partner_shipping_id.street) or ''"/>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label moyee-label">Street 2</label>
+                                            <input class="form-control moyee-input" name="ship_street2" type="text"
+                                                   t-att-value="(order.partner_shipping_id and order.partner_shipping_id.street2) or ''"/>
+                                        </div>
+
+                                        <div class="col-12 col-lg-4">
+                                            <label class="form-label moyee-label">City</label>
+                                            <input class="form-control moyee-input" name="ship_city" type="text"
+                                                   t-att-value="(order.partner_shipping_id and order.partner_shipping_id.city) or ''"/>
+                                        </div>
+                                        <div class="col-12 col-lg-4">
+                                            <label class="form-label moyee-label">ZIP</label>
+                                            <input class="form-control moyee-input" name="ship_zip" type="text"
+                                                   t-att-value="(order.partner_shipping_id and order.partner_shipping_id.zip) or ''"/>
+                                        </div>
+                                        <div class="col-12 col-lg-4">
+                                            <label class="form-label moyee-label">Country</label>
+                                            <select class="form-select moyee-input" name="ship_country_id">
+                                                <option value="">--</option>
+                                                <t t-foreach="countries" t-as="c">
+                                                    <option t-att-value="c.id"
+                                                            t-att-selected="order.partner_shipping_id and order.partner_shipping_id.country_id and order.partner_shipping_id.country_id.id == c.id">
+                                                        <t t-esc="c.name"/>
+                                                    </option>
+                                                </t>
+                                            </select>
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="my-2"/>
+
+                            <!-- Invoice dropdown -->
+                            <div class="col-12">
+                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                    <div class="fw-bold">Invoice address</div>
+                                    <button class="btn btn-sm btn-light moyee-dropdown-btn"
+                                            type="button"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#moyeeInvAddress"
+                                            aria-expanded="false"
+                                            aria-controls="moyeeInvAddress">
+                                        Manage invoice address ▾
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <div id="moyeeInvAddress" class="collapse">
+                                    <div class="row g-3 mt-1">
+
+                                        <div class="col-12 col-lg-6">
+                                            <label class="form-label moyee-label">Name</label>
+                                            <input class="form-control moyee-input" name="inv_name" type="text"
+                                                   t-att-value="(order.partner_invoice_id and order.partner_invoice_id.name) or ''"/>
+                                        </div>
+                                        <div class="col-12 col-lg-6">
+                                            <label class="form-label moyee-label">Phone</label>
+                                            <input class="form-control moyee-input" name="inv_phone" type="text"
+                                                   t-att-value="(order.partner_invoice_id and order.partner_invoice_id.phone) or ''"/>
+                                        </div>
+
+                                        <div class="col-12">
+                                            <label class="form-label moyee-label">Street</label>
+                                            <input class="form-control moyee-input" name="inv_street" type="text"
+                                                   t-att-value="(order.partner_invoice_id and order.partner_invoice_id.street) or ''"/>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label moyee-label">Street 2</label>
+                                            <input class="form-control moyee-input" name="inv_street2" type="text"
+                                                   t-att-value="(order.partner_invoice_id and order.partner_invoice_id.street2) or ''"/>
+                                        </div>
+
+                                        <div class="col-12 col-lg-4">
+                                            <label class="form-label moyee-label">City</label>
+                                            <input class="form-control moyee-input" name="inv_city" type="text"
+                                                   t-att-value="(order.partner_invoice_id and order.partner_invoice_id.city) or ''"/>
+                                        </div>
+                                        <div class="col-12 col-lg-4">
+                                            <label class="form-label moyee-label">ZIP</label>
+                                            <input class="form-control moyee-input" name="inv_zip" type="text"
+                                                   t-att-value="(order.partner_invoice_id and order.partner_invoice_id.zip) or ''"/>
+                                        </div>
+                                        <div class="col-12 col-lg-4">
+                                            <label class="form-label moyee-label">Country</label>
+                                            <select class="form-select moyee-input" name="inv_country_id">
+                                                <option value="">--</option>
+                                                <t t-foreach="countries" t-as="c">
+                                                    <option t-att-value="c.id"
+                                                            t-att-selected="order.partner_invoice_id and order.partner_invoice_id.country_id and order.partner_invoice_id.country_id.id == c.id">
+                                                        <t t-esc="c.name"/>
+                                                    </option>
+                                                </t>
+                                            </select>
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12 d-flex justify-content-end mt-2">
+                                <button class="btn btn-primary" type="submit">Update</button>
+                            </div>
+
+                        </form>
                     </div>
                 </div>
 
-                <!-- Pause / Resume -->
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <strong>Pause subscription</strong>
-                    </div>
-                    <div class="card-body">
-                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                            <div class="text-muted">
-                                Pause/resume availability depends on your subscription configuration.
-                            </div>
-                            <div class="d-flex gap-2">
-                                <form t-attf-action="/my/subscriptions/{{ order.id }}/pause" method="post">
-                                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                    <button class="btn btn-warning" type="submit">Pause Subscription</button>
-                                </form>
-                                <form t-attf-action="/my/subscriptions/{{ order.id }}/resume" method="post">
-                                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                    <button class="btn btn-success" type="submit">Resume</button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+                <!-- Info -->
                 <div class="alert alert-info mt-4 mb-0">
                     Removed products are soft-deleted (quantity set to 0 and flagged) and excluded from future recurring invoices.
                 </div>
