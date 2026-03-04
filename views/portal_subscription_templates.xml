@@ -226,7 +226,7 @@
 
                                             <!-- Remove -->
                                             <div class="moyee-actions">
-                                                <label class="form-label moyee-label d-none d-md-block">&nbsp;</label>
+                                                <label class="form-label moyee-label d-none d-md-block"><t t-raw="'&#160;'"/></label>
 
                                                 <t t-set="lname" t-value="(line.product_id.with_context(display_default_code=False).display_name or line.name or '').lower()"/>
                                                 <t t-if="'delivery' in lname">
