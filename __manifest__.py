@@ -12,7 +12,8 @@ Portal + backend build:
 - Filter invoice PDF lines for safety
 - Portal self-service: change address, push next date, add/remove products, pause/resume
 """,
-    "author": "Managemyweb",
+    "author": "Managemyweb.co",
+    "maintainer": "ali@moyeecoffee.com",
     "license": "LGPL-3",
     "depends": [
         "sale_management",
@@ -39,4 +40,6 @@ Portal + backend build:
     },
     "installable": True,
     "application": False,
+    "price": 99.99,
+    "currency": "USD",
 }

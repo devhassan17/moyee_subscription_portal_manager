@@ -1,7 +1,7 @@
 /* Portal subscription page styling (frontend) */
 
 .moyee-section{
-    border: 2px solid #ff2b85;
+    border: 1px solid #ff2b85;
     border-radius: 14px;
     overflow: hidden;
     background: #fff;
@@ -47,14 +47,14 @@
     gap: 14px;
     align-items: flex-end;
     padding: 12px;
-    border: 2px solid #ff2b85;
+    border-bottom: 1px solid #eee; /* Subtle bottom border instead of full pink box */
     border-radius: 14px;
 }
 
 .moyee-product-img{
     width: 58px;
     height: 58px;
-    border: 2px solid #ff2b85;
+    border: 1px solid #eee;
     border-radius: 12px;
     display: flex;
     align-items: center;
