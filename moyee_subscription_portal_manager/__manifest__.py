@@ -22,6 +22,7 @@ Portal + backend build:
         "portal",
         "website",
     ],
+    "images": ["static/description/banner.png"],
     "data": [
         "security/security.xml",
         "security/ir.model.access.csv",
@@ -37,7 +38,6 @@ Portal + backend build:
         "web.assets_frontend": [
         "moyee_subscription_portal_manager/static/src/css/moyee_portal_subscription.css",
     ],
-    "images": ["static/description/banner.png"],
     },
     "installable": True,
     "application": False,
