@@ -9,17 +9,7 @@
         <xpath expr="//table[@name='invoice_line_table']//t[@t-foreach='lines']"
                position="attributes">
 
-            <attribute name="t-foreach">
-                lines.filtered(
-                    lambda l: l.display_type
-                    or (
-                        l.quantity &gt; 0
-                        and not l.sale_line_ids.filtered(
-                            lambda sol: sol.x_moyee_is_removed
-                        )
-                    )
-                )
-            </attribute>
+            <attribute name="t-foreach">lines.filtered(lambda l: l.display_type or (l.quantity &gt; 0 and not l.sale_line_ids.filtered(lambda sol: sol.x_moyee_is_removed)))</attribute>
 
         </xpath>
 
