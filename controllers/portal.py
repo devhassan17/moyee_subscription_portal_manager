@@ -129,6 +129,16 @@ class MoyeeSubscriptionPortal(http.Controller):
 
         countries = request.env["res.country"].sudo().search([], order="name, id")
 
+        # Detect paused state — check subscription_state or subscription_status
+        is_paused = False
+        PAUSED_STATES = {"paused", "pause", "suspended", "suspend", "hold", "2_paused", "on_hold"}
+        for sfield in ("subscription_state", "subscription_status"):
+            if sfield in order._fields and order[sfield]:
+                sval = str(order[sfield]).lower()
+                if sval in PAUSED_STATES or any(p in sval for p in ("pause", "suspend", "hold")):
+                    is_paused = True
+                    break
+
         values = {
             "sale_order": order,
             "order": order,
@@ -140,6 +150,7 @@ class MoyeeSubscriptionPortal(http.Controller):
             "current_plan_id": current_plan_id,
             "visible_lines": visible_lines,
             "countries": countries,
+            "is_paused": is_paused,
             "moyee_message": kw.get("moyee_message"),
             "moyee_error": kw.get("moyee_error"),
         }

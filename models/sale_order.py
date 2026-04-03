@@ -127,6 +127,10 @@ class SaleOrder(models.Model):
         if "company_id" in Product._fields and self.company_id:
             domain.append(("company_id", "in", [False, self.company_id.id]))
 
+        # Filter by 'Subscription' tag if tag_ids field exists on product.template
+        if "tag_ids" in Template._fields:
+            domain.append(("product_tmpl_id.tag_ids.name", "ilike", "Subscription"))
+
         return Product.search(domain, order="name, id", limit=200)
 
     # ============================================================

@@ -4,6 +4,7 @@
 
     <!-- =========================================================
          1) Add "Manage Subscription" button on portal sale order page
+            Only shown when the order is a subscription.
          ========================================================= -->
     <template id="sale_order_portal_content_moyee_manage_link"
               inherit_id="sale.sale_order_portal_content"
@@ -38,11 +39,7 @@
     </template>
 
     <!-- =========================================================
-         2) Manage page template (UPDATED DESIGN)
-         - Pink sections like screenshot
-         - Product rows with image + input style
-         - Remove SKU from product names (display_default_code=False)
-         - Shipping/Invoice address as FAQ dropdown (collapse)
+         2) Manage page template
          ========================================================= -->
     <template id="portal_subscription_manage" name="Moyee Subscription Manager">
         <t t-call="portal.portal_layout">
@@ -85,18 +82,21 @@
                     </div>
                 </div>
 
-                <!-- TOP ROW like screenshot: Push next date (left) + Manage subscription (right) -->
+                <!-- TOP ROW: Shipment date (left) + Plan (right) -->
                 <div class="row g-3 mb-3">
 
-                    <!-- Push next date -->
+                    <!-- Shipment date block -->
                     <div class="col-12 col-lg-6">
                         <div class="moyee-section">
                             <div class="moyee-section-header">
-                                <span>Push next date</span>
-                                <span class="small opacity-75">Manage next date</span>
+                                <span>Shipment date</span>
                             </div>
 
                             <div class="moyee-section-body">
+                                <p class="text-muted small mb-3">
+                                    Your coffee will be shipped on this date and will arrive within 2 to 3 days.
+                                </p>
+
                                 <t t-if="not next_date_field">
                                     <div class="alert alert-warning mb-0">
                                         This system does not expose a configured next date field for subscriptions.
@@ -108,13 +108,13 @@
                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
 
                                         <div class="col-12 col-md-8">
-                                            <label class="form-label moyee-label">Next date</label>
+                                            <label class="form-label moyee-label">Next shipment date</label>
                                             <input class="form-control moyee-input" type="date" name="next_date"
                                                    t-att-value="next_date_value and next_date_value.strftime('%Y-%m-%d') or ''"/>
                                         </div>
 
                                         <div class="col-12 col-md-4 d-grid">
-                                            <button class="btn btn-primary" type="submit">Update</button>
+                                            <button class="btn btn-primary" type="submit">Update date</button>
                                         </div>
                                     </form>
                                 </t>
@@ -122,12 +122,11 @@
                         </div>
                     </div>
 
-                    <!-- Manage subscription (interval + pause/resume) -->
+                    <!-- Plan block (was: Manage subscription) -->
                     <div class="col-12 col-lg-6">
                         <div class="moyee-section">
                             <div class="moyee-section-header">
-                                <span>Manage subscription</span>
-                                <span class="small opacity-75">Manage subscription</span>
+                                <span>Plan</span>
                             </div>
 
                             <div class="moyee-section-body">
@@ -143,7 +142,7 @@
                                           method="post" class="row g-3 align-items-end">
                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
 
-                                        <div class="col-12 col-md-7">
+                                        <div class="col-12 col-md-5">
                                             <label class="form-label moyee-label">Current plan</label>
                                             <select class="form-select moyee-input" name="plan_id" required="required">
                                                 <t t-foreach="available_plans" t-as="pl">
@@ -155,25 +154,30 @@
                                             </select>
                                         </div>
 
-                                        <div class="col-12 col-md-5 d-grid">
-                                            <button class="btn btn-primary" type="submit">Change plan</button>
+                                        <!-- Update plan + Pause/Resume inline -->
+                                        <div class="col-12 col-md-7 d-flex align-items-end gap-2">
+                                            <button class="btn btn-primary" type="submit">Update plan</button>
+
+                                            <div class="vr mx-1 align-self-center" style="height:2em;opacity:.25;"></div>
+
+                                            <!-- Show Pause only when subscription is active -->
+                                            <t t-if="not is_paused">
+                                                <form t-attf-action="/my/subscriptions/{{ order.id }}/pause" method="post" class="d-inline">
+                                                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                    <button class="btn btn-warning" type="submit">Pause</button>
+                                                </form>
+                                            </t>
+
+                                            <!-- Show Resume only when subscription is paused -->
+                                            <t t-if="is_paused">
+                                                <form t-attf-action="/my/subscriptions/{{ order.id }}/resume" method="post" class="d-inline">
+                                                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                    <button class="btn btn-success" type="submit">Resume</button>
+                                                </form>
+                                            </t>
                                         </div>
                                     </form>
                                 </t>
-
-                                <hr class="my-3"/>
-
-                                <!-- Pause/Resume -->
-                                <div class="d-flex flex-wrap gap-2 justify-content-end">
-                                    <form t-attf-action="/my/subscriptions/{{ order.id }}/pause" method="post">
-                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                        <button class="btn btn-warning" type="submit">Pause</button>
-                                    </form>
-                                    <form t-attf-action="/my/subscriptions/{{ order.id }}/resume" method="post">
-                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                        <button class="btn btn-success" type="submit">Resume</button>
-                                    </form>
-                                </div>
 
                             </div>
                         </div>
@@ -181,14 +185,17 @@
 
                 </div>
 
-                <!-- PRODUCTS IN SUBSCRIPTION (UPDATED DESIGN with IMAGE + SKU removed) -->
+                <!-- PRODUCTS IN SUBSCRIPTION -->
                 <div class="moyee-section mb-3">
                     <div class="moyee-section-header">
                         <span>Products in subscription</span>
-                        <span class="small opacity-75">Manage products in subscription</span>
                     </div>
 
                     <div class="moyee-section-body">
+                        <p class="text-muted small mb-3">
+                            To change a product, add the new product and remove the old one.
+                        </p>
+
                         <t t-if="not visible_lines">
                             <div class="text-muted">No active product lines.</div>
                         </t>
@@ -197,46 +204,39 @@
                             <div class="d-flex flex-column gap-3">
                                 <t t-foreach="visible_lines" t-as="line">
                                     <t t-if="not line.display_type">
-                                        <div class="moyee-product-row">
+                                        <!-- Skip delivery products entirely -->
+                                        <t t-set="lname_check" t-value="(line.product_id.with_context(display_default_code=False).display_name or line.name or '').lower()"/>
+                                        <t t-if="'delivery' not in lname_check">
+                                            <div class="moyee-product-row">
 
-                                            <!-- Image -->
-                                            <div class="moyee-product-img">
-                                                <img t-att-src="'/web/image/product.product/%s/image_128' % line.product_id.id"
-                                                     alt="Product"
-                                                     class="img-fluid rounded"/>
-                                            </div>
+                                                <!-- Image -->
+                                                <div class="moyee-product-img">
+                                                    <img t-att-src="'/web/image/product.product/%s/image_128' % line.product_id.id"
+                                                         alt="Product"
+                                                         class="img-fluid rounded"/>
+                                                </div>
 
-                                            <!-- Product -->
-                                            <div class="flex-grow-1">
-                                                <label class="form-label moyee-label">Product</label>
-                                                <input class="form-control moyee-input"
-                                                       type="text"
-                                                       readonly="readonly"
-                                                       t-att-value="line.product_id.with_context(display_default_code=False).display_name or line.name"/>
-                                            </div>
+                                                <!-- Product -->
+                                                <div class="flex-grow-1">
+                                                    <label class="form-label moyee-label">Product</label>
+                                                    <input class="form-control moyee-input"
+                                                           type="text"
+                                                           readonly="readonly"
+                                                           t-att-value="line.product_id.with_context(display_default_code=False).display_name or line.name"/>
+                                                </div>
 
-                                            <!-- Qty -->
-                                            <div class="moyee-qty">
-                                                <label class="form-label moyee-label">Quantity</label>
-                                                <input class="form-control moyee-input text-center"
-                                                       type="text"
-                                                       readonly="readonly"
-                                                       t-att-value="line.product_uom_qty"/>
-                                            </div>
+                                                <!-- Qty -->
+                                                <div class="moyee-qty">
+                                                    <label class="form-label moyee-label">Quantity</label>
+                                                    <input class="form-control moyee-input text-center"
+                                                           type="text"
+                                                           readonly="readonly"
+                                                           t-att-value="line.product_uom_qty"/>
+                                                </div>
 
-                                            <!-- Remove -->
-                                            <div class="moyee-actions">
-                                                <label class="form-label moyee-label d-none d-md-block"><t t-raw="'&#160;'"/></label>
-
-                                                <t t-set="lname" t-value="(line.product_id.with_context(display_default_code=False).display_name or line.name or '').lower()"/>
-                                                <t t-if="'delivery' in lname">
-                                                    <button class="btn btn-outline-secondary moyee-btn-remove"
-                                                            type="button"
-                                                            onclick="alert('You can not delete delivery product.');">
-                                                        Remove
-                                                    </button>
-                                                </t>
-                                                <t t-else="">
+                                                <!-- Remove -->
+                                                <div class="moyee-actions">
+                                                    <label class="form-label moyee-label d-none d-md-block"><t t-raw="'&#160;'"/></label>
                                                     <form t-attf-action="/my/subscriptions/{{ order.id }}/line/{{ line.id }}/remove"
                                                           method="post" class="d-inline">
                                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
@@ -247,10 +247,10 @@
                                                             Remove
                                                         </button>
                                                     </form>
-                                                </t>
-                                            </div>
+                                                </div>
 
-                                        </div>
+                                            </div>
+                                        </t>
                                     </t>
                                 </t>
                             </div>
@@ -258,14 +258,17 @@
                     </div>
                 </div>
 
-                <!-- ADD PRODUCTS (SKU removed in dropdown) -->
+                <!-- ADD PRODUCTS -->
                 <div class="moyee-section mb-3">
                     <div class="moyee-section-header">
                         <span>Add products</span>
-                        <span class="small opacity-75">Manage products</span>
                     </div>
 
                     <div class="moyee-section-body">
+                        <p class="text-muted small mb-3">
+                            Select a product and click "Add product" to add it to your subscription.
+                        </p>
+
                         <form t-attf-action="/my/subscriptions/{{ order.id }}/add_product"
                               method="post" class="row g-3 align-items-end">
                             <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
@@ -287,17 +290,16 @@
                             </div>
 
                             <div class="col-12 col-lg-3 d-grid">
-                                <button class="btn btn-primary" type="submit">Update</button>
+                                <button class="btn btn-primary" type="submit">Add product</button>
                             </div>
                         </form>
                     </div>
                 </div>
 
-                <!-- ADDRESSES (FAQ / DROPDOWN STYLE) -->
+                <!-- ADDRESSES -->
                 <div class="moyee-section mb-3">
                     <div class="moyee-section-header">
                         <span>Addresses</span>
-                        <span class="small opacity-75">Manage addresses</span>
                     </div>
 
                     <div class="moyee-section-body">
@@ -305,23 +307,24 @@
                               method="post" class="row g-3">
                             <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
 
-                            <!-- Shipping dropdown -->
+                            <!-- Shipping — auto-expanded -->
                             <div class="col-12">
                                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
                                     <div class="fw-bold">Shipping address</div>
-                                    <button class="btn btn-sm btn-light moyee-dropdown-btn"
+                                    <button class="btn btn-primary moyee-dropdown-btn"
                                             type="button"
                                             data-bs-toggle="collapse"
                                             data-bs-target="#moyeeShipAddress"
-                                            aria-expanded="false"
+                                            aria-expanded="true"
                                             aria-controls="moyeeShipAddress">
-                                        Manage shipping address ▾
+                                        Manage Shipping Address ▾
                                     </button>
                                 </div>
                             </div>
 
                             <div class="col-12">
-                                <div id="moyeeShipAddress" class="collapse">
+                                <!-- "show" class auto-expands on load -->
+                                <div id="moyeeShipAddress" class="collapse show">
                                     <div class="row g-3 mt-1">
 
                                         <div class="col-12 col-lg-6">
@@ -449,11 +452,6 @@
 
                         </form>
                     </div>
-                </div>
-
-                <!-- Info -->
-                <div class="alert alert-info mt-4 mb-0">
-                    Removed products are soft-deleted (quantity set to 0 and flagged) and excluded from future recurring invoices.
                 </div>
 
             </div>
