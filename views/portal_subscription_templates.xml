@@ -258,7 +258,7 @@
                     </div>
                 </div>
 
-                <!-- ADD PRODUCTS -->
+                <!-- ADD PRODUCTS — horizontal card slider -->
                 <div class="moyee-section mb-3">
                     <div class="moyee-section-header">
                         <span>Add products</span>
@@ -266,33 +266,50 @@
 
                     <div class="moyee-section-body">
                         <p class="text-muted small mb-3">
-                            Select a product and click "Add product" to add it to your subscription.
+                            Click "Add" on a product to add it to your subscription.
                         </p>
 
-                        <form t-attf-action="/my/subscriptions/{{ order.id }}/add_product"
-                              method="post" class="row g-3 align-items-end">
-                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-
-                            <div class="col-12 col-lg-7">
-                                <label class="form-label moyee-label">Product</label>
-                                <select class="form-select moyee-input" name="product_id" required="required">
+                        <t t-if="not available_products">
+                            <div class="text-muted small">No products available to add.</div>
+                        </t>
+                        <t t-else="">
+                            <!-- Slider wrapper -->
+                            <div class="moyee-product-slider-wrap">
+                                <div class="moyee-product-slider">
                                     <t t-foreach="available_products" t-as="p">
-                                        <option t-att-value="p.id">
-                                            <t t-esc="p.with_context(display_default_code=False).display_name"/>
-                                        </option>
+                                        <div class="moyee-slider-card">
+                                            <!-- Product image -->
+                                            <div class="moyee-slider-img">
+                                                <img t-att-src="'/web/image/product.product/%s/image_256' % p.id"
+                                                     t-att-alt="p.with_context(display_default_code=False).display_name"
+                                                     loading="lazy"/>
+                                            </div>
+                                            <!-- Name -->
+                                            <div class="moyee-slider-name">
+                                                <t t-esc="p.with_context(display_default_code=False).display_name"/>
+                                            </div>
+                                            <!-- Price -->
+                                            <div class="moyee-slider-price">
+                                                <t t-esc="'€ %.2f' % (p.lst_price or 0.0)"/>
+                                            </div>
+                                            <!-- Add form -->
+                                            <form t-attf-action="/my/subscriptions/{{ order.id }}/add_product"
+                                                  method="post" class="moyee-slider-form">
+                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                <input type="hidden" name="product_id" t-att-value="p.id"/>
+                                                <div class="d-flex align-items-center gap-1 mb-2">
+                                                    <label class="moyee-label mb-0" style="white-space:nowrap;">Qty</label>
+                                                    <input class="form-control form-control-sm moyee-input text-center"
+                                                           name="qty" type="number" step="1" min="1" value="1"
+                                                           style="width:60px;"/>
+                                                </div>
+                                                <button class="btn btn-primary btn-sm w-100" type="submit">Add</button>
+                                            </form>
+                                        </div>
                                     </t>
-                                </select>
+                                </div>
                             </div>
-
-                            <div class="col-12 col-lg-2">
-                                <label class="form-label moyee-label">Quantity</label>
-                                <input class="form-control moyee-input" name="qty" type="number" step="0.01" min="0.01" value="1"/>
-                            </div>
-
-                            <div class="col-12 col-lg-3 d-grid">
-                                <button class="btn btn-primary" type="submit">Add product</button>
-                            </div>
-                        </form>
+                        </t>
                     </div>
                 </div>
 
