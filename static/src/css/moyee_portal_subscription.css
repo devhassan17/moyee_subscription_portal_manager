@@ -180,3 +180,95 @@
     width: 100%;
     margin-top: auto;
 }
+
+/* ── Filter Sidebar ─────────────────────────── */
+.moyee-filter-sidebar {
+    background: #fdf4f9;
+    border-radius: 14px;
+    padding: 16px;
+    border: 1px solid #ffd6ea;
+    position: sticky;
+    top: 20px;
+}
+
+.moyee-filter-group {
+    margin-bottom: 12px;
+}
+
+.moyee-filter-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: #2d1020;
+    letter-spacing: 0.5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding: 4px 0;
+}
+
+.moyee-filter-title[aria-expanded="false"] i {
+    transform: rotate(180deg);
+}
+
+.moyee-filter-title i {
+    font-size: 10px;
+    transition: transform 0.2s;
+    color: #ff2b85;
+}
+
+.moyee-filter-options {
+    padding-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.moyee-filter-options .form-check-label {
+    font-size: 13px;
+    color: #4a4a4a;
+    cursor: pointer;
+    user-select: none;
+}
+
+.moyee-filter-check:checked {
+    background-color: #ff2b85;
+    border-color: #ff2b85;
+}
+
+/* Price Slider */
+.moyee-price-slider::-webkit-slider-thumb {
+    background: #ff2b85;
+}
+.moyee-price-slider::-moz-range-thumb {
+    background: #ff2b85;
+}
+.moyee-price-slider:focus {
+    box-shadow: none;
+}
+
+/* Responsiveness for Slider cards when filtered */
+.js_moyee_product_card.d-none {
+    display: none !important;
+}
+
+/* No results message */
+#moyeeNoResults {
+    color: #ff2b85;
+    background: #fdf4f9;
+    border: 1px dashed #ff2b85;
+    border-radius: 14px;
+}
+
+/* Clear filters link */
+#clearMoyeeFilters {
+    color: #ff2b85;
+    text-decoration: none;
+    font-weight: 700;
+    border: none;
+    background: none;
+    padding: 0;
+}
+#clearMoyeeFilters:hover {
+    text-decoration: underline;
+}

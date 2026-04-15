@@ -131,7 +131,53 @@ class SaleOrder(models.Model):
         if "tag_ids" in Template._fields:
             domain.append(("product_tmpl_id.tag_ids.name", "ilike", "Subscription"))
 
-        return Product.search(domain, order="name, id", limit=200)
+        products = Product.search(domain, order="name, id", limit=200)
+
+        # Enhance products with filter metadata (Grind, Weight)
+        # We store this in a list of dicts for the portal template if needed,
+        # but Odoo templates prefer objects. We'll add a helper method to products
+        # or just pre-process them here.
+        return products
+
+    def _moyee_extract_product_metadata(self, product):
+        """
+        Extract Grind and Weight from product attributes or name.
+        Returns (grind, weight)
+        """
+        grind = "other"
+        weight = "other"
+
+        # 1. Check attributes
+        attr_values = product.product_template_attribute_value_ids
+        for av in attr_values:
+            attr_name = (av.attribute_id.name or "").lower()
+            val_name = (av.name or "").lower()
+
+            if "grind" in attr_name or "maling" in attr_name:
+                if "whole" in val_name: grind = "whole"
+                elif "filter" in val_name: grind = "filter"
+                elif "espresso" in val_name: grind = "espresso"
+                elif "capsule" in val_name: grind = "capsules"
+            
+            if "weight" in attr_name or "size" in attr_name:
+                if "1kg" in val_name.replace(" ", "") or "1 kg" in val_name: weight = "1kg"
+                elif "250" in val_name: weight = "250g"
+                elif "25" in val_name and "capsule" in val_name: weight = "25caps"
+
+        # 2. Fallback to name scanning if still 'other'
+        name = (product.display_name or "").lower()
+        if grind == "other":
+            if "whole bean" in name: grind = "whole"
+            elif "filter grind" in name: grind = "filter"
+            elif "espresso grind" in name: grind = "espresso"
+            elif "capsule" in name: grind = "capsules"
+
+        if weight == "other":
+            if "1kg" in name.replace(" ", "") or "1 kg" in name: weight = "1kg"
+            elif "250g" in name or "250 g" in name: weight = "250g"
+            elif "25 capsule" in name: weight = "25caps"
+
+        return grind, weight
 
     # ============================================================
     # ✅ UNIVERSAL: Plan field + plan model resolver (FIXED)

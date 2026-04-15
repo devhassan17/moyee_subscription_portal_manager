@@ -35,8 +35,9 @@ Portal + backend build:
             "moyee_subscription_portal_manager/static/src/css/hide_zero_qty_lines.css",
         ],
         "web.assets_frontend": [
-        "moyee_subscription_portal_manager/static/src/css/moyee_portal_subscription.css",
-    ],
+            "moyee_subscription_portal_manager/static/src/css/moyee_portal_subscription.css",
+            "moyee_subscription_portal_manager/static/src/js/moyee_portal_filter.js",
+        ],
     },
     "installable": True,
     "application": False,

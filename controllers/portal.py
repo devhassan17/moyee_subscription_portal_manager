@@ -139,6 +139,11 @@ class MoyeeSubscriptionPortal(http.Controller):
                     is_paused = True
                     break
 
+        # Price filters
+        prices = available_products.mapped("lst_price") or [0.0]
+        min_price = min(prices)
+        max_price = max(prices)
+
         values = {
             "sale_order": order,
             "order": order,
@@ -151,6 +156,8 @@ class MoyeeSubscriptionPortal(http.Controller):
             "visible_lines": visible_lines,
             "countries": countries,
             "is_paused": is_paused,
+            "min_price": min_price,
+            "max_price": max_price,
             "moyee_message": kw.get("moyee_message"),
             "moyee_error": kw.get("moyee_error"),
         }

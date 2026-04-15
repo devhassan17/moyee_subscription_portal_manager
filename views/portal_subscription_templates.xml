@@ -258,55 +258,149 @@
                     </div>
                 </div>
 
-                <!-- ADD PRODUCTS — horizontal card slider -->
+                <!-- ADD PRODUCTS — filters + slider -->
                 <div class="moyee-section mb-3">
                     <div class="moyee-section-header">
                         <span>Add products</span>
                     </div>
 
                     <div class="moyee-section-body">
-                        <p class="text-muted small mb-3">
-                            Click "Add" on a product to add it to your subscription.
-                        </p>
-
                         <t t-if="not available_products">
                             <div class="text-muted small">No products available to add.</div>
                         </t>
                         <t t-else="">
-                            <!-- Slider wrapper -->
-                            <div class="moyee-product-slider-wrap">
-                                <div class="moyee-product-slider">
-                                    <t t-foreach="available_products" t-as="p">
-                                        <div class="moyee-slider-card">
-                                            <!-- Product image -->
-                                            <div class="moyee-slider-img">
-                                                <img t-att-src="'/web/image/product.product/%s/image_256' % p.id"
-                                                     t-att-alt="p.with_context(display_default_code=False).display_name"
-                                                     loading="lazy"/>
+                            <div class="row g-4">
+                                <!-- Filter Sidebar -->
+                                <div class="col-12 col-md-3">
+                                    <div class="moyee-filter-sidebar">
+                                        
+                                        <!-- Grind Filter -->
+                                        <div class="moyee-filter-group">
+                                            <div class="moyee-filter-title" data-bs-toggle="collapse" data-bs-target="#filterGrind">
+                                                <span>GRIND</span>
+                                                <i class="fa fa-chevron-up"></i>
                                             </div>
-                                            <!-- Name -->
-                                            <div class="moyee-slider-name">
-                                                <t t-esc="p.with_context(display_default_code=False).display_name"/>
-                                            </div>
-                                            <!-- Price -->
-                                            <div class="moyee-slider-price">
-                                                <t t-esc="'€ %.2f' % (p.lst_price or 0.0)"/>
-                                            </div>
-                                            <!-- Add form -->
-                                            <form t-attf-action="/my/subscriptions/{{ order.id }}/add_product"
-                                                  method="post" class="moyee-slider-form">
-                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                                <input type="hidden" name="product_id" t-att-value="p.id"/>
-                                                <div class="d-flex align-items-center gap-1 mb-2">
-                                                    <label class="moyee-label mb-0" style="white-space:nowrap;">Qty</label>
-                                                    <input class="form-control form-control-sm moyee-input text-center"
-                                                           name="qty" type="number" step="1" min="1" value="1"
-                                                           style="width:60px;"/>
+                                            <div id="filterGrind" class="collapse show">
+                                                <div class="moyee-filter-options">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input moyee-filter-check" type="checkbox" value="whole" id="grindWhole"/>
+                                                        <label class="form-check-label" for="grindWhole">Whole Beans</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input moyee-filter-check" type="checkbox" value="filter" id="grindFilter"/>
+                                                        <label class="form-check-label" for="grindFilter">Filter Grind</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input moyee-filter-check" type="checkbox" value="espresso" id="grindEspresso"/>
+                                                        <label class="form-check-label" for="grindEspresso">Espresso Grind</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input moyee-filter-check" type="checkbox" value="capsules" id="grindCapsules"/>
+                                                        <label class="form-check-label" for="grindCapsules">Capsules</label>
+                                                    </div>
                                                 </div>
-                                                <button class="btn btn-primary btn-sm w-100" type="submit">Add</button>
-                                            </form>
+                                            </div>
                                         </div>
-                                    </t>
+
+                                        <hr class="my-2" style="opacity: 0.1;"/>
+
+                                        <!-- Weight/Size Filter -->
+                                        <div class="moyee-filter-group">
+                                            <div class="moyee-filter-title" data-bs-toggle="collapse" data-bs-target="#filterWeight">
+                                                <span>WEIGHT</span>
+                                                <i class="fa fa-chevron-up"></i>
+                                            </div>
+                                            <div id="filterWeight" class="collapse show">
+                                                <div class="moyee-filter-options">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input moyee-filter-check" type="checkbox" value="1kg" id="weight1kg"/>
+                                                        <label class="form-check-label" for="weight1kg">1 kg</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input moyee-filter-check" type="checkbox" value="250g" id="weight250g"/>
+                                                        <label class="form-check-label" for="weight250g">250 gram</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input moyee-filter-check" type="checkbox" value="25caps" id="weight25caps"/>
+                                                        <label class="form-check-label" for="weight25caps">25 Capsules</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <hr class="my-2" style="opacity: 0.1;"/>
+
+                                        <!-- Price Filter -->
+                                        <div class="moyee-filter-group">
+                                            <div class="moyee-filter-title" data-bs-toggle="collapse" data-bs-target="#filterPrice">
+                                                <span>PRICE</span>
+                                                <i class="fa fa-chevron-up"></i>
+                                            </div>
+                                            <div id="filterPrice" class="collapse show">
+                                                <div class="moyee-price-range-wrap py-2">
+                                                    <div class="d-flex justify-content-between mb-2">
+                                                        <span class="small fw-bold">€ <span id="priceMinLabel"><t t-esc="'%.2f' % min_price"/></span></span>
+                                                        <span class="small fw-bold">€ <span id="priceMaxLabel"><t t-esc="'%.2f' % max_price"/></span></span>
+                                                    </div>
+                                                    <input type="range" class="form-range moyee-price-slider" id="priceRange" 
+                                                           t-att-min="min_price" t-att-max="max_price" step="0.5" t-att-value="max_price"/>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+
+                                <!-- Slider Area -->
+                                <div class="col-12 col-md-9">
+                                    <p class="text-muted small mb-3">
+                                        Click "Add" on a product to add it to your subscription.
+                                    </p>
+                                    <div class="moyee-product-slider-wrap">
+                                        <div class="moyee-product-slider" id="moyeeProductSlider">
+                                            <t t-foreach="available_products" t-as="p">
+                                                <!-- Metadata for JS filtering -->
+                                                <t t-set="p_meta" t-value="order._moyee_extract_product_metadata(p)"/>
+                                                <div class="moyee-slider-card js_moyee_product_card" 
+                                                     t-att-data-grind="p_meta[0]" 
+                                                     t-att-data-weight="p_meta[1]" 
+                                                     t-att-data-price="p.lst_price">
+                                                    <!-- Product image -->
+                                                    <div class="moyee-slider-img">
+                                                        <img t-att-src="'/web/image/product.product/%s/image_256' % p.id"
+                                                             t-att-alt="p.with_context(display_default_code=False).display_name"
+                                                             loading="lazy"/>
+                                                    </div>
+                                                    <!-- Name -->
+                                                    <div class="moyee-slider-name">
+                                                        <t t-esc="p.with_context(display_default_code=False).display_name"/>
+                                                    </div>
+                                                    <!-- Price -->
+                                                    <div class="moyee-slider-price">
+                                                        <t t-esc="'€ %.2f' % (p.lst_price or 0.0)"/>
+                                                    </div>
+                                                    <!-- Add form -->
+                                                    <form t-attf-action="/my/subscriptions/{{ order.id }}/add_product"
+                                                          method="post" class="moyee-slider-form">
+                                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                        <input type="hidden" name="product_id" t-att-value="p.id"/>
+                                                        <div class="d-flex align-items-center gap-1 mb-2">
+                                                            <label class="moyee-label mb-0" style="white-space:nowrap;">Qty</label>
+                                                            <input class="form-control form-control-sm moyee-input text-center"
+                                                                   name="qty" type="number" step="1" min="1" value="1"
+                                                                   style="width:60px;"/>
+                                                        </div>
+                                                        <button class="btn btn-primary btn-sm w-100" type="submit">Add</button>
+                                                    </form>
+                                                </div>
+                                            </t>
+                                        </div>
+                                        <!-- No results message -->
+                                        <div id="moyeeNoResults" class="text-center py-4 d-none">
+                                            <div class="text-muted">No products match your filters.</div>
+                                            <button class="btn btn-link btn-sm mt-2" id="clearMoyeeFilters">Clear all filters</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </t>
