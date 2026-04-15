@@ -136,6 +136,10 @@ class SaleOrder(models.Model):
         if "tag_ids" in Template._fields:
             domain.append(("product_tmpl_id.tag_ids.name", "ilike", "Subscription"))
 
+        # Exclude internal/delivery/non-coffee products
+        domain.append(("name", "not ilike", "delivery"))
+        domain.append(("name", "not ilike", "rent"))
+
         products = Product.search(domain, order="name, id", limit=200)
 
         # Enhance products with filter metadata (Grind, Weight)
