@@ -67,15 +67,20 @@ class SaleOrder(models.Model):
     # ============================================================
     # Portal security helpers
     # ============================================================
-    def _moyee_portal_check_access(self, *, portal_user=None, require_subscription=True):
+    def _moyee_portal_check_access(self, *, portal_user=None, access_token=None, require_subscription=True):
         self.ensure_one()
         portal_user = portal_user or self.env.user
+
+        # 1. Token-based access (shared links)
+        if access_token and self.access_token and access_token == self.access_token:
+            return True
 
         # Employees are allowed
         if portal_user.has_group("base.group_user"):
             return True
 
         if portal_user._is_public():
+            # If public and token failed/missing, they must login
             raise AccessError(_("You must be logged in to manage subscriptions."))
 
         if require_subscription and not self.is_subscription_order:

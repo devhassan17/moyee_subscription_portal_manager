@@ -16,13 +16,13 @@ class MoyeeSubscriptionPortal(http.Controller):
     # ------------------------------------------------------------
     # Security helpers
     # ------------------------------------------------------------
-    def _moyee_get_order_sudo(self, order_id, *, require_subscription=True):
+    def _moyee_get_order_sudo(self, order_id, *, access_token=None, require_subscription=True):
         order = request.env["sale.order"].sudo().browse(int(order_id)).exists()
         if not order:
             raise NotFound()
 
         try:
-            order._moyee_portal_check_access(require_subscription=require_subscription)
+            order._moyee_portal_check_access(access_token=access_token, require_subscription=require_subscription)
         except AccessError:
             raise NotFound()
         return order
