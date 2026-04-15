@@ -186,7 +186,7 @@
                 </div>
 
                 <!-- PRODUCTS IN SUBSCRIPTION -->
-                <div class="moyee-section mb-3">
+                <div class="moyee-section moyee-section-current mb-3">
                     <div class="moyee-section-header">
                         <span>Products in subscription</span>
                     </div>
@@ -259,7 +259,7 @@
                 </div>
 
                 <!-- ADD PRODUCTS — filters + slider -->
-                <div class="moyee-section mb-3">
+                <div class="moyee-section moyee-section-add mb-3">
                     <div class="moyee-section-header">
                         <span>Add products</span>
                     </div>
@@ -330,23 +330,6 @@
 
                                         <hr class="my-2" style="opacity: 0.1;"/>
 
-                                        <!-- Price Filter -->
-                                        <div class="moyee-filter-group">
-                                            <div class="moyee-filter-title" data-bs-toggle="collapse" data-bs-target="#filterPrice">
-                                                <span>PRICE</span>
-                                                <i class="fa fa-chevron-up"></i>
-                                            </div>
-                                            <div id="filterPrice" class="collapse show">
-                                                <div class="moyee-price-range-wrap py-2">
-                                                    <div class="d-flex justify-content-between mb-2">
-                                                        <span class="small fw-bold">€ <span id="priceMinLabel"><t t-esc="'%.2f' % min_price"/></span></span>
-                                                        <span class="small fw-bold">€ <span id="priceMaxLabel"><t t-esc="'%.2f' % max_price"/></span></span>
-                                                    </div>
-                                                    <input type="range" class="form-range moyee-price-slider" id="priceRange" 
-                                                           t-att-min="min_price" t-att-max="max_price" step="0.5" t-att-value="max_price"/>
-                                                </div>
-                                            </div>
-                                        </div>
 
                                     </div>
                                 </div>
@@ -408,7 +391,7 @@
                 </div>
 
                 <!-- ADDRESSES -->
-                <div class="moyee-section mb-3">
+                <div class="moyee-section moyee-section-addresses mb-3">
                     <div class="moyee-section-header">
                         <span>Addresses</span>
                     </div>
