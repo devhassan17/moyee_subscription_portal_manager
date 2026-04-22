@@ -308,7 +308,22 @@ class SaleOrder(models.Model):
     def _moyee_set_subscription_paused_state(self, paused=True):
         self.ensure_one()
 
-        # 1) method-based
+        # ✅ 1) PRIORITY: Direct subscription_state field write (Odoo 18 Enterprise)
+        #    Odoo 18 uses: 3_progress (active), 4_paused (paused)
+        if "subscription_state" in self._fields:
+            current = self.subscription_state or ""
+            if paused and current != "4_paused":
+                self.sudo().write({"subscription_state": "4_paused"})
+                return True
+            elif not paused and current == "4_paused":
+                self.sudo().write({"subscription_state": "3_progress"})
+                return True
+            elif paused and current == "4_paused":
+                return True  # already paused
+            elif not paused and current != "4_paused":
+                return True  # already active
+
+        # 2) method-based fallback (other Odoo builds)
         if paused:
             for m in ("action_pause", "action_suspend", "action_subscription_pause", "action_set_to_pause"):
                 if hasattr(self, m):
@@ -320,7 +335,7 @@ class SaleOrder(models.Model):
                     getattr(self.sudo(), m)()
                     return True
 
-        # 2) stage-based
+        # 3) stage-based fallback
         for stage_field in ("subscription_stage_id", "stage_id"):
             if stage_field in self._fields:
                 Stage = self.env[self._fields[stage_field].comodel_name].sudo()
@@ -343,7 +358,7 @@ class SaleOrder(models.Model):
                     self.sudo().write({stage_field: target.id})
                     return True
 
-        # 3) selection field transitions
+        # 4) generic selection field fallback
         def _set_selection(field_name):
             if field_name not in self._fields:
                 return False
@@ -362,17 +377,15 @@ class SaleOrder(models.Model):
                 return None
 
             if paused:
-                key = _pick(("paused", "pause", "suspended", "suspend", "hold"))
+                key = _pick(("4_paused", "paused", "pause", "suspended", "suspend", "hold"))
             else:
-                key = _pick(("in_progress", "progress", "running", "active", "open"))
+                key = _pick(("3_progress", "in_progress", "progress", "running", "active", "open"))
 
             if key:
                 self.sudo().write({field_name: key})
                 return True
             return False
 
-        if _set_selection("subscription_state"):
-            return True
         if _set_selection("subscription_status"):
             return True
 
@@ -528,6 +541,51 @@ class SaleOrder(models.Model):
         self.sudo().write(vals)
         self.with_user(1).message_post(
             body=_("Moyee: customer updated full addresses via portal."),
+            subtype_xmlid="mail.mt_note",
+            author_id=portal_user.partner_id.id,
+        )
+        return True
+
+    # ============================================================
+    # Update line quantity (portal)
+    # ============================================================
+    def moyee_portal_update_line_qty(self, *, portal_user_id, line_id, qty):
+        self.ensure_one()
+        portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
+        if not portal_user:
+            raise AccessError(_("Invalid user."))
+
+        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
+
+        line = self.env["sale.order.line"].sudo().browse(int(line_id)).exists()
+        if not line or line.order_id.id != self.id:
+            raise ValidationError(_("Invalid subscription line."))
+
+        if line.display_type or line.x_moyee_is_removed:
+            raise UserError(_("This line cannot be updated."))
+
+        try:
+            qty = float(qty or 0.0)
+        except Exception:
+            qty = 0.0
+        if qty <= 0:
+            raise ValidationError(_("Quantity must be greater than 0."))
+
+        # Respect delivery constraint: never go below delivered qty
+        delivered = float(line.qty_delivered or 0.0)
+        if qty < delivered:
+            raise UserError(
+                _("Quantity cannot be less than the already delivered amount (%s).") % delivered
+            )
+
+        old_qty = line.product_uom_qty
+        line.sudo().write({"product_uom_qty": qty})
+
+        product_label = line.product_id.display_name if line.product_id else (line.name or _("(no product)"))
+        self.with_user(1).message_post(
+            body=_("Moyee: customer changed quantity via portal — %s: %s → %s.") % (
+                product_label, old_qty, qty
+            ),
             subtype_xmlid="mail.mt_note",
             author_id=portal_user.partner_id.id,
         )

@@ -7,6 +7,7 @@ publicWidget.registry.MoyeeProductFilter = publicWidget.Widget.extend({
     events: {
         'change .moyee-filter-check': '_onFilterChange',
         'click #clearMoyeeFilters': '_onClearFilters',
+        'change #moyeeSameAsShipping': '_onSameAsShipping',
     },
 
     /**
@@ -32,6 +33,37 @@ publicWidget.registry.MoyeeProductFilter = publicWidget.Widget.extend({
         ev.preventDefault();
         this.$(".moyee-filter-check").prop("checked", false);
         this._applyFilters();
+    },
+
+    _onSameAsShipping: function (ev) {
+        const checked = $(ev.currentTarget).is(":checked");
+        const $invSection = this.$("#moyeeInvAddress");
+        const $invToggleBtn = this.$("[data-bs-target='#moyeeInvAddress']");
+
+        if (checked) {
+            // Copy shipping values to invoice fields
+            const fieldMap = {
+                'ship_name': 'inv_name',
+                'ship_phone': 'inv_phone',
+                'ship_street': 'inv_street',
+                'ship_street2': 'inv_street2',
+                'ship_city': 'inv_city',
+                'ship_zip': 'inv_zip',
+                'ship_country_id': 'inv_country_id',
+            };
+
+            for (const [shipField, invField] of Object.entries(fieldMap)) {
+                const shipVal = this.$(`[name='${shipField}']`).val();
+                this.$(`[name='${invField}']`).val(shipVal);
+            }
+
+            // Collapse the invoice section & disable fields
+            $invSection.collapse("hide");
+            $invToggleBtn.text("Invoice address = Shipping address ✓").addClass("btn-success").removeClass("btn-light");
+        } else {
+            // Re-enable and show invoice fields
+            $invToggleBtn.text("Manage invoice address ▾").removeClass("btn-success").addClass("btn-light");
+        }
     },
 
     // --------------------------------------------------------------------------

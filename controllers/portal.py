@@ -133,15 +133,18 @@ class MoyeeSubscriptionPortal(http.Controller):
 
         countries = request.env["res.country"].sudo().search([], order="name, id")
 
-        # Detect paused state — check subscription_state or subscription_status
+        # Detect paused state — Odoo 18 uses subscription_state = '4_paused'
         is_paused = False
-        PAUSED_STATES = {"paused", "pause", "suspended", "suspend", "hold", "2_paused", "on_hold"}
-        for sfield in ("subscription_state", "subscription_status"):
-            if sfield in order._fields and order[sfield]:
-                sval = str(order[sfield]).lower()
-                if sval in PAUSED_STATES or any(p in sval for p in ("pause", "suspend", "hold")):
-                    is_paused = True
-                    break
+        if "subscription_state" in order._fields and order.subscription_state == "4_paused":
+            is_paused = True
+        else:
+            PAUSED_STATES = {"paused", "pause", "suspended", "suspend", "hold", "2_paused", "on_hold"}
+            for sfield in ("subscription_state", "subscription_status"):
+                if sfield in order._fields and order[sfield]:
+                    sval = str(order[sfield]).lower()
+                    if sval in PAUSED_STATES or any(p in sval for p in ("pause", "suspend", "hold")):
+                        is_paused = True
+                        break
 
         # Price filters
         prices = available_products.mapped("lst_price") or [0.0]
@@ -204,18 +207,22 @@ class MoyeeSubscriptionPortal(http.Controller):
     def moyee_change_address(self, order_id, access_token=None, **post):
         order = self._moyee_get_order_sudo(order_id, access_token=access_token, require_subscription=True)
         try:
-            order.moyee_portal_change_address_full(
-                portal_user_id=request.env.user.id,
-                shipping_vals={
-                    "name": (post.get("ship_name") or "").strip(),
-                    "phone": (post.get("ship_phone") or "").strip(),
-                    "street": (post.get("ship_street") or "").strip(),
-                    "street2": (post.get("ship_street2") or "").strip(),
-                    "city": (post.get("ship_city") or "").strip(),
-                    "zip": (post.get("ship_zip") or "").strip(),
-                    "country_id": int(post.get("ship_country_id") or 0) or False,
-                },
-                invoice_vals={
+            shipping_vals = {
+                "name": (post.get("ship_name") or "").strip(),
+                "phone": (post.get("ship_phone") or "").strip(),
+                "street": (post.get("ship_street") or "").strip(),
+                "street2": (post.get("ship_street2") or "").strip(),
+                "city": (post.get("ship_city") or "").strip(),
+                "zip": (post.get("ship_zip") or "").strip(),
+                "country_id": int(post.get("ship_country_id") or 0) or False,
+            }
+
+            # If "same as shipping" is checked, copy shipping vals to invoice vals
+            same_as_shipping = post.get("same_as_shipping") == "1"
+            if same_as_shipping:
+                invoice_vals = dict(shipping_vals)
+            else:
+                invoice_vals = {
                     "name": (post.get("inv_name") or "").strip(),
                     "phone": (post.get("inv_phone") or "").strip(),
                     "street": (post.get("inv_street") or "").strip(),
@@ -223,7 +230,12 @@ class MoyeeSubscriptionPortal(http.Controller):
                     "city": (post.get("inv_city") or "").strip(),
                     "zip": (post.get("inv_zip") or "").strip(),
                     "country_id": int(post.get("inv_country_id") or 0) or False,
-                },
+                }
+
+            order.moyee_portal_change_address_full(
+                portal_user_id=request.env.user.id,
+                shipping_vals=shipping_vals,
+                invoice_vals=invoice_vals,
             )
         except (AccessError, UserError, ValidationError, ValueError) as e:
             return self._moyee_redirect_back(order, error=str(e), access_token=access_token)
@@ -294,6 +306,30 @@ class MoyeeSubscriptionPortal(http.Controller):
         except (AccessError, UserError, ValidationError) as e:
             return self._moyee_redirect_back(order, error=str(e), access_token=access_token)
         return self._moyee_redirect_back(order, message=_("Product removed from subscription."), access_token=access_token)
+
+    @http.route(
+        [
+            "/my/subscriptions/<int:order_id>/line/<int:line_id>/update_qty",
+            "/my/subscription/<int:order_id>/line/<int:line_id>/update_qty",
+        ],
+        type="http",
+        auth="public",
+        website=True,
+        methods=["POST"],
+        csrf=True,
+    )
+    def moyee_update_line_qty(self, order_id, line_id, access_token=None, **post):
+        order = self._moyee_get_order_sudo(order_id, access_token=access_token, require_subscription=True)
+        try:
+            qty = float(post.get("qty") or 0.0)
+            order.moyee_portal_update_line_qty(
+                portal_user_id=request.env.user.id,
+                line_id=line_id,
+                qty=qty,
+            )
+        except (AccessError, UserError, ValidationError, ValueError) as e:
+            return self._moyee_redirect_back(order, error=str(e), access_token=access_token)
+        return self._moyee_redirect_back(order, message=_("Quantity updated successfully."), access_token=access_token)
 
     @http.route(
         [

@@ -65,8 +65,13 @@ class SaleOrderLine(models.Model):
 
     def _moyee_soft_remove_vals(self, removed_by_user_id, reason=None, now=None):
         now = now or fields.Datetime.now()
+        # Use max(qty_delivered, 0) to avoid Odoo constraint:
+        # "The ordered quantity cannot be decreased below the amount already delivered."
+        # The x_moyee_is_removed flag is what really controls exclusion from
+        # future invoices, reports, and portal visibility.
+        safe_qty = max(float(self.qty_delivered or 0.0), 0.0)
         vals = {
-            "product_uom_qty": 0.0,
+            "product_uom_qty": safe_qty,
             "x_moyee_is_removed": True,
             "x_moyee_removed_on": now,
             "x_moyee_removed_by": removed_by_user_id,

@@ -44,10 +44,21 @@
     <template id="portal_subscription_manage" name="Moyee Subscription Manager">
         <t t-call="portal.portal_layout">
 
-            <t t-set="breadcrumbs_searchbar" t-value="True"/>
-            <t t-call="portal.portal_searchbar">
-                <t t-set="title">Manage Subscription</t>
-            </t>
+            <!-- Custom breadcrumbs: Home > Subscriptions > [Order Name] > Manage -->
+            <div class="o_portal_submenu">
+                <div class="container">
+                    <ol class="breadcrumb px-0 mb-0 py-2">
+                        <li class="breadcrumb-item"><a href="/my/home">Home</a></li>
+                        <li class="breadcrumb-item"><a href="/my/subscriptions">Subscriptions</a></li>
+                        <li class="breadcrumb-item">
+                            <a t-attf-href="/my/subscriptions/{{ order.id }}">
+                                <t t-esc="order.name"/>
+                            </a>
+                        </li>
+                        <li class="breadcrumb-item active">Manage</li>
+                    </ol>
+                </div>
+            </div>
 
             <div class="container o_portal_wrap my-4">
 
@@ -138,31 +149,31 @@
                                     </div>
                                 </t>
                                 <t t-else="">
-                                    <form t-attf-action="/my/subscriptions/{{ order.id }}/change_interval"
-                                          method="post" class="row g-3 align-items-end">
-                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-
+                                    <div class="row g-3 align-items-end">
                                         <div class="col-12 col-md-5">
-                                            <label class="form-label moyee-label">Current plan</label>
-                                            <select class="form-select moyee-input" name="plan_id" required="required">
-                                                <t t-foreach="available_plans" t-as="pl">
-                                                    <option t-att-value="pl.id"
-                                                            t-att-selected="current_plan_id and current_plan_id == pl.id">
-                                                        <t t-esc="pl.display_name"/>
-                                                    </option>
-                                                </t>
-                                            </select>
+                                            <form t-attf-id="form_interval_{{order.id}}" t-attf-action="/my/subscriptions/{{ order.id }}/change_interval" method="post" class="mb-0">
+                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                <label class="form-label moyee-label">Current plan</label>
+                                                <select class="form-select moyee-input" name="plan_id" required="required">
+                                                    <t t-foreach="available_plans" t-as="pl">
+                                                        <option t-att-value="pl.id"
+                                                                t-att-selected="current_plan_id and current_plan_id == pl.id">
+                                                            <t t-esc="pl.display_name"/>
+                                                        </option>
+                                                    </t>
+                                                </select>
+                                            </form>
                                         </div>
 
                                         <!-- Update plan + Pause/Resume inline -->
                                         <div class="col-12 col-md-7 d-flex align-items-end gap-2">
-                                            <button class="btn btn-primary" type="submit">Update plan</button>
+                                            <button class="btn btn-primary" type="submit" t-attf-form="form_interval_{{order.id}}">Update plan</button>
 
                                             <div class="vr mx-1 align-self-center" style="height:2em;opacity:.25;"></div>
 
                                             <!-- Show Pause only when subscription is active -->
                                             <t t-if="not is_paused">
-                                                <form t-attf-action="/my/subscriptions/{{ order.id }}/pause" method="post" class="d-inline">
+                                                <form t-attf-action="/my/subscriptions/{{ order.id }}/pause" method="post" class="d-inline mb-0">
                                                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                                     <button class="btn btn-warning" type="submit">Pause</button>
                                                 </form>
@@ -170,13 +181,13 @@
 
                                             <!-- Show Resume only when subscription is paused -->
                                             <t t-if="is_paused">
-                                                <form t-attf-action="/my/subscriptions/{{ order.id }}/resume" method="post" class="d-inline">
+                                                <form t-attf-action="/my/subscriptions/{{ order.id }}/resume" method="post" class="d-inline mb-0">
                                                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                                     <button class="btn btn-success" type="submit">Resume</button>
                                                 </form>
                                             </t>
                                         </div>
-                                    </form>
+                                    </div>
                                 </t>
 
                             </div>
@@ -225,13 +236,24 @@
                                                            t-att-value="line.product_id.with_context(display_default_code=False).display_name or line.name"/>
                                                 </div>
 
-                                                <!-- Qty -->
+                                                <!-- Qty (editable) -->
                                                 <div class="moyee-qty">
-                                                    <label class="form-label moyee-label">Quantity</label>
-                                                    <input class="form-control moyee-input text-center"
-                                                           type="text"
-                                                           readonly="readonly"
-                                                           t-att-value="line.product_uom_qty"/>
+                                                    <form t-attf-action="/my/subscriptions/{{ order.id }}/line/{{ line.id }}/update_qty"
+                                                          method="post" class="d-flex flex-column">
+                                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                        <label class="form-label moyee-label">Quantity</label>
+                                                        <div class="d-flex align-items-center gap-1">
+                                                            <input class="form-control moyee-input text-center"
+                                                                   name="qty" type="number" step="1" min="1"
+                                                                   t-att-value="int(line.product_uom_qty)"
+                                                                   style="width: 70px;"/>
+                                                            <button class="btn btn-sm btn-outline-primary" type="submit"
+                                                                    title="Update quantity"
+                                                                    style="border-radius: 8px; padding: 4px 8px;">
+                                                                ✓
+                                                            </button>
+                                                        </div>
+                                                    </form>
                                                 </div>
 
                                                 <!-- Remove -->
@@ -467,6 +489,18 @@
                                         </div>
 
                                     </div>
+                                </div>
+                            </div>
+
+                            <!-- Same as shipping checkbox -->
+                            <div class="col-12 mt-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox"
+                                           name="same_as_shipping" value="1"
+                                           id="moyeeSameAsShipping"/>
+                                    <label class="form-check-label fw-bold" for="moyeeSameAsShipping">
+                                        Use same address for invoicing
+                                    </label>
                                 </div>
                             </div>
 
