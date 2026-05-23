@@ -320,8 +320,9 @@
                                     You don't have any orders yet.
                                     <a href="/shop" style="color:var(--moyee-pink);font-weight:700;">Start shopping →</a>
                                 </div>
-                            </div>
-                        </t>
+                            </t>
+                        </div>
+                    </t>
 
                         <!-- ══════════ INVOICES ══════════ -->
                         <t t-if="not moyee_config or moyee_config.get('show_invoices', True)">

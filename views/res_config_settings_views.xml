@@ -11,6 +11,20 @@
             <xpath expr="//form" position="inside">
                 <app string="Moyee Portal Settings" name="moyee_subscription_portal_manager">
                     
+                    <block title="General Configuration" name="moyee_general_block">
+                        <div class="row mt16 o_settings_container">
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane">
+                                    <field name="moyee_enable_portal_redesign"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_enable_portal_redesign"/>
+                                    <div class="text-muted">Toggle the Moyee premium account portal redesign. If turned off, Odoo's default layout and styling will be restored.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </block>
+
                     <block title="Portal Styling Overrides" name="moyee_styling_block">
                         <div class="row mt16 o_settings_container">
                             <div class="col-12 col-lg-6 o_setting_box">

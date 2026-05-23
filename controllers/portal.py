@@ -151,6 +151,12 @@ class MoyeePortalHome(CustomerPortal):
 
     @http.route(["/my", "/my/home"], type="http", auth="user", website=True)
     def home(self, **kw):
+        # Check if custom redesign is enabled
+        ICP = request.env["ir.config_parameter"].sudo()
+        enable_redesign = ICP.get_param("moyee_subscription_portal_manager.enable_portal_redesign", "True").lower() in ("true", "1", "yes")
+        if not enable_redesign:
+            return super().home(**kw)
+
         values = self._prepare_portal_layout_values()
         home_values = self._prepare_home_portal_values(counters=set(), **kw)
         values.update(home_values)

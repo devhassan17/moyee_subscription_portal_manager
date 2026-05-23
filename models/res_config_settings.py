@@ -5,6 +5,13 @@ from odoo import fields, models
 class ResConfigSettings(models.TransientModel):
     _inherit = "res.config.settings"
 
+    # Master Toggle
+    moyee_enable_portal_redesign = fields.Boolean(
+        string="Enable Moyee Custom Portal Redesign",
+        config_parameter="moyee_subscription_portal_manager.enable_portal_redesign",
+        default=True,
+    )
+
     # Styling Overrides
     moyee_primary_color = fields.Char(
         string="Primary Color",
