@@ -1,0 +1,97 @@
+# File: moyee_subscription_portal_manager/models/res_config_settings.py
+from odoo import fields, models
+
+
+class ResConfigSettings(models.TransientModel):
+    _inherit = "res.config.settings"
+
+    # Styling Overrides
+    moyee_primary_color = fields.Char(
+        string="Primary Color",
+        config_parameter="moyee_subscription_portal_manager.primary_color",
+        default="#E91E8C",
+    )
+    moyee_secondary_color = fields.Char(
+        string="Secondary Color (Light Accent)",
+        config_parameter="moyee_subscription_portal_manager.secondary_color",
+        default="#FCE4F3",
+    )
+    moyee_font_family = fields.Selection(
+        [
+            ("Inter", "Inter"),
+            ("Roboto", "Roboto"),
+            ("Outfit", "Outfit"),
+            ("Montserrat", "Montserrat"),
+            ("Open Sans", "Open Sans"),
+            ("system-ui", "System Default"),
+        ],
+        string="Font Family",
+        config_parameter="moyee_subscription_portal_manager.font_family",
+        default="system-ui",
+    )
+
+    # Visibility Controls
+    moyee_show_subscription = fields.Boolean(
+        string="Show Subscription Section",
+        config_parameter="moyee_subscription_portal_manager.show_subscription",
+        default=True,
+    )
+    moyee_show_overview = fields.Boolean(
+        string="Show Overview Section",
+        config_parameter="moyee_subscription_portal_manager.show_overview",
+        default=True,
+    )
+    moyee_show_orders = fields.Boolean(
+        string="Show Orders Section",
+        config_parameter="moyee_subscription_portal_manager.show_orders",
+        default=True,
+    )
+    moyee_show_invoices = fields.Boolean(
+        string="Show Invoices Section",
+        config_parameter="moyee_subscription_portal_manager.show_invoices",
+        default=True,
+    )
+    moyee_show_faq = fields.Boolean(
+        string="Show FAQ Section",
+        config_parameter="moyee_subscription_portal_manager.show_faq",
+        default=True,
+    )
+    moyee_show_inspire = fields.Boolean(
+        string="Show Inspire Section",
+        config_parameter="moyee_subscription_portal_manager.show_inspire",
+        default=True,
+    )
+    moyee_show_taf = fields.Boolean(
+        string="Show Tell a Friend Card",
+        config_parameter="moyee_subscription_portal_manager.show_taf",
+        default=True,
+    )
+
+    # Sidebar Visibility Controls
+    moyee_show_sidebar_profile = fields.Boolean(
+        string="Show Profile Card",
+        config_parameter="moyee_subscription_portal_manager.show_sidebar_profile",
+        default=True,
+    )
+    moyee_show_sidebar_upsell = fields.Boolean(
+        string="Show Upsell Card (Non-Subscribers)",
+        config_parameter="moyee_subscription_portal_manager.show_sidebar_upsell",
+        default=True,
+    )
+    moyee_show_sidebar_support = fields.Boolean(
+        string="Show Support Card",
+        config_parameter="moyee_subscription_portal_manager.show_sidebar_support",
+        default=True,
+    )
+
+    # Content Overrides
+    moyee_upsell_cta_url = fields.Char(
+        string="Upsell CTA URL",
+        config_parameter="moyee_subscription_portal_manager.upsell_cta_url",
+        default="/shop",
+    )
+    moyee_support_email = fields.Char(
+        string="Support Email",
+        config_parameter="moyee_subscription_portal_manager.support_email",
+        default="hello@moyeecoffee.com",
+    )

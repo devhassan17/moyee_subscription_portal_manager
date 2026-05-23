@@ -106,6 +106,31 @@ class MoyeePortalHome(CustomerPortal):
         moyee_home_message = kw.get("moyee_message", "")
         moyee_home_error = kw.get("moyee_error", "")
 
+        # Fetch configuration parameters
+        ICP = request.env["ir.config_parameter"].sudo()
+
+        def _get_bool(param_name, default=True):
+            val = ICP.get_param(param_name, str(default))
+            return val.lower() in ("true", "1", "yes")
+
+        moyee_config = {
+            "primary_color": ICP.get_param("moyee_subscription_portal_manager.primary_color", "#E91E8C"),
+            "secondary_color": ICP.get_param("moyee_subscription_portal_manager.secondary_color", "#FCE4F3"),
+            "font_family": ICP.get_param("moyee_subscription_portal_manager.font_family", "system-ui"),
+            "show_subscription": _get_bool("moyee_subscription_portal_manager.show_subscription", True),
+            "show_overview": _get_bool("moyee_subscription_portal_manager.show_overview", True),
+            "show_orders": _get_bool("moyee_subscription_portal_manager.show_orders", True),
+            "show_invoices": _get_bool("moyee_subscription_portal_manager.show_invoices", True),
+            "show_faq": _get_bool("moyee_subscription_portal_manager.show_faq", True),
+            "show_inspire": _get_bool("moyee_subscription_portal_manager.show_inspire", True),
+            "show_taf": _get_bool("moyee_subscription_portal_manager.show_taf", True),
+            "show_sidebar_profile": _get_bool("moyee_subscription_portal_manager.show_sidebar_profile", True),
+            "show_sidebar_upsell": _get_bool("moyee_subscription_portal_manager.show_sidebar_upsell", True),
+            "show_sidebar_support": _get_bool("moyee_subscription_portal_manager.show_sidebar_support", True),
+            "upsell_cta_url": ICP.get_param("moyee_subscription_portal_manager.upsell_cta_url", "/shop"),
+            "support_email": ICP.get_param("moyee_subscription_portal_manager.support_email", "hello@moyeecoffee.com"),
+        }
+
         values.update({
             "partner": partner,
             "has_subscription": has_subscription,
@@ -120,6 +145,7 @@ class MoyeePortalHome(CustomerPortal):
             "recent_invoices": recent_invoices,
             "moyee_home_message": moyee_home_message,
             "moyee_home_error": moyee_home_error,
+            "moyee_config": moyee_config,
         })
         return values
 

@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- File: moyee_subscription_portal_manager/views/res_config_settings_views.xml -->
+<odoo>
+
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.moyee</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="100"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app string="Moyee Portal Settings" name="moyee_subscription_portal_manager">
+                    
+                    <block title="Portal Styling Overrides" name="moyee_styling_block">
+                        <div class="row mt16 o_settings_container">
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_primary_color"/>
+                                    <div class="text-muted">Set the primary theme color for buttons, active states, etc.</div>
+                                    <field name="moyee_primary_color" widget="color"/>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_secondary_color"/>
+                                    <div class="text-muted">Set the background highlight/accent color (used for banners and friend invitation card).</div>
+                                    <field name="moyee_secondary_color" widget="color"/>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_font_family"/>
+                                    <div class="text-muted">Set the custom Google Font family for the portal home.</div>
+                                    <field name="moyee_font_family"/>
+                                </div>
+                            </div>
+                        </div>
+                    </block>
+
+                    <block title="Portal Visibility Controls" name="moyee_visibility_block">
+                        <div class="row mt16 o_settings_container">
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane">
+                                    <field name="moyee_show_subscription"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_show_subscription"/>
+                                    <div class="text-muted">Show active subscription details card.</div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane">
+                                    <field name="moyee_show_overview"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_show_overview"/>
+                                    <div class="text-muted">Show quick-scroll grid navigation.</div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane">
+                                    <field name="moyee_show_orders"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_show_orders"/>
+                                    <div class="text-muted">Show recent orders section.</div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane">
+                                    <field name="moyee_show_invoices"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_show_invoices"/>
+                                    <div class="text-muted">Show recent invoices section.</div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane">
+                                    <field name="moyee_show_faq"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_show_faq"/>
+                                    <div class="text-muted">Show dynamic FAQ section.</div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane">
+                                    <field name="moyee_show_inspire"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_show_inspire"/>
+                                    <div class="text-muted">Show Ethiopian Coffee Story inspiration section.</div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane">
+                                    <field name="moyee_show_taf"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_show_taf"/>
+                                    <div class="text-muted">Show Tell-a-Friend recommendation form.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </block>
+
+                    <block title="Sidebar Widget Visibility" name="moyee_sidebar_block">
+                        <div class="row mt16 o_settings_container">
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane">
+                                    <field name="moyee_show_sidebar_profile"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_show_sidebar_profile"/>
+                                    <div class="text-muted">Show partner profile contact details in sidebar.</div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane">
+                                    <field name="moyee_show_sidebar_upsell"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_show_sidebar_upsell"/>
+                                    <div class="text-muted">Show subscription upsell card for non-subscribers in sidebar.</div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane">
+                                    <field name="moyee_show_sidebar_support"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_show_sidebar_support"/>
+                                    <div class="text-muted">Show support resource link list in sidebar.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </block>
+
+                    <block title="Dynamic Content Customizations" name="moyee_content_block">
+                        <div class="row mt16 o_settings_container">
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_upsell_cta_url"/>
+                                    <div class="text-muted">Destination link for "Explore Subscriptions" buttons (e.g. /shop).</div>
+                                    <field name="moyee_upsell_cta_url"/>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_support_email"/>
+                                    <div class="text-muted">Primary support/hello contact email.</div>
+                                    <field name="moyee_support_email"/>
+                                </div>
+                            </div>
+                        </div>
+                    </block>
+
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Settings Menu & Action -->
+    <record id="action_moyee_portal_settings" model="ir.actions.act_window">
+        <field name="name">Moyee Portal Customization</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+        <field name="context">{'module': 'moyee_subscription_portal_manager', 'status': 1}</field>
+    </record>
+
+    <menuitem id="menu_moyee_portal_root"
+              name="Moyee Portal"
+              sequence="10"/>
+
+    <menuitem id="menu_moyee_portal_settings"
+              name="Configuration"
+              parent="menu_moyee_portal_root"
+              action="action_moyee_portal_settings"
+              sequence="100"/>
+
+</odoo>

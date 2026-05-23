@@ -17,6 +17,27 @@
 
             <div class="moyee-account-page">
 
+                <!-- ══ Styling Overrides from Backend Settings ══ -->
+                <t t-if="moyee_config">
+                    <!-- Google Fonts Loader if customized -->
+                    <t t-if="moyee_config.get('font_family') and moyee_config['font_family'] != 'system-ui'">
+                        <link rel="preconnect" href="https://fonts.googleapis.com"/>
+                        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="crossorigin"/>
+                        <link t-attf-href="https://fonts.googleapis.com/css2?family={{ moyee_config['font_family'].replace(' ', '+') }}:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+                    </t>
+                    <style>
+                        :root {
+                            <t t-if="moyee_config.get('primary_color')">--moyee-pink: <t t-esc="moyee_config['primary_color']"/> !important;</t>
+                            <t t-if="moyee_config.get('secondary_color')">--moyee-pink-lt: <t t-esc="moyee_config['secondary_color']"/> !important;</t>
+                        }
+                        <t t-if="moyee_config.get('font_family') and moyee_config['font_family'] != 'system-ui'">
+                            .moyee-account-page, .moyee-page-title, .moyee-section-title, .moyee-btn, .moyee-abo-prod-name, .moyee-nav-card-title, .moyee-upsell-title, .moyee-profile-name, .moyee-taf-title, .moyee-inspire-title {
+                                font-family: "<t t-esc="moyee_config['font_family']"/>", sans-serif !important;
+                            }
+                        </t>
+                    </style>
+                </t>
+
                 <!-- ══ Flash messages ══ -->
                 <t t-if="moyee_home_message">
                     <div class="moyee-alert moyee-alert-success" style="max-width:1100px;margin:16px auto 0;padding:12px 24px;">
@@ -44,7 +65,7 @@
                         </p>
 
                         <!-- ══════════ SUBSCRIPTION SECTION (only if user has one) ══════════ -->
-                        <t t-if="has_subscription and active_subscription">
+                        <t t-if="has_subscription and active_subscription and (not moyee_config or moyee_config.get('show_subscription', True))">
                             <div id="moyee-section-subscription">
                                 <div class="moyee-section-title mt-0">
                                     <span>My subscription</span>
@@ -176,40 +197,43 @@
                         </t>
 
                         <!-- ══════════ OVERVIEW NAV CARDS ══════════ -->
-                        <div id="moyee-section-overview">
-                            <div class="moyee-section-title" t-att-style="'margin-top:10px' if has_subscription else 'margin-top:0'">
-                                My overview
+                        <t t-if="not moyee_config or moyee_config.get('show_overview', True)">
+                            <div id="moyee-section-overview">
+                                <div class="moyee-section-title" t-att-style="'margin-top:10px' if has_subscription else 'margin-top:0'">
+                                    My overview
+                                </div>
+                                <div class="moyee-card-grid">
+                                    <a href="#" class="moyee-nav-card" data-moyee-scroll="moyee-section-orders">
+                                        <div>
+                                            <div class="moyee-nav-card-title">My orders</div>
+                                            <div class="moyee-nav-card-desc">View your order history or reorder</div>
+                                        </div>
+                                    </a>
+                                    <a href="#" class="moyee-nav-card" data-moyee-scroll="moyee-section-invoices">
+                                        <div>
+                                            <div class="moyee-nav-card-title">Invoices</div>
+                                            <div class="moyee-nav-card-desc">View or download your invoices</div>
+                                        </div>
+                                    </a>
+                                    <a href="/contactus" class="moyee-nav-card">
+                                        <div>
+                                            <div class="moyee-nav-card-title">Support</div>
+                                            <div class="moyee-nav-card-desc">Submit a question or view your messages</div>
+                                        </div>
+                                    </a>
+                                    <a href="#" class="moyee-nav-card" data-moyee-scroll="moyee-section-details">
+                                        <div>
+                                            <div class="moyee-nav-card-title">Account settings</div>
+                                            <div class="moyee-nav-card-desc">Address, password and payment method</div>
+                                        </div>
+                                    </a>
+                                </div>
                             </div>
-                            <div class="moyee-card-grid">
-                                <a href="#" class="moyee-nav-card" data-moyee-scroll="moyee-section-orders">
-                                    <div>
-                                        <div class="moyee-nav-card-title">My orders</div>
-                                        <div class="moyee-nav-card-desc">View your order history or reorder</div>
-                                    </div>
-                                </a>
-                                <a href="#" class="moyee-nav-card" data-moyee-scroll="moyee-section-invoices">
-                                    <div>
-                                        <div class="moyee-nav-card-title">Invoices</div>
-                                        <div class="moyee-nav-card-desc">View or download your invoices</div>
-                                    </div>
-                                </a>
-                                <a href="/contactus" class="moyee-nav-card">
-                                    <div>
-                                        <div class="moyee-nav-card-title">Support</div>
-                                        <div class="moyee-nav-card-desc">Submit a question or view your messages</div>
-                                    </div>
-                                </a>
-                                <a href="#" class="moyee-nav-card" data-moyee-scroll="moyee-section-details">
-                                    <div>
-                                        <div class="moyee-nav-card-title">Account settings</div>
-                                        <div class="moyee-nav-card-desc">Address, password and payment method</div>
-                                    </div>
-                                </a>
-                            </div>
-                        </div>
+                        </t>
 
                         <!-- ══════════ ORDERS ══════════ -->
-                        <div id="moyee-section-orders">
+                        <t t-if="not moyee_config or moyee_config.get('show_orders', True)">
+                            <div id="moyee-section-orders">
                             <div class="moyee-section-title">My orders</div>
                             <t t-if="recent_orders">
                                 <div class="moyee-order-list">
@@ -296,11 +320,12 @@
                                     You don't have any orders yet.
                                     <a href="/shop" style="color:var(--moyee-pink);font-weight:700;">Start shopping →</a>
                                 </div>
-                            </t>
-                        </div>
+                            </div>
+                        </t>
 
                         <!-- ══════════ INVOICES ══════════ -->
-                        <div id="moyee-section-invoices">
+                        <t t-if="not moyee_config or moyee_config.get('show_invoices', True)">
+                            <div id="moyee-section-invoices">
                             <div class="moyee-section-title">My invoices</div>
                             <t t-if="recent_invoices">
                                 <div class="moyee-invoice-list">
@@ -369,6 +394,7 @@
                                 </div>
                             </t>
                         </div>
+                    </t>
 
                         <!-- ══════════ PERSONAL DETAILS ══════════ -->
                         <div id="moyee-section-details">
@@ -419,7 +445,8 @@
                         </div>
 
                         <!-- ══════════ FAQ ══════════ -->
-                        <div id="moyee-section-faq">
+                        <t t-if="not moyee_config or moyee_config.get('show_faq', True)">
+                            <div id="moyee-section-faq">
                             <div class="moyee-section-title">Frequently asked questions</div>
                             <div class="moyee-faq-list">
                                 <div class="moyee-faq-item open">
@@ -468,35 +495,40 @@
                                 </div>
                             </div>
                         </div>
+                    </t>
 
                         <!-- ══════════ INSPIRE + TELL A FRIEND ══════════ -->
-                        <div id="moyee-section-extra">
-                            <div class="moyee-inspire-section">
-                                <div class="moyee-inspire-eyebrow">Do you know where your coffee comes from?</div>
-                                <div class="moyee-inspire-title">Your coffee comes from Ethiopia</div>
-                                <div class="moyee-inspire-body">
-                                    Your Moyee coffee comes from small farmers in the Kaffa forest in Ethiopia.
-                                    They receive a fair price — thanks to you.
+                        <div id="moyee-section-extra" t-if="(not moyee_config or moyee_config.get('show_inspire', True)) or (not moyee_config or moyee_config.get('show_taf', True))">
+                            <t t-if="not moyee_config or moyee_config.get('show_inspire', True)">
+                                <div class="moyee-inspire-section">
+                                    <div class="moyee-inspire-eyebrow">Do you know where your coffee comes from?</div>
+                                    <div class="moyee-inspire-title">Your coffee comes from Ethiopia</div>
+                                    <div class="moyee-inspire-body">
+                                        Your Moyee coffee comes from small farmers in the Kaffa forest in Ethiopia.
+                                        They receive a fair price — thanks to you.
+                                    </div>
+                                    <div class="moyee-inspire-actions">
+                                        <a href="/radical-impact-coffee" class="moyee-btn moyee-btn-white">Read the story</a>
+                                        <a t-att-href="moyee_config.get('upsell_cta_url', '/shop')" class="moyee-btn moyee-btn-outline-white">Browse our coffee</a>
+                                    </div>
                                 </div>
-                                <div class="moyee-inspire-actions">
-                                    <a href="/radical-impact-coffee" class="moyee-btn moyee-btn-white">Read the story</a>
-                                    <a href="/shop" class="moyee-btn moyee-btn-outline-white">Browse our coffee</a>
+                            </t>
+                            <t t-if="not moyee_config or moyee_config.get('show_taf', True)">
+                                <div class="moyee-taf-card">
+                                    <div class="moyee-taf-title">Tell a friend about Moyee</div>
+                                    <div class="moyee-taf-body">
+                                        Share the love for fair coffee. Send a friend an invitation and
+                                        give them 10% off their first order.
+                                    </div>
+                                    <div class="moyee-taf-input-row">
+                                        <input type="email" class="moyee-taf-input" placeholder="Your friend's email"/>
+                                        <button class="moyee-btn moyee-btn-primary moyee-taf-send">Send invitation</button>
+                                    </div>
+                                    <div class="moyee-taf-success" style="display:none;margin-top:10px;font-size:13px;color:#2E7D32;font-weight:600;">
+                                        ✓ Invitation sent!
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="moyee-taf-card">
-                                <div class="moyee-taf-title">Tell a friend about Moyee</div>
-                                <div class="moyee-taf-body">
-                                    Share the love for fair coffee. Send a friend an invitation and
-                                    give them 10% off their first order.
-                                </div>
-                                <div class="moyee-taf-input-row">
-                                    <input type="email" class="moyee-taf-input" placeholder="Your friend's email"/>
-                                    <button class="moyee-btn moyee-btn-primary moyee-taf-send">Send invitation</button>
-                                </div>
-                                <div class="moyee-taf-success" style="display:none;margin-top:10px;font-size:13px;color:#2E7D32;font-weight:600;">
-                                    ✓ Invitation sent!
-                                </div>
-                            </div>
+                            </t>
                         </div>
 
                     </main>
@@ -505,7 +537,8 @@
                     <aside>
 
                         <!-- Profile card -->
-                        <div class="moyee-profile-card">
+                        <t t-if="not moyee_config or moyee_config.get('show_sidebar_profile', True)">
+                            <div class="moyee-profile-card">
                             <div class="moyee-profile-name"><t t-esc="partner.name or '-'"/></div>
                             <div class="moyee-profile-company">
                                 <t t-if="partner.parent_id" t-esc="partner.parent_id.name"/>
@@ -530,7 +563,7 @@
                         </div>
 
                         <!-- Upsell card (only for non-subscribers) -->
-                        <t t-if="not has_subscription">
+                        <t t-if="not has_subscription and (not moyee_config or moyee_config.get('show_sidebar_upsell', True))">
                             <div class="moyee-upsell-card">
                                 <div class="moyee-upsell-title">Start a subscription</div>
                                 <div class="moyee-upsell-subtitle">
@@ -569,12 +602,16 @@
                         </t>
 
                         <!-- Support card -->
-                        <div class="moyee-support-card">
-                            <div class="moyee-support-title">Need help?</div>
-                            <a href="/contactus" class="moyee-support-link">Ask a question</a>
-                            <a href="mailto:hello@moyeecoffee.com" class="moyee-support-link">hello@moyeecoffee.com</a>
-                            <a href="#" class="moyee-support-link" data-moyee-scroll="moyee-section-faq">View all FAQs</a>
-                        </div>
+                        <t t-if="not moyee_config or moyee_config.get('show_sidebar_support', True)">
+                            <div class="moyee-support-card">
+                                <div class="moyee-support-title">Need help?</div>
+                                <a href="/contactus" class="moyee-support-link">Ask a question</a>
+                                <a t-attf-href="mailto:{{ moyee_config.get('support_email', 'hello@moyeecoffee.com') }}" class="moyee-support-link">
+                                    <t t-esc="moyee_config.get('support_email', 'hello@moyeecoffee.com')"/>
+                                </a>
+                                <a href="#" class="moyee-support-link" data-moyee-scroll="moyee-section-faq">View all FAQs</a>
+                            </div>
+                        </t>
 
                     </aside>
 
