@@ -3,11 +3,123 @@ import logging
 from urllib.parse import urlencode
 
 from odoo import _, http
+from odoo.addons.portal.controllers.portal import CustomerPortal
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.http import request
 from werkzeug.exceptions import NotFound
 
 _logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# My Account page (/my/home) data provider
+# ============================================================
+class MoyeePortalHome(CustomerPortal):
+    """Extend /my/home to provide subscription, orders, invoices, partner data."""
+
+    def _prepare_home_portal_values(self, counters=None, **kw):
+        values = super()._prepare_home_portal_values(counters=counters, **kw)
+
+        partner = request.env.user.partner_id
+        commercial = partner.commercial_partner_id
+
+        # ── Active subscription ──
+        SaleOrder = request.env["sale.order"].sudo()
+        active_subscription = False
+        has_subscription = False
+        visible_lines = False
+        next_date_value = False
+        current_plan_display = ""
+        current_plan_id = False
+        is_paused = False
+        available_plans = SaleOrder.browse()
+
+        # Find the user's active subscription order
+        sub_domain = [
+            ("partner_id.commercial_partner_id", "=", commercial.id),
+            ("state", "in", ("sale", "done")),
+        ]
+        # Odoo 18: subscription_state in active states
+        if "subscription_state" in SaleOrder._fields:
+            sub_domain.append(("subscription_state", "in", ("3_progress", "4_paused", "2_renewal")))
+        elif "is_subscription" in SaleOrder._fields:
+            sub_domain.append(("is_subscription", "=", True))
+
+        subscriptions = SaleOrder.search(sub_domain, order="id desc", limit=5)
+        if subscriptions:
+            active_subscription = subscriptions[0]
+            has_subscription = True
+
+            # Visible lines (exclude removed & delivery)
+            visible_lines = active_subscription.order_line.filtered(
+                lambda l: (
+                    l.display_type
+                    or (
+                        not l.x_moyee_is_removed
+                        and float(l.product_uom_qty or 0.0) > 0.0
+                    )
+                )
+            )
+
+            # Next date
+            next_date_field = active_subscription._moyee_get_subscription_next_date_field_name()
+            if next_date_field:
+                next_date_value = active_subscription[next_date_field]
+
+            # Plan info
+            plan_field_name = False
+            if hasattr(active_subscription, "_moyee_get_recurring_plan_field_name"):
+                plan_field_name = active_subscription._moyee_get_recurring_plan_field_name()
+            if plan_field_name and plan_field_name in active_subscription._fields and active_subscription[plan_field_name]:
+                current_plan_id = active_subscription[plan_field_name].id
+                current_plan_display = active_subscription[plan_field_name].display_name
+
+            # Available plans
+            try:
+                available_plans = active_subscription._moyee_get_portal_changeable_plans()
+            except Exception:
+                available_plans = SaleOrder.browse()
+
+            # Paused state
+            if "subscription_state" in active_subscription._fields and active_subscription.subscription_state == "4_paused":
+                is_paused = True
+
+        # ── Recent orders ──
+        order_domain = [
+            ("partner_id.commercial_partner_id", "=", commercial.id),
+            ("state", "in", ("sale", "done", "cancel")),
+        ]
+        recent_orders = SaleOrder.search(order_domain, order="date_order desc, id desc", limit=15)
+
+        # ── Recent invoices ──
+        AccountMove = request.env["account.move"].sudo()
+        inv_domain = [
+            ("partner_id.commercial_partner_id", "=", commercial.id),
+            ("move_type", "in", ("out_invoice", "out_refund")),
+            ("state", "=", "posted"),
+        ]
+        recent_invoices = AccountMove.search(inv_domain, order="invoice_date desc, id desc", limit=10)
+
+        # ── Flash messages from redirect ──
+        moyee_home_message = kw.get("moyee_message", "")
+        moyee_home_error = kw.get("moyee_error", "")
+
+        values.update({
+            "partner": partner,
+            "has_subscription": has_subscription,
+            "active_subscription": active_subscription,
+            "visible_lines": visible_lines,
+            "next_date_value": next_date_value,
+            "current_plan_display": current_plan_display,
+            "current_plan_id": current_plan_id,
+            "is_paused": is_paused,
+            "available_plans": available_plans,
+            "recent_orders": recent_orders,
+            "recent_invoices": recent_invoices,
+            "moyee_home_message": moyee_home_message,
+            "moyee_home_error": moyee_home_error,
+        })
+        return values
 
 
 class MoyeeSubscriptionPortal(http.Controller):

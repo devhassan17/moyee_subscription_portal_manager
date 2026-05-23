@@ -1,0 +1,656 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- File: moyee_subscription_portal_manager/views/portal_my_account_templates.xml -->
+<odoo>
+
+    <!-- =========================================================
+         Override /my/home portal page with Moyee account design.
+         Two variants:
+           - WITH subscription: subscription card + actions
+           - WITHOUT subscription: upsell CTA in sidebar
+         ========================================================= -->
+    <template id="portal_my_home_moyee"
+              inherit_id="portal.portal_my_home"
+              name="Moyee My Account Page">
+
+        <!-- Replace the entire content area -->
+        <xpath expr="//div[hasclass('o_portal_my_home')]" position="replace">
+            <div class="moyee-account-page">
+
+                <!-- ══ Flash messages ══ -->
+                <t t-if="moyee_home_message">
+                    <div class="moyee-alert moyee-alert-success" style="max-width:1100px;margin:16px auto 0;padding:12px 24px;">
+                        <span>✓</span> <t t-esc="moyee_home_message"/>
+                    </div>
+                </t>
+                <t t-if="moyee_home_error">
+                    <div class="moyee-alert moyee-alert-error" style="max-width:1100px;margin:16px auto 0;padding:12px 24px;">
+                        <span>✕</span> <t t-esc="moyee_home_error"/>
+                    </div>
+                </t>
+
+                <div class="moyee-page-wrap">
+
+                    <!-- ══════════════════════════ MAIN ══════════════════════════ -->
+                    <main>
+
+                        <!-- ── Page title ── -->
+                        <h1 class="moyee-page-title">
+                            Hi <t t-esc="partner.name.split(' ')[0] if partner and partner.name else 'there'"/>,<br/>
+                            Welcome back!
+                        </h1>
+                        <p class="moyee-page-subtitle">
+                            Below you'll find your subscription, orders, invoices and account settings.
+                        </p>
+
+                        <!-- ══════════ SUBSCRIPTION SECTION (only if user has one) ══════════ -->
+                        <t t-if="has_subscription and active_subscription">
+                            <div id="moyee-section-subscription">
+                                <div class="moyee-section-title mt-0">
+                                    <span>My subscription</span>
+                                    <span t-if="not is_paused" class="moyee-abo-status-badge moyee-abo-status-active">✓ Active</span>
+                                    <span t-if="is_paused" class="moyee-abo-status-badge moyee-abo-status-paused">⏸ Paused</span>
+                                </div>
+
+                                <!-- Delivery banner -->
+                                <t t-if="next_date_value and not is_paused">
+                                    <div class="moyee-levering-banner">
+                                        <span class="moyee-levering-banner-icon">📦</span>
+                                        <span class="moyee-levering-banner-text">
+                                            Your next delivery is scheduled for
+                                            <strong><t t-esc="next_date_value.strftime('%d %B %Y') if next_date_value else ''"/></strong>.
+                                        </span>
+                                        <a href="#" data-moyee-modal="moyee-modal-delivery">Change →</a>
+                                    </div>
+                                </t>
+                                <t t-if="is_paused">
+                                    <div class="moyee-levering-banner" style="background:#FFF3E0;border-color:#FFE0B2;">
+                                        <span class="moyee-levering-banner-icon">⏸</span>
+                                        <span class="moyee-levering-banner-text">
+                                            Your subscription is currently <strong style="color:#E65100;">paused</strong>.
+                                            Resume anytime to receive your next delivery.
+                                        </span>
+                                    </div>
+                                </t>
+
+                                <!-- Subscription card -->
+                                <div class="moyee-abo-card">
+
+                                    <!-- Product table -->
+                                    <table class="moyee-abo-table">
+                                        <thead class="moyee-abo-table-head">
+                                            <tr>
+                                                <th></th>
+                                                <th>Coffee</th>
+                                                <th>Grind</th>
+                                                <th>Amount</th>
+                                                <th>Price</th>
+                                                <th style="width:72px;"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-foreach="visible_lines" t-as="line">
+                                                <t t-if="not line.display_type">
+                                                    <t t-set="lname_check" t-value="(line.product_id.with_context(display_default_code=False).display_name or line.name or '').lower()"/>
+                                                    <t t-if="'delivery' not in lname_check">
+                                                        <tr class="moyee-abo-prod-row">
+                                                            <td>
+                                                                <div class="moyee-abo-prod-photo">
+                                                                    <img t-att-src="'/web/image/product.product/%s/image_128' % line.product_id.id"
+                                                                         alt="Product"
+                                                                         loading="lazy"/>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <div class="moyee-abo-prod-name">
+                                                                    <t t-esc="line.product_id.with_context(display_default_code=False).display_name or line.name"/>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <t t-esc="line.product_id.with_context(display_default_code=False).display_name or '-'"/>
+                                                            </td>
+                                                            <td>
+                                                                <t t-esc="'%g' % line.product_uom_qty"/>
+                                                                <t t-if="line.product_uom" t-esc="line.product_uom.name"/>
+                                                            </td>
+                                                            <td style="font-weight:700">
+                                                                € <t t-esc="'%.2f' % line.price_subtotal"/>
+                                                            </td>
+                                                            <td class="moyee-abo-td-actions">
+                                                                <div>
+                                                                    <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/line/{{ line.id }}/remove"
+                                                                          method="post" style="display:inline">
+                                                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                                        <input type="hidden" name="reason" value="Removed by customer from My Account"/>
+                                                                        <button class="moyee-abo-icon-btn moyee-delete"
+                                                                                type="submit"
+                                                                                title="Remove"
+                                                                                onclick="return confirm('Remove this product from your subscription?');">🗑️</button>
+                                                                    </form>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    </t>
+                                                </t>
+                                            </t>
+                                        </tbody>
+                                    </table>
+
+                                    <!-- Totals -->
+                                    <div style="border-top:1px solid var(--moyee-gray-2);margin-top:4px;padding-top:4px;">
+                                        <div style="display:flex;align-items:center;padding:12px 0 6px;font-size:16px;font-weight:800;">
+                                            <span>Total</span>
+                                            <span style="margin-left:auto;">€ <t t-esc="'%.2f' % active_subscription.amount_total"/></span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Frequency -->
+                                    <div style="border-top:1px solid var(--moyee-gray-2);padding:14px 0 4px;display:flex;align-items:center;gap:12px;">
+                                        <span class="moyee-abo-freq-label">Frequency</span>
+                                        <span class="moyee-abo-freq-val">
+                                            <t t-if="current_plan_display" t-esc="current_plan_display"/>
+                                            <t t-else="">—</t>
+                                        </span>
+                                        <div style="margin-left:auto;">
+                                            <a href="#" class="moyee-abo-icon-btn" data-moyee-modal="moyee-modal-frequency" title="Change frequency">✏️</a>
+                                        </div>
+                                    </div>
+
+                                    <!-- Actions -->
+                                    <div class="moyee-abo-actions" style="margin-top:12px;">
+                                        <a t-attf-href="/my/subscriptions/{{ active_subscription.id }}/moyee/manage"
+                                           class="moyee-btn moyee-btn-primary">
+                                            Manage subscription
+                                        </a>
+                                        <t t-if="not is_paused">
+                                            <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/pause"
+                                                  method="post" style="display:inline">
+                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                <button class="moyee-btn moyee-btn-outline" type="submit"
+                                                        onclick="return confirm('Are you sure you want to pause your subscription?');">
+                                                    Pause
+                                                </button>
+                                            </form>
+                                        </t>
+                                        <t t-if="is_paused">
+                                            <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/resume"
+                                                  method="post" style="display:inline">
+                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                <button class="moyee-btn moyee-btn-primary" type="submit"
+                                                        style="background:#2E7D32;">
+                                                    Resume subscription
+                                                </button>
+                                            </form>
+                                        </t>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </t>
+
+                        <!-- ══════════ OVERVIEW NAV CARDS ══════════ -->
+                        <div id="moyee-section-overview">
+                            <div class="moyee-section-title" t-att-style="'margin-top:10px' if has_subscription else 'margin-top:0'">
+                                My overview
+                            </div>
+                            <div class="moyee-card-grid">
+                                <a href="#" class="moyee-nav-card" data-moyee-scroll="moyee-section-orders">
+                                    <div>
+                                        <div class="moyee-nav-card-title">My orders</div>
+                                        <div class="moyee-nav-card-desc">View your order history or reorder</div>
+                                    </div>
+                                </a>
+                                <a href="#" class="moyee-nav-card" data-moyee-scroll="moyee-section-invoices">
+                                    <div>
+                                        <div class="moyee-nav-card-title">Invoices</div>
+                                        <div class="moyee-nav-card-desc">View or download your invoices</div>
+                                    </div>
+                                </a>
+                                <a href="/my/tickets" class="moyee-nav-card">
+                                    <div>
+                                        <div class="moyee-nav-card-title">Support</div>
+                                        <div class="moyee-nav-card-desc">Submit a question or view your messages</div>
+                                    </div>
+                                </a>
+                                <a href="#" class="moyee-nav-card" data-moyee-scroll="moyee-section-details">
+                                    <div>
+                                        <div class="moyee-nav-card-title">Account settings</div>
+                                        <div class="moyee-nav-card-desc">Address, password and payment method</div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- ══════════ ORDERS ══════════ -->
+                        <div id="moyee-section-orders">
+                            <div class="moyee-section-title">My orders</div>
+                            <t t-if="recent_orders">
+                                <div class="moyee-order-list">
+                                    <t t-foreach="recent_orders[:5]" t-as="so">
+                                        <a t-attf-href="/my/orders/{{ so.id }}" class="moyee-order-row">
+                                            <div class="moyee-order-info">
+                                                <div class="moyee-order-coffee">
+                                                    <t t-if="so.is_subscription_order">
+                                                        <span class="moyee-order-type-tag moyee-type-abo">Subscription</span>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <span class="moyee-order-type-tag moyee-type-losse">One-time order</span>
+                                                    </t>
+                                                    <t t-esc="so.name"/>
+                                                </div>
+                                                <div class="moyee-order-meta">
+                                                    <t t-if="so.date_order">
+                                                        <t t-esc="so.date_order.strftime('%d %B %Y')"/>
+                                                    </t>
+                                                    ·
+                                                    <t t-esc="len(so.order_line.filtered(lambda l: not l.display_type))"/> items
+                                                </div>
+                                            </div>
+                                            <t t-set="so_state" t-value="so.state or ''"/>
+                                            <t t-if="so_state == 'sale'">
+                                                <span class="moyee-order-status moyee-status-processing">Confirmed</span>
+                                            </t>
+                                            <t t-elif="so_state == 'done'">
+                                                <span class="moyee-order-status moyee-status-delivered">Completed</span>
+                                            </t>
+                                            <t t-elif="so_state == 'cancel'">
+                                                <span class="moyee-order-status moyee-status-cancelled">Cancelled</span>
+                                            </t>
+                                            <t t-else="">
+                                                <span class="moyee-order-status moyee-status-upcoming">
+                                                    <t t-esc="so_state"/>
+                                                </span>
+                                            </t>
+                                            <div class="moyee-order-price">
+                                                € <t t-esc="'%.2f' % so.amount_total"/>
+                                            </div>
+                                        </a>
+                                    </t>
+
+                                    <!-- Extra orders (hidden by default) -->
+                                    <t t-if="len(recent_orders) > 5">
+                                        <div class="moyee-orders-extra" style="display:none;flex-direction:column;gap:10px;">
+                                            <t t-foreach="recent_orders[5:]" t-as="so">
+                                                <a t-attf-href="/my/orders/{{ so.id }}" class="moyee-order-row">
+                                                    <div class="moyee-order-info">
+                                                        <div class="moyee-order-coffee">
+                                                            <t t-if="so.is_subscription_order">
+                                                                <span class="moyee-order-type-tag moyee-type-abo">Subscription</span>
+                                                            </t>
+                                                            <t t-else="">
+                                                                <span class="moyee-order-type-tag moyee-type-losse">One-time order</span>
+                                                            </t>
+                                                            <t t-esc="so.name"/>
+                                                        </div>
+                                                        <div class="moyee-order-meta">
+                                                            <t t-if="so.date_order">
+                                                                <t t-esc="so.date_order.strftime('%d %B %Y')"/>
+                                                            </t>
+                                                            ·
+                                                            <t t-esc="len(so.order_line.filtered(lambda l: not l.display_type))"/> items
+                                                        </div>
+                                                    </div>
+                                                    <div class="moyee-order-price">
+                                                        € <t t-esc="'%.2f' % so.amount_total"/>
+                                                    </div>
+                                                </a>
+                                            </t>
+                                        </div>
+                                    </t>
+                                </div>
+                                <t t-if="len(recent_orders) > 5">
+                                    <div style="text-align:center;margin-top:12px;">
+                                        <button class="moyee-toggle-btn moyee-orders-toggle">View all orders ↓</button>
+                                    </div>
+                                </t>
+                            </t>
+                            <t t-else="">
+                                <div style="color:var(--moyee-text-sm);font-size:14px;padding:16px 0;">
+                                    You don't have any orders yet.
+                                    <a href="/shop" style="color:var(--moyee-pink);font-weight:700;">Start shopping →</a>
+                                </div>
+                            </t>
+                        </div>
+
+                        <!-- ══════════ INVOICES ══════════ -->
+                        <div id="moyee-section-invoices">
+                            <div class="moyee-section-title">My invoices</div>
+                            <t t-if="recent_invoices">
+                                <div class="moyee-invoice-list">
+                                    <t t-foreach="recent_invoices[:3]" t-as="inv">
+                                        <div class="moyee-invoice-row">
+                                            <div class="moyee-invoice-info">
+                                                <div class="moyee-invoice-name">
+                                                    <t t-esc="inv.name or 'Draft'"/>
+                                                </div>
+                                                <div class="moyee-invoice-meta">
+                                                    <t t-if="inv.invoice_date">
+                                                        <t t-esc="inv.invoice_date.strftime('%d %B %Y')"/>
+                                                    </t>
+                                                    · € <t t-esc="'%.2f' % inv.amount_total"/>
+                                                </div>
+                                            </div>
+                                            <t t-set="inv_state" t-value="inv.payment_state or ''"/>
+                                            <t t-if="inv_state == 'paid'">
+                                                <span class="moyee-invoice-status moyee-invoice-paid">Paid</span>
+                                            </t>
+                                            <t t-elif="inv_state == 'in_payment'">
+                                                <span class="moyee-invoice-status moyee-invoice-paid">In payment</span>
+                                            </t>
+                                            <t t-else="">
+                                                <span class="moyee-invoice-status moyee-invoice-open">Open</span>
+                                            </t>
+                                            <a t-attf-href="/my/invoices/{{ inv.id }}" class="moyee-invoice-download">
+                                                ⬇ PDF
+                                            </a>
+                                        </div>
+                                    </t>
+
+                                    <!-- Extra invoices (hidden by default) -->
+                                    <t t-if="len(recent_invoices) > 3">
+                                        <div class="moyee-invoices-extra" style="display:none;flex-direction:column;gap:10px;">
+                                            <t t-foreach="recent_invoices[3:]" t-as="inv">
+                                                <div class="moyee-invoice-row">
+                                                    <div class="moyee-invoice-info">
+                                                        <div class="moyee-invoice-name">
+                                                            <t t-esc="inv.name or 'Draft'"/>
+                                                        </div>
+                                                        <div class="moyee-invoice-meta">
+                                                            <t t-if="inv.invoice_date">
+                                                                <t t-esc="inv.invoice_date.strftime('%d %B %Y')"/>
+                                                            </t>
+                                                            · € <t t-esc="'%.2f' % inv.amount_total"/>
+                                                        </div>
+                                                    </div>
+                                                    <a t-attf-href="/my/invoices/{{ inv.id }}" class="moyee-invoice-download">
+                                                        ⬇ PDF
+                                                    </a>
+                                                </div>
+                                            </t>
+                                        </div>
+                                    </t>
+                                </div>
+                                <t t-if="len(recent_invoices) > 3">
+                                    <div style="text-align:center;margin-top:12px;">
+                                        <button class="moyee-toggle-btn moyee-invoices-toggle">View all invoices ↓</button>
+                                    </div>
+                                </t>
+                            </t>
+                            <t t-else="">
+                                <div style="color:var(--moyee-text-sm);font-size:14px;padding:16px 0;">
+                                    No invoices found.
+                                </div>
+                            </t>
+                        </div>
+
+                        <!-- ══════════ PERSONAL DETAILS ══════════ -->
+                        <div id="moyee-section-details">
+                            <div class="moyee-section-title">
+                                <span>Personal details</span>
+                                <a href="/my/account" class="moyee-edit-link">Edit</a>
+                            </div>
+                            <div class="moyee-gegevens-block">
+                                <div>
+                                    <div class="moyee-gegeven-label">Name</div>
+                                    <div class="moyee-gegeven-val"><t t-esc="partner.name or '-'"/></div>
+                                </div>
+                                <div>
+                                    <div class="moyee-gegeven-label">Company</div>
+                                    <div class="moyee-gegeven-val">
+                                        <t t-if="partner.parent_id" t-esc="partner.parent_id.name"/>
+                                        <t t-elif="partner.company_name" t-esc="partner.company_name"/>
+                                        <t t-else="">-</t>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="moyee-gegeven-label">Address</div>
+                                    <div class="moyee-gegeven-val">
+                                        <t t-if="partner.street" t-esc="partner.street"/>
+                                        <t t-if="partner.street2">, <t t-esc="partner.street2"/></t>
+                                        <t t-if="partner.zip or partner.city">
+                                            <br/>
+                                            <t t-if="partner.zip" t-esc="partner.zip"/>
+                                            <t t-if="partner.city"> <t t-esc="partner.city"/></t>
+                                        </t>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="moyee-gegeven-label">Phone</div>
+                                    <div class="moyee-gegeven-val"><t t-esc="partner.phone or partner.mobile or '-'"/></div>
+                                </div>
+                                <div>
+                                    <div class="moyee-gegeven-label">Email</div>
+                                    <div class="moyee-gegeven-val"><t t-esc="partner.email or '-'"/></div>
+                                </div>
+                                <div>
+                                    <div class="moyee-gegeven-label">Password</div>
+                                    <div class="moyee-gegeven-val">
+                                        <a href="/my/security" style="font-size:13px;color:var(--moyee-pink);">Change password →</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ══════════ FAQ ══════════ -->
+                        <div id="moyee-section-faq">
+                            <div class="moyee-section-title">Frequently asked questions</div>
+                            <div class="moyee-faq-list">
+                                <div class="moyee-faq-item open">
+                                    <div class="moyee-faq-q">
+                                        How can I repeat a previous order?
+                                        <span class="moyee-toggle">+</span>
+                                    </div>
+                                    <div class="moyee-faq-a">
+                                        Go to "My orders" above and click on a previous order.
+                                        From the order details page you can reorder the same products
+                                        with just one click.
+                                    </div>
+                                </div>
+                                <div class="moyee-faq-item">
+                                    <div class="moyee-faq-q">
+                                        What are the benefits of a subscription?
+                                        <span class="moyee-toggle">+</span>
+                                    </div>
+                                    <div class="moyee-faq-a">
+                                        With a subscription you'll never run out of coffee.
+                                        Automatically delivered, flexibly adjustable and at a fair
+                                        price for the farmer and you.
+                                    </div>
+                                </div>
+                                <div class="moyee-faq-item">
+                                    <div class="moyee-faq-q">
+                                        How do I change my delivery address?
+                                        <span class="moyee-toggle">+</span>
+                                    </div>
+                                    <div class="moyee-faq-a">
+                                        Click on "Edit" next to your personal details, or navigate
+                                        to your subscription management page to update the delivery
+                                        address specifically for your subscription.
+                                    </div>
+                                </div>
+                                <div class="moyee-faq-item">
+                                    <div class="moyee-faq-q">
+                                        What is the difference between the Moyee coffee types?
+                                        <span class="moyee-toggle">+</span>
+                                    </div>
+                                    <div class="moyee-faq-a">
+                                        Single (light, fruity), Double (full, balanced), Triple (complex, powerful),
+                                        Dark Roast (strong, ideal for espresso) and Microlot (limited, monthly rotation).
+                                        All FairChain — roasted in the country of origin.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ══════════ INSPIRE + TELL A FRIEND ══════════ -->
+                        <div id="moyee-section-extra">
+                            <div class="moyee-inspire-section">
+                                <div class="moyee-inspire-eyebrow">Do you know where your coffee comes from?</div>
+                                <div class="moyee-inspire-title">Your coffee comes from Ethiopia</div>
+                                <div class="moyee-inspire-body">
+                                    Your Moyee coffee comes from small farmers in the Kaffa forest in Ethiopia.
+                                    They receive a fair price — thanks to you.
+                                </div>
+                                <div class="moyee-inspire-actions">
+                                    <a href="/our-impact" class="moyee-btn moyee-btn-white">Read the story</a>
+                                    <a href="/shop" class="moyee-btn moyee-btn-outline-white">Browse our coffee</a>
+                                </div>
+                            </div>
+                            <div class="moyee-taf-card">
+                                <div class="moyee-taf-title">Tell a friend about Moyee</div>
+                                <div class="moyee-taf-body">
+                                    Share the love for fair coffee. Send a friend an invitation and
+                                    give them 10% off their first order.
+                                </div>
+                                <div class="moyee-taf-input-row">
+                                    <input type="email" class="moyee-taf-input" placeholder="Your friend's email"/>
+                                    <button class="moyee-btn moyee-btn-primary moyee-taf-send">Send invitation</button>
+                                </div>
+                                <div class="moyee-taf-success" style="display:none;margin-top:10px;font-size:13px;color:#2E7D32;font-weight:600;">
+                                    ✓ Invitation sent!
+                                </div>
+                            </div>
+                        </div>
+
+                    </main>
+
+                    <!-- ══════════════════════════ SIDEBAR ══════════════════════════ -->
+                    <aside>
+
+                        <!-- Profile card -->
+                        <div class="moyee-profile-card">
+                            <div class="moyee-profile-name"><t t-esc="partner.name or '-'"/></div>
+                            <div class="moyee-profile-company">
+                                <t t-if="partner.parent_id" t-esc="partner.parent_id.name"/>
+                                <t t-elif="partner.company_name" t-esc="partner.company_name"/>
+                            </div>
+                            <div class="moyee-profile-detail">
+                                <span>
+                                    <t t-if="partner.street" t-esc="partner.street"/>
+                                    <t t-if="partner.zip or partner.city">
+                                        , <t t-if="partner.zip" t-esc="partner.zip"/>
+                                        <t t-if="partner.city"> <t t-esc="partner.city"/></t>
+                                    </t>
+                                </span>
+                            </div>
+                            <div class="moyee-profile-detail">
+                                <span><t t-esc="partner.phone or partner.mobile or ''"/></span>
+                            </div>
+                            <div class="moyee-profile-detail">
+                                <span><t t-esc="partner.email or ''"/></span>
+                            </div>
+                            <a href="/my/account" class="moyee-profile-edit">Edit details</a>
+                        </div>
+
+                        <!-- Upsell card (only for non-subscribers) -->
+                        <t t-if="not has_subscription">
+                            <div class="moyee-upsell-card">
+                                <div class="moyee-upsell-title">Start a subscription</div>
+                                <div class="moyee-upsell-subtitle">
+                                    Never run out of coffee again. Save time, enjoy fair pricing,
+                                    and get your favorite blend delivered on schedule.
+                                </div>
+                                <div class="moyee-upsell-benefit">
+                                    <div class="moyee-upsell-benefit-icon">🔄</div>
+                                    <div>
+                                        <div class="moyee-upsell-benefit-label">Flexible</div>
+                                        <div class="moyee-upsell-benefit-text">
+                                            Change, pause or cancel your subscription at any time. No commitment.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="moyee-upsell-benefit">
+                                    <div class="moyee-upsell-benefit-icon">☕</div>
+                                    <div>
+                                        <div class="moyee-upsell-benefit-label">Fair coffee</div>
+                                        <div class="moyee-upsell-benefit-text">
+                                            Directly from Ethiopia, roasted at origin. FairChain, not just Fairtrade.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="moyee-upsell-benefit">
+                                    <div class="moyee-upsell-benefit-icon">📦</div>
+                                    <div>
+                                        <div class="moyee-upsell-benefit-label">Convenient</div>
+                                        <div class="moyee-upsell-benefit-text">
+                                            Automatic delivery every month, 2 months, or 3 months.
+                                        </div>
+                                    </div>
+                                </div>
+                                <a href="/shop" class="moyee-upsell-cta">Explore subscriptions →</a>
+                            </div>
+                        </t>
+
+                        <!-- Support card -->
+                        <div class="moyee-support-card">
+                            <div class="moyee-support-title">Need help?</div>
+                            <a href="/contactus" class="moyee-support-link">Ask a question</a>
+                            <a href="mailto:hello@moyeecoffee.com" class="moyee-support-link">hello@moyeecoffee.com</a>
+                            <a href="#" class="moyee-support-link" data-moyee-scroll="moyee-section-faq">View all FAQs</a>
+                        </div>
+
+                    </aside>
+
+                </div>
+
+                <!-- ══════════════════════════ MODALS ══════════════════════════ -->
+
+                <!-- Change delivery date modal -->
+                <t t-if="has_subscription and active_subscription">
+                    <div id="moyee-modal-delivery" class="moyee-modal-overlay">
+                        <div class="moyee-modal">
+                            <div class="moyee-modal-header">
+                                <div class="moyee-modal-title">Change delivery date</div>
+                                <button class="moyee-modal-close">✕</button>
+                            </div>
+                            <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/push_delivery_date"
+                                  method="post">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                <div class="moyee-modal-body">
+                                    <label class="moyee-modal-label">New delivery date</label>
+                                    <input class="moyee-modal-input" type="date" name="next_date"
+                                           t-att-value="next_date_value and next_date_value.strftime('%Y-%m-%d') or ''"/>
+                                </div>
+                                <div class="moyee-modal-footer">
+                                    <button type="submit" class="moyee-modal-save">Update date</button>
+                                    <button type="button" class="moyee-modal-cancel">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Change frequency modal -->
+                    <div id="moyee-modal-frequency" class="moyee-modal-overlay">
+                        <div class="moyee-modal">
+                            <div class="moyee-modal-header">
+                                <div class="moyee-modal-title">Change frequency</div>
+                                <button class="moyee-modal-close">✕</button>
+                            </div>
+                            <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/change_interval"
+                                  method="post">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                <div class="moyee-modal-body">
+                                    <label class="moyee-modal-label">Subscription plan</label>
+                                    <select class="moyee-modal-select" name="plan_id" required="required">
+                                        <t t-foreach="available_plans or []" t-as="pl">
+                                            <option t-att-value="pl.id"
+                                                    t-att-selected="current_plan_id and current_plan_id == pl.id">
+                                                <t t-esc="pl.display_name"/>
+                                            </option>
+                                        </t>
+                                    </select>
+                                </div>
+                                <div class="moyee-modal-footer">
+                                    <button type="submit" class="moyee-modal-save">Update plan</button>
+                                    <button type="button" class="moyee-modal-cancel">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </t>
+
+            </div><!-- /moyee-account-page -->
+        </xpath>
+
+    </template>
+
+</odoo>

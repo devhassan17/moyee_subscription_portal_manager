@@ -27,6 +27,7 @@ Portal + backend build:
         "security/ir.model.access.csv",
         "views/sale_order_views.xml",
         "views/portal_subscription_templates.xml",
+        "views/portal_my_account_templates.xml",
         "reports/report_invoice.xml",
     ],
     "assets": {
@@ -36,7 +37,9 @@ Portal + backend build:
         ],
         "web.assets_frontend": [
             "moyee_subscription_portal_manager/static/src/css/moyee_portal_subscription.css",
+            "moyee_subscription_portal_manager/static/src/css/moyee_my_account.css",
             "moyee_subscription_portal_manager/static/src/js/moyee_portal_filter.js",
+            "moyee_subscription_portal_manager/static/src/js/moyee_my_account.js",
         ],
     },
     "installable": True,
