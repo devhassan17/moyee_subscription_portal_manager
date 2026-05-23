@@ -18,7 +18,9 @@ class MoyeePortalHome(CustomerPortal):
     """Extend /my/home to provide subscription, orders, invoices, partner data."""
 
     def _prepare_home_portal_values(self, counters=None, **kw):
-        values = super()._prepare_home_portal_values(counters=counters, **kw)
+        if counters is None:
+            counters = set()
+        values = super()._prepare_home_portal_values(counters)
 
         partner = request.env.user.partner_id
         commercial = partner.commercial_partner_id
@@ -124,7 +126,7 @@ class MoyeePortalHome(CustomerPortal):
     @http.route(["/my", "/my/home"], type="http", auth="user", website=True)
     def home(self, **kw):
         values = self._prepare_portal_layout_values()
-        home_values = self._prepare_home_portal_values(counters=None, **kw)
+        home_values = self._prepare_home_portal_values(counters=set(), **kw)
         values.update(home_values)
         return request.render("moyee_subscription_portal_manager.portal_my_home_moyee", values)
 
