@@ -60,7 +60,7 @@
                                             Your next delivery is scheduled for
                                             <strong><t t-esc="next_date_value.strftime('%d %B %Y') if next_date_value else ''"/></strong>.
                                         </span>
-                                        <a href="#" data-moyee-modal="moyee-modal-delivery">Change →</a>
+                                        <a t-attf-href="/my/subscriptions/{{ active_subscription.id }}/moyee/manage">Change →</a>
                                     </div>
                                 </t>
                                 <t t-if="is_paused">
@@ -118,15 +118,9 @@
                                                             </td>
                                                             <td class="moyee-abo-td-actions">
                                                                 <div>
-                                                                    <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/line/{{ line.id }}/remove"
-                                                                          method="post" style="display:inline">
-                                                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                                                        <input type="hidden" name="reason" value="Removed by customer from My Account"/>
-                                                                        <button class="moyee-abo-icon-btn moyee-delete"
-                                                                                type="submit"
-                                                                                title="Remove"
-                                                                                onclick="return confirm('Remove this product from your subscription?');">🗑️</button>
-                                                                    </form>
+                                                                    <a t-attf-href="/my/subscriptions/{{ active_subscription.id }}/moyee/manage"
+                                                                       class="moyee-abo-icon-btn moyee-delete"
+                                                                       title="Remove">🗑️</a>
                                                                 </div>
                                                             </td>
                                                         </tr>
@@ -152,7 +146,7 @@
                                             <t t-else="">—</t>
                                         </span>
                                         <div style="margin-left:auto;">
-                                            <a href="#" class="moyee-abo-icon-btn" data-moyee-modal="moyee-modal-frequency" title="Change frequency">✏️</a>
+                                            <a t-attf-href="/my/subscriptions/{{ active_subscription.id }}/moyee/manage" class="moyee-abo-icon-btn" title="Change frequency">✏️</a>
                                         </div>
                                     </div>
 
@@ -163,24 +157,17 @@
                                             Manage subscription
                                         </a>
                                         <t t-if="not is_paused">
-                                            <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/pause"
-                                                  method="post" style="display:inline">
-                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                                <button class="moyee-btn moyee-btn-outline" type="submit"
-                                                        onclick="return confirm('Are you sure you want to pause your subscription?');">
-                                                    Pause
-                                                </button>
-                                            </form>
+                                            <a t-attf-href="/my/subscriptions/{{ active_subscription.id }}/moyee/manage"
+                                               class="moyee-btn moyee-btn-outline">
+                                                Pause
+                                            </a>
                                         </t>
                                         <t t-if="is_paused">
-                                            <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/resume"
-                                                  method="post" style="display:inline">
-                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                                <button class="moyee-btn moyee-btn-primary" type="submit"
-                                                        style="background:#2E7D32;">
-                                                    Resume subscription
-                                                </button>
-                                            </form>
+                                            <a t-attf-href="/my/subscriptions/{{ active_subscription.id }}/moyee/manage"
+                                               class="moyee-btn moyee-btn-primary"
+                                               style="background:#2E7D32;">
+                                                Resume subscription
+                                            </a>
                                         </t>
                                     </div>
 
@@ -593,61 +580,7 @@
 
                 </div>
 
-                <!-- ══════════════════════════ MODALS ══════════════════════════ -->
 
-                <!-- Change delivery date modal -->
-                <t t-if="has_subscription and active_subscription">
-                    <div id="moyee-modal-delivery" class="moyee-modal-overlay">
-                        <div class="moyee-modal">
-                            <div class="moyee-modal-header">
-                                <div class="moyee-modal-title">Change delivery date</div>
-                                <button class="moyee-modal-close">✕</button>
-                            </div>
-                            <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/push_delivery_date"
-                                  method="post">
-                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                <div class="moyee-modal-body">
-                                    <label class="moyee-modal-label">New delivery date</label>
-                                    <input class="moyee-modal-input" type="date" name="next_date"
-                                           t-att-value="next_date_value and next_date_value.strftime('%Y-%m-%d') or ''"/>
-                                </div>
-                                <div class="moyee-modal-footer">
-                                    <button type="submit" class="moyee-modal-save">Update date</button>
-                                    <button type="button" class="moyee-modal-cancel">Cancel</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-
-                    <!-- Change frequency modal -->
-                    <div id="moyee-modal-frequency" class="moyee-modal-overlay">
-                        <div class="moyee-modal">
-                            <div class="moyee-modal-header">
-                                <div class="moyee-modal-title">Change frequency</div>
-                                <button class="moyee-modal-close">✕</button>
-                            </div>
-                            <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/change_interval"
-                                  method="post">
-                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                <div class="moyee-modal-body">
-                                    <label class="moyee-modal-label">Subscription plan</label>
-                                    <select class="moyee-modal-select" name="plan_id" required="required">
-                                        <t t-foreach="available_plans or []" t-as="pl">
-                                            <option t-att-value="pl.id"
-                                                    t-att-selected="current_plan_id and current_plan_id == pl.id">
-                                                <t t-esc="pl.display_name"/>
-                                            </option>
-                                        </t>
-                                    </select>
-                                </div>
-                                <div class="moyee-modal-footer">
-                                    <button type="submit" class="moyee-modal-save">Update plan</button>
-                                    <button type="button" class="moyee-modal-cancel">Cancel</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </t>
 
             </div><!-- /moyee-account-page -->
 
