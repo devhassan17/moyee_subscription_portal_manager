@@ -121,6 +121,13 @@ class MoyeePortalHome(CustomerPortal):
         })
         return values
 
+    @http.route(["/my", "/my/home"], type="http", auth="user", website=True)
+    def home(self, **kw):
+        values = self._prepare_portal_layout_values()
+        home_values = self._prepare_home_portal_values(counters=None, **kw)
+        values.update(home_values)
+        return request.render("moyee_subscription_portal_manager.portal_my_home_moyee", values)
+
 
 class MoyeeSubscriptionPortal(http.Controller):
     """Portal-side subscription management (secure write-through controllers)."""

@@ -3,17 +3,18 @@
 <odoo>
 
     <!-- =========================================================
-         Override /my/home portal page with Moyee account design.
+         Standalone template for /my/home — Moyee account design.
+         Rendered via controller override (MoyeePortalHome.home).
+         Does NOT inherit portal.portal_my_home to avoid breaking
+         other modules' xpath targets.
+
          Two variants:
            - WITH subscription: subscription card + actions
            - WITHOUT subscription: upsell CTA in sidebar
          ========================================================= -->
-    <template id="portal_my_home_moyee"
-              inherit_id="portal.portal_my_home"
-              name="Moyee My Account Page">
+    <template id="portal_my_home_moyee" name="Moyee My Account Page">
+        <t t-call="portal.portal_layout">
 
-        <!-- Replace the entire content area -->
-        <xpath expr="//div[hasclass('o_portal_my_home')]" position="replace">
             <div class="moyee-account-page">
 
                 <!-- ══ Flash messages ══ -->
@@ -88,7 +89,7 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <t t-foreach="visible_lines" t-as="line">
+                                            <t t-foreach="visible_lines or []" t-as="line">
                                                 <t t-if="not line.display_type">
                                                     <t t-set="lname_check" t-value="(line.product_id.with_context(display_default_code=False).display_name or line.name or '').lower()"/>
                                                     <t t-if="'delivery' not in lname_check">
@@ -205,7 +206,7 @@
                                         <div class="moyee-nav-card-desc">View or download your invoices</div>
                                     </div>
                                 </a>
-                                <a href="/my/tickets" class="moyee-nav-card">
+                                <a href="/contactus" class="moyee-nav-card">
                                     <div>
                                         <div class="moyee-nav-card-title">Support</div>
                                         <div class="moyee-nav-card-desc">Submit a question or view your messages</div>
@@ -267,7 +268,7 @@
                                     </t>
 
                                     <!-- Extra orders (hidden by default) -->
-                                    <t t-if="len(recent_orders) > 5">
+                                    <t t-if="len(recent_orders) &gt; 5">
                                         <div class="moyee-orders-extra" style="display:none;flex-direction:column;gap:10px;">
                                             <t t-foreach="recent_orders[5:]" t-as="so">
                                                 <a t-attf-href="/my/orders/{{ so.id }}" class="moyee-order-row">
@@ -297,7 +298,7 @@
                                         </div>
                                     </t>
                                 </div>
-                                <t t-if="len(recent_orders) > 5">
+                                <t t-if="len(recent_orders) &gt; 5">
                                     <div style="text-align:center;margin-top:12px;">
                                         <button class="moyee-toggle-btn moyee-orders-toggle">View all orders ↓</button>
                                     </div>
@@ -346,7 +347,7 @@
                                     </t>
 
                                     <!-- Extra invoices (hidden by default) -->
-                                    <t t-if="len(recent_invoices) > 3">
+                                    <t t-if="len(recent_invoices) &gt; 3">
                                         <div class="moyee-invoices-extra" style="display:none;flex-direction:column;gap:10px;">
                                             <t t-foreach="recent_invoices[3:]" t-as="inv">
                                                 <div class="moyee-invoice-row">
@@ -369,7 +370,7 @@
                                         </div>
                                     </t>
                                 </div>
-                                <t t-if="len(recent_invoices) > 3">
+                                <t t-if="len(recent_invoices) &gt; 3">
                                     <div style="text-align:center;margin-top:12px;">
                                         <button class="moyee-toggle-btn moyee-invoices-toggle">View all invoices ↓</button>
                                     </div>
@@ -491,7 +492,7 @@
                                     They receive a fair price — thanks to you.
                                 </div>
                                 <div class="moyee-inspire-actions">
-                                    <a href="/our-impact" class="moyee-btn moyee-btn-white">Read the story</a>
+                                    <a href="/radical-impact-coffee" class="moyee-btn moyee-btn-white">Read the story</a>
                                     <a href="/shop" class="moyee-btn moyee-btn-outline-white">Browse our coffee</a>
                                 </div>
                             </div>
@@ -649,8 +650,8 @@
                 </t>
 
             </div><!-- /moyee-account-page -->
-        </xpath>
 
+        </t>
     </template>
 
 </odoo>
