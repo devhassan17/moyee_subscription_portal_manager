@@ -260,7 +260,7 @@
                             <t t-if="recent_orders">
                                 <div class="moyee-order-list">
                                     <t t-foreach="recent_orders[:5]" t-as="so">
-                                        <a t-attf-href="/my/orders/{{ so.id }}" class="moyee-order-row">
+                                        <a href="#" t-attf-data-moyee-modal="moyee-modal-order-detail-{{ so.id }}" class="moyee-order-row">
                                             <div class="moyee-order-info">
                                                 <div class="moyee-order-coffee">
                                                     <t t-if="so.is_subscription_order">
@@ -1162,6 +1162,189 @@
                                 </div>
                             </t>
                         </t>
+                    </t>
+                </t>
+
+                <!-- 7) ORDER/SUBSCRIPTION DETAIL MODALS -->
+                <t t-if="recent_orders">
+                    <t t-foreach="recent_orders[:5]" t-as="so">
+                        <div class="moyee-modal-overlay" t-attf-id="moyee-modal-order-detail-{{ so.id }}">
+                            <div class="moyee-modal" style="max-width: 480px;">
+                                <div class="moyee-modal-header" style="border-bottom: none; padding-bottom: 0;">
+                                    <div>
+                                        <div class="moyee-modal-title" style="font-size: 20px; color: #111;">
+                                            <t t-if="so.is_subscription_order">Subscription delivery</t>
+                                            <t t-else="">One-time order</t>
+                                        </div>
+                                        <div class="text-muted" style="font-size: 13px; margin-top: 2px;">
+                                            <t t-if="so.is_subscription_order">
+                                                Expected: 
+                                                <t t-if="so.expected_date">
+                                                    <t t-esc="so.expected_date.strftime('%d %B %Y')"/>
+                                                </t>
+                                                <t t-else="">
+                                                    <t t-esc="so.date_order.strftime('%d %B %Y')"/>
+                                                </t>
+                                            </t>
+                                            <t t-else="">
+                                                <t t-esc="so.name"/> · <t t-esc="so.date_order.strftime('%d %B %Y')"/>
+                                            </t>
+                                        </div>
+                                    </div>
+                                    <button class="moyee-modal-close" type="button" style="align-self: flex-start;">×</button>
+                                </div>
+                                <div class="moyee-modal-body" style="padding-top: 15px;">
+                                    <!-- Badges -->
+                                    <div class="d-flex gap-2 mb-3">
+                                        <!-- Upcoming / Status tag -->
+                                        <t t-set="so_state" t-value="so.state or ''"/>
+                                        <t t-if="so.is_subscription_order">
+                                            <span style="background: #FFF0F5; color: #E91E63; border-radius: 30px; font-weight: 700; text-transform: uppercase; font-size: 11px; padding: 4px 12px; display: inline-block;">Upcoming</span>
+                                            <span style="background: #F0EDFF; color: #6F42C1; border-radius: 30px; font-weight: 700; text-transform: uppercase; font-size: 11px; padding: 4px 12px; display: inline-block;">Subscription</span>
+                                        </t>
+                                        <t t-else="">
+                                            <t t-if="so_state == 'sale'">
+                                                <span style="background: #EAF2FF; color: #007BFF; border-radius: 30px; font-weight: 700; text-transform: uppercase; font-size: 11px; padding: 4px 12px; display: inline-block;">Confirmed</span>
+                                            </t>
+                                            <t t-elif="so_state == 'done'">
+                                                <span style="background: #E8F8F0; color: #1E7E34; border-radius: 30px; font-weight: 700; text-transform: uppercase; font-size: 11px; padding: 4px 12px; display: inline-block;">Delivered</span>
+                                            </t>
+                                            <t t-elif="so_state == 'cancel'">
+                                                <span style="background: #FFEBEB; color: #DC3545; border-radius: 30px; font-weight: 700; text-transform: uppercase; font-size: 11px; padding: 4px 12px; display: inline-block;">Cancelled</span>
+                                            </t>
+                                            <t t-else="">
+                                                <span style="background: #FFF9E6; color: #D39E00; border-radius: 30px; font-weight: 700; text-transform: uppercase; font-size: 11px; padding: 4px 12px; display: inline-block;"><t t-esc="so_state.upper()"/></span>
+                                            </t>
+                                            <span style="background: #F2F2F2; color: #555555; border-radius: 30px; font-weight: 700; text-transform: uppercase; font-size: 11px; padding: 4px 12px; display: inline-block;">One-time order</span>
+                                        </t>
+                                    </div>
+
+                                    <!-- Product List -->
+                                    <div class="d-flex flex-column mb-3" style="border-top: 1.5px solid #F0F0F0; border-bottom: 1.5px solid #F0F0F0; padding: 10px 0;">
+                                        <t t-foreach="so.order_line" t-as="line">
+                                            <t t-if="not line.display_type">
+                                                <t t-set="lname_check" t-value="(line.product_id.with_context(display_default_code=False).display_name or line.name or '').lower()"/>
+                                                <t t-if="'delivery' not in lname_check">
+                                                    <t t-set="l_meta" t-value="so._moyee_extract_product_metadata(line.product_id)"/>
+                                                    <t t-set="l_grind" t-value="'Whole beans' if l_meta[0] == 'whole' else ('Filter grind' if l_meta[0] == 'filter' else ('Espresso grind' if l_meta[0] == 'espresso' else ('Capsules' if l_meta[0] == 'capsules' else 'Whole beans')))"/>
+                                                    <t t-set="l_weight" t-value="'1 kg' if l_meta[1] == '1kg' else ('250g' if l_meta[1] == '250g' else ('25 Capsules' if l_meta[1] == '25caps' else '1 kg'))"/>
+                                                    
+                                                    <div class="d-flex align-items-center justify-content-between py-2">
+                                                        <div>
+                                                            <div style="font-weight: 700; color: #111; font-size: 14px;">
+                                                                <t t-esc="line.product_id.product_tmpl_id.name or line.name"/>
+                                                            </div>
+                                                            <div class="text-muted" style="font-size: 12px;">
+                                                                <t t-esc="l_grind"/> · <t t-esc="l_weight"/>
+                                                                <t t-if="line.product_uom_qty > 1">
+                                                                    · × <t t-esc="'%g' % line.product_uom_qty"/>
+                                                                </t>
+                                                            </div>
+                                                        </div>
+                                                        <div style="font-weight: 700; color: #111; font-size: 14px;">
+                                                            <t t-if="line.price_subtotal > 0">
+                                                                € <t t-esc="'%.2f' % line.price_subtotal"/>
+                                                            </t>
+                                                            <t t-else="">
+                                                                —
+                                                            </t>
+                                                        </div>
+                                                    </div>
+                                                </t>
+                                            </t>
+                                        </t>
+
+                                        <!-- Total -->
+                                        <div class="d-flex align-items-center justify-content-between pt-2 mt-1" style="border-top: 1px solid #F0F0F0;">
+                                            <span style="font-weight: 800; font-size: 15px; color: #111;">Total</span>
+                                            <span style="font-weight: 800; font-size: 15px; color: #111;">€ <t t-esc="'%.2f' % so.amount_total"/></span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Metadata Grid -->
+                                    <div class="d-flex flex-column gap-2 mb-4" style="font-size: 13px;">
+                                        <!-- Frequency for Subscriptions -->
+                                        <t t-if="so.is_subscription_order">
+                                            <div class="d-flex align-items-center justify-content-between">
+                                                <span class="text-muted">Frequency</span>
+                                                <span style="font-weight: 700; color: #111;">
+                                                    <t t-if="so._moyee_get_current_plan_record()">
+                                                        <t t-esc="so._moyee_get_current_plan_record().name"/>
+                                                    </t>
+                                                    <t t-else="">
+                                                        Every 3 months
+                                                    </t>
+                                                </span>
+                                            </div>
+                                        </t>
+
+                                        <!-- Delivery Address -->
+                                        <div class="d-flex align-items-start justify-content-between">
+                                            <span class="text-muted" style="margin-right: 10px;">Delivery address</span>
+                                            <span class="text-end" style="font-weight: 700; color: #111; max-width: 250px;">
+                                                <t t-esc="so.partner_shipping_id.street"/>, <t t-esc="so.partner_shipping_id.zip"/> <t t-esc="so.partner_shipping_id.city"/>
+                                            </span>
+                                        </div>
+
+                                        <!-- Expected/Delivery Date -->
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <t t-if="so.is_subscription_order">
+                                                <span class="text-muted">Expected delivery</span>
+                                                <span style="font-weight: 700; color: #111;">
+                                                    Expected: 
+                                                    <t t-if="so.expected_date">
+                                                        <t t-esc="so.expected_date.strftime('%d %B %Y')"/>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <t t-esc="so.date_order.strftime('%d %B %Y')"/>
+                                                    </t>
+                                                </span>
+                                            </t>
+                                            <t t-else="">
+                                                <span class="text-muted">Delivery date</span>
+                                                <span style="font-weight: 700; color: #111;">
+                                                    <t t-if="so.commitment_date">
+                                                        <t t-esc="so.commitment_date.strftime('%d %B %Y')"/>
+                                                    </t>
+                                                    <t t-elif="so.expected_date">
+                                                        <t t-esc="so.expected_date.strftime('%d %B %Y')"/>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <t t-esc="so.date_order.strftime('%d %B %Y')"/>
+                                                    </t>
+                                                </span>
+                                            </t>
+                                        </div>
+
+                                        <!-- Track & Trace (Dynamic from Pickings / Monta Integration) -->
+                                        <t t-set="tracking_url" t-value="so._moyee_get_tracking_url()"/>
+                                        <t t-if="tracking_url">
+                                            <div class="d-flex align-items-center justify-content-between">
+                                                <span class="text-muted">Track &amp; Trace</span>
+                                                <a t-att-href="tracking_url" target="_blank" style="font-weight: 700; color: var(--moyee-pink); text-decoration: underline;">
+                                                    Track shipment ➔
+                                                </a>
+                                            </div>
+                                        </t>
+                                    </div>
+
+                                    <!-- Footer Actions -->
+                                    <div class="d-flex gap-2 w-100">
+                                        <t t-if="so.is_subscription_order">
+                                            <button class="moyee-modal-close btn btn-light w-100" type="button" style="background: #F5F5F5; border-radius: 8px; font-weight: 700; height: 44px; padding: 0; color: #444; border: none;">Close</button>
+                                        </t>
+                                        <t t-else="">
+                                            <button class="moyee-modal-close btn btn-light" type="button" style="background: #F5F5F5; border-radius: 8px; font-weight: 700; height: 44px; padding: 0; color: #444; border: none; width: 30%;">Close</button>
+                                            <form t-attf-action="/my/orders/{{ so.id }}/reorder" method="post" class="mb-0" style="width: 68%;">
+                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                <button class="btn btn-primary w-100" type="submit" style="background: var(--moyee-pink); border-radius: 8px; font-weight: 700; height: 44px; padding: 0; color: white; border: none;">Reorder</button>
+                                            </form>
+                                        </t>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
                     </t>
                 </t>
 

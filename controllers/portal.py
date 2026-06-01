@@ -605,3 +605,30 @@ class MoyeeSubscriptionPortal(http.Controller):
         except (AccessError, UserError, ValidationError) as e:
             return self._moyee_redirect_back(order, error=str(e), access_token=access_token)
         return self._moyee_redirect_back(order, message=_("Subscription resumed successfully."), access_token=access_token)
+
+    @http.route(
+        [
+            "/my/orders/<int:order_id>/reorder",
+        ],
+        type="http",
+        auth="public",
+        website=True,
+        methods=["POST", "GET"],
+        csrf=True,
+    )
+    def moyee_order_reorder(self, order_id, access_token=None, **post):
+        order = self._moyee_get_order_sudo(order_id, access_token=access_token)
+        if not order:
+            return request.redirect("/my/home")
+        
+        # Safe ecommerce cart lookup/create
+        if hasattr(request.website, "sale_get_order"):
+            cart = request.website.sale_get_order(force_create=True)
+            for line in order.order_line.filtered(lambda l: not l.display_type and l.product_id.sale_ok):
+                cart._cart_update(
+                    product_id=line.product_id.id,
+                    add_qty=line.product_uom_qty,
+                )
+            return request.redirect("/shop/cart")
+        
+        return request.redirect("/my/home")

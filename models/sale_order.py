@@ -660,3 +660,19 @@ class SaleOrder(models.Model):
             author_id=portal_user.partner_id.id,
         )
         return True
+
+    # ============================================================
+    # Tracking Link Resolver (Monta Integration Safe)
+    # ============================================================
+    def _moyee_get_tracking_url(self):
+        self.ensure_one()
+        # 1. Look at associated pickings (standard delivery carrier setups)
+        if "picking_ids" in self._fields:
+            for picking in self.picking_ids:
+                if "carrier_tracking_url" in picking._fields and picking.carrier_tracking_url:
+                    return picking.carrier_tracking_url
+        # 2. Look at custom database fields for Monta or other tracking links
+        for fname in ("x_monta_tracking_url", "x_tracking_url", "x_track_trace", "carrier_tracking_url"):
+            if fname in self._fields and getattr(self, fname, False):
+                return getattr(self, fname)
+        return False
