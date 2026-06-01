@@ -114,6 +114,9 @@
                                                 <t t-if="not line.display_type">
                                                     <t t-set="lname_check" t-value="(line.product_id.with_context(display_default_code=False).display_name or line.name or '').lower()"/>
                                                     <t t-if="'delivery' not in lname_check">
+                                                        <t t-set="line_meta" t-value="active_subscription._moyee_extract_product_metadata(line.product_id)"/>
+                                                        <t t-set="line_grind_val" t-value="'Whole beans' if line_meta[0] == 'whole' else ('Filter grind' if line_meta[0] == 'filter' else ('Espresso grind' if line_meta[0] == 'espresso' else ('Capsules' if line_meta[0] == 'capsules' else 'Whole beans')))"/>
+                                                        <t t-set="line_weight_val" t-value="'1 kg' if line_meta[1] == '1kg' else ('250g' if line_meta[1] == '250g' else ('25 Capsules' if line_meta[1] == '25caps' else '1 kg'))"/>
                                                         <tr class="moyee-abo-prod-row">
                                                             <td>
                                                                 <div class="moyee-abo-prod-photo">
@@ -124,25 +127,36 @@
                                                             </td>
                                                             <td>
                                                                 <div class="moyee-abo-prod-name">
-                                                                    <t t-esc="line.product_id.with_context(display_default_code=False).display_name or line.name"/>
+                                                                    <div style="font-weight:700;" t-esc="line.product_id.product_tmpl_id.name or line.name"/>
+                                                                    <div class="text-muted" style="font-size:11px;" t-esc="line_grind_val"/>
                                                                 </div>
                                                             </td>
                                                             <td>
-                                                                <t t-esc="line.product_id.with_context(display_default_code=False).display_name or '-'"/>
+                                                                <t t-esc="line_grind_val"/>
                                                             </td>
                                                             <td>
-                                                                <t t-esc="'%g' % line.product_uom_qty"/>
-                                                                <t t-if="line.product_uom" t-esc="line.product_uom.name"/>
+                                                                <t t-esc="line_weight_val"/>
                                                             </td>
                                                             <td style="font-weight:700">
                                                                 € <t t-esc="'%.2f' % line.price_subtotal"/>
                                                             </td>
-                                                            <td class="moyee-abo-td-actions">
-                                                                <div>
+                                                            <td class="moyee-abo-td-actions" style="width: 80px;">
+                                                                <div class="d-flex align-items-center gap-1">
                                                                     <a href="#"
-                                                                       class="moyee-abo-icon-btn moyee-delete"
-                                                                       data-moyee-modal="moyee-modal-products-edit"
-                                                                       title="Remove">🗑️</a>
+                                                                       class="moyee-abo-icon-btn"
+                                                                       t-attf-data-moyee-modal="moyee-modal-line-edit-{{ line.id }}"
+                                                                       title="Edit"
+                                                                       style="border: 1px solid var(--moyee-gray-2); border-radius: 6px; width: 32px; height: 32px; display: inline-flex; justify-content: center; align-items: center; text-decoration: none; font-size: 13px; background: #fff;">✏️</a>
+                                                                    <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/line/{{ line.id }}/remove"
+                                                                          method="post" class="mb-0">
+                                                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                                        <input type="hidden" name="reason" value="Removed by customer"/>
+                                                                        <button type="submit"
+                                                                                class="moyee-abo-icon-btn moyee-delete"
+                                                                                title="Remove"
+                                                                                style="border: 1px solid var(--moyee-gray-2); border-radius: 6px; width: 32px; height: 32px; display: inline-flex; justify-content: center; align-items: center; background: #fff; padding: 0; font-size: 13px;"
+                                                                                onclick="return confirm('Remove this product from your subscription?');">🗑️</button>
+                                                                    </form>
                                                                 </div>
                                                             </td>
                                                         </tr>
@@ -176,8 +190,8 @@
                                     <div class="moyee-abo-actions" style="margin-top:12px;">
                                         <a href="#"
                                            class="moyee-btn moyee-btn-primary"
-                                           data-moyee-modal="moyee-modal-products-edit">
-                                            Manage subscription
+                                           data-moyee-modal="moyee-modal-products-add">
+                                            + Add Coffee
                                         </a>
                                         <t t-if="not is_paused">
                                             <a href="#"
@@ -822,11 +836,6 @@
                                         </t>
                                     </div>
                                 </t>
-                                <div class="mt-4 d-flex gap-2">
-                                    <button class="btn btn-outline-primary w-100" type="button" data-moyee-modal="moyee-modal-products-add">
-                                        + Add new products
-                                    </button>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -1085,9 +1094,74 @@
                                     </div>
                                 </form>
                             </div>
-                        </div>
                     </div>
 
+                    <!-- 6) LINE EDIT MODALS (ONE FOR EACH PRODUCT LINE) -->
+                    <t t-foreach="visible_lines or []" t-as="line">
+                        <t t-if="not line.display_type">
+                            <t t-set="lname_check" t-value="(line.product_id.with_context(display_default_code=False).display_name or line.name or '').lower()"/>
+                            <t t-if="'delivery' not in lname_check">
+                                <t t-set="line_grind_weight" t-value="active_subscription._moyee_extract_product_metadata(line.product_id)"/>
+                                <t t-set="line_grind" t-value="line_grind_weight[0]"/>
+                                <t t-set="line_weight" t-value="line_grind_weight[1]"/>
+                                <t t-set="available_templates" t-value="available_products.mapped('product_tmpl_id')"/>
+                                <t t-set="all_templates" t-value="available_templates | line.product_id.product_tmpl_id"/>
+
+                                <div class="moyee-modal-overlay" t-attf-id="moyee-modal-line-edit-{{ line.id }}">
+                                    <div class="moyee-modal" style="max-width: 480px;">
+                                        <div class="moyee-modal-header">
+                                            <div class="moyee-modal-title">Edit <t t-esc="line.product_id.product_tmpl_id.name or line.product_id.name"/></div>
+                                            <button class="moyee-modal-close" type="button">×</button>
+                                        </div>
+                                        <div class="moyee-modal-body">
+                                            <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/line/{{ line.id }}/edit_product"
+                                                  method="post" class="d-flex flex-column gap-3">
+                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                                                <!-- 1. TYPE / GRIND -->
+                                                <div>
+                                                    <label class="moyee-modal-label">TYPE / GRIND</label>
+                                                    <select class="form-select moyee-modal-input" name="grind" required="required">
+                                                        <option value="whole" t-att-selected="line_grind == 'whole'">Whole beans</option>
+                                                        <option value="filter" t-att-selected="line_grind == 'filter'">Filter grind</option>
+                                                        <option value="espresso" t-att-selected="line_grind == 'espresso'">Espresso grind</option>
+                                                        <option value="capsules" t-att-selected="line_grind == 'capsules'">Capsules</option>
+                                                    </select>
+                                                </div>
+
+                                                <!-- 2. COFFEE TYPE -->
+                                                <div>
+                                                    <label class="moyee-modal-label">COFFEE TYPE</label>
+                                                    <select class="form-select moyee-modal-input" name="coffee_type" required="required">
+                                                        <t t-foreach="all_templates" t-as="tmpl">
+                                                            <option t-att-value="tmpl.id" t-att-selected="line.product_id.product_tmpl_id.id == tmpl.id">
+                                                                <t t-esc="tmpl.name"/>
+                                                            </option>
+                                                        </t>
+                                                    </select>
+                                                </div>
+
+                                                <!-- 3. AMOUNT -->
+                                                <div>
+                                                    <label class="moyee-modal-label">AMOUNT</label>
+                                                    <select class="form-select moyee-modal-input" name="weight" required="required">
+                                                        <option value="1kg" t-att-selected="line_weight == '1kg'">1 kg</option>
+                                                        <option value="250g" t-att-selected="line_weight == '250g'">250g</option>
+                                                        <option value="25caps" t-att-selected="line_weight == '25caps'">25 Capsules</option>
+                                                    </select>
+                                                </div>
+
+                                                <div class="d-flex gap-2 mt-3" style="width: 100%;">
+                                                    <button class="moyee-modal-cancel btn btn-light w-50" type="button" style="border-radius: 8px; font-weight: 700; height: 44px; padding: 0;">Cancel</button>
+                                                    <button class="moyee-modal-save btn btn-primary w-50" type="submit" style="background: var(--moyee-pink); border: none; border-radius: 8px; font-weight: 700; height: 44px; padding: 0; color: white;">Save</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </t>
+                        </t>
+                    </t>
                 </t>
 
             </div><!-- /moyee-account-page -->

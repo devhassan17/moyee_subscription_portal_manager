@@ -590,3 +590,73 @@ class SaleOrder(models.Model):
             author_id=portal_user.partner_id.id,
         )
         return True
+
+    # ============================================================
+    # Edit line product (portal)
+    # ============================================================
+    def moyee_portal_edit_line_product(self, *, portal_user_id, line_id, template_id, grind, weight):
+        self.ensure_one()
+        portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
+        if not portal_user:
+            raise AccessError(_("Invalid user."))
+
+        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
+
+        line = self.env["sale.order.line"].sudo().browse(int(line_id)).exists()
+        if not line or line.order_id.id != self.id:
+            raise ValidationError(_("Invalid subscription line."))
+
+        if line.display_type or line.x_moyee_is_removed:
+            raise UserError(_("This line cannot be edited."))
+
+        template = self.env["product.template"].sudo().browse(int(template_id)).exists()
+        if not template:
+            raise ValidationError(_("Invalid coffee type selected."))
+
+        variants = self.env["product.product"].sudo().search([
+            ("product_tmpl_id", "=", template.id),
+            ("sale_ok", "=", True),
+        ])
+
+        target_product = False
+        for var in variants:
+            v_grind, v_weight = self._moyee_extract_product_metadata(var)
+            if v_grind == grind and v_weight == weight:
+                target_product = var
+                break
+
+        if not target_product:
+            raise ValidationError(
+                _("The selected combination of %s (%s, %s) is not available.") % (template.name, grind, weight)
+            )
+
+        old_product = line.product_id
+        if old_product.id != target_product.id:
+            # Check if this product is already in the subscription (to prevent duplicates)
+            existing_line = self.order_line.filtered(
+                lambda l: (not l.display_type) and l.product_id.id == target_product.id and not l.x_moyee_is_removed and l.id != line.id
+            )
+            if existing_line:
+                # Merge quantities
+                existing_line[:1].sudo().write({"product_uom_qty": existing_line[:1].product_uom_qty + line.product_uom_qty})
+                # Soft remove the current line
+                line.sudo().write({"x_moyee_is_removed": True, "product_uom_qty": 0.0})
+            else:
+                line.sudo().write({
+                    "product_id": target_product.id,
+                    "name": target_product.with_context(display_default_code=False).display_name or target_product.display_name,
+                    "product_uom": target_product.uom_id.id,
+                })
+                if hasattr(line, "_compute_pricelist_item_id"):
+                    line.sudo()._compute_pricelist_item_id()
+                elif hasattr(line, "_compute_price_unit"):
+                    line.sudo()._compute_price_unit()
+
+        self.with_user(1).message_post(
+            body=_("Moyee: customer edited line product via portal — %s → %s.") % (
+                old_product.display_name, target_product.display_name
+            ),
+            subtype_xmlid="mail.mt_note",
+            author_id=portal_user.partner_id.id,
+        )
+        return True

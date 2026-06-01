@@ -518,6 +518,34 @@ class MoyeeSubscriptionPortal(http.Controller):
 
     @http.route(
         [
+            "/my/subscriptions/<int:order_id>/line/<int:line_id>/edit_product",
+            "/my/subscription/<int:order_id>/line/<int:line_id>/edit_product",
+        ],
+        type="http",
+        auth="public",
+        website=True,
+        methods=["POST"],
+        csrf=True,
+    )
+    def moyee_edit_line_product(self, order_id, line_id, access_token=None, **post):
+        order = self._moyee_get_order_sudo(order_id, access_token=access_token, require_subscription=True)
+        try:
+            template_id = int(post.get("coffee_type") or 0)
+            grind = (post.get("grind") or "").strip()
+            weight = (post.get("weight") or "").strip()
+            order.moyee_portal_edit_line_product(
+                portal_user_id=request.env.user.id,
+                line_id=line_id,
+                template_id=template_id,
+                grind=grind,
+                weight=weight,
+            )
+        except (AccessError, UserError, ValidationError, ValueError) as e:
+            return self._moyee_redirect_back(order, error=str(e), access_token=access_token)
+        return self._moyee_redirect_back(order, message=_("Product updated successfully."), access_token=access_token)
+
+    @http.route(
+        [
             "/my/subscriptions/<int:order_id>/line/<int:line_id>/update_qty",
             "/my/subscription/<int:order_id>/line/<int:line_id>/update_qty",
         ],
