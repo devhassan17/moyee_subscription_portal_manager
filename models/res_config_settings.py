@@ -2,14 +2,23 @@
 from odoo import fields, models
 
 
+class ResCompany(models.Model):
+    _inherit = "res.company"
+
+    moyee_enable_portal_redesign = fields.Boolean(
+        string="Enable Moyee Custom Portal Redesign",
+        default=True,
+    )
+
+
 class ResConfigSettings(models.TransientModel):
     _inherit = "res.config.settings"
 
-    # Master Toggle
+    # Master Toggle (Company Dependent)
     moyee_enable_portal_redesign = fields.Boolean(
+        related="company_id.moyee_enable_portal_redesign",
+        readonly=False,
         string="Enable Moyee Custom Portal Redesign",
-        config_parameter="moyee_subscription_portal_manager.enable_portal_redesign",
-        default=True,
     )
 
     # Styling Overrides

@@ -1,3 +1,5 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_sale_order_line_moyee_manager,moyee.sale.order.line.manager,model_sale_order_line,moyee_subscription_portal_manager.group_moyee_subscription_manager,1,1,1,1
 access_sale_order_moyee_manager,moyee.sale.order.manager,model_sale_order,moyee_subscription_portal_manager.group_moyee_subscription_manager,1,1,1,1
+access_moyee_portal_faq_manager,moyee.portal.faq.manager,model_moyee_portal_faq,moyee_subscription_portal_manager.group_moyee_subscription_manager,1,1,1,1
+access_moyee_portal_faq_user,moyee.portal.faq.user,model_moyee_portal_faq,base.group_user,1,1,1,1

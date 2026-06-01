@@ -81,7 +81,7 @@
                                             Your next delivery is scheduled for
                                             <strong><t t-esc="next_date_value.strftime('%d %B %Y') if next_date_value else ''"/></strong>.
                                         </span>
-                                        <a t-attf-href="/my/subscriptions/{{ active_subscription.id }}/moyee/manage">Change →</a>
+                                        <a href="#" data-moyee-modal="moyee-modal-shipment-date">Change →</a>
                                     </div>
                                 </t>
                                 <t t-if="is_paused">
@@ -139,8 +139,9 @@
                                                             </td>
                                                             <td class="moyee-abo-td-actions">
                                                                 <div>
-                                                                    <a t-attf-href="/my/subscriptions/{{ active_subscription.id }}/moyee/manage"
+                                                                    <a href="#"
                                                                        class="moyee-abo-icon-btn moyee-delete"
+                                                                       data-moyee-modal="moyee-modal-products-edit"
                                                                        title="Remove">🗑️</a>
                                                                 </div>
                                                             </td>
@@ -167,31 +168,38 @@
                                             <t t-else="">—</t>
                                         </span>
                                         <div style="margin-left:auto;">
-                                            <a t-attf-href="/my/subscriptions/{{ active_subscription.id }}/moyee/manage" class="moyee-abo-icon-btn" title="Change frequency">✏️</a>
+                                            <a href="#" class="moyee-abo-icon-btn" data-moyee-modal="moyee-modal-plan" title="Change frequency">✏️</a>
                                         </div>
                                     </div>
 
                                     <!-- Actions -->
                                     <div class="moyee-abo-actions" style="margin-top:12px;">
-                                        <a t-attf-href="/my/subscriptions/{{ active_subscription.id }}/moyee/manage"
-                                           class="moyee-btn moyee-btn-primary">
+                                        <a href="#"
+                                           class="moyee-btn moyee-btn-primary"
+                                           data-moyee-modal="moyee-modal-products-edit">
                                             Manage subscription
                                         </a>
                                         <t t-if="not is_paused">
-                                            <a t-attf-href="/my/subscriptions/{{ active_subscription.id }}/moyee/manage"
-                                               class="moyee-btn moyee-btn-outline">
+                                            <a href="#"
+                                               class="moyee-btn moyee-btn-outline"
+                                               data-moyee-modal="moyee-modal-plan">
                                                 Pause
                                             </a>
                                         </t>
                                         <t t-if="is_paused">
-                                            <a t-attf-href="/my/subscriptions/{{ active_subscription.id }}/moyee/manage"
+                                            <a href="#"
                                                class="moyee-btn moyee-btn-primary"
-                                               style="background:#2E7D32;">
+                                               style="background:#2E7D32;"
+                                               data-moyee-modal="moyee-modal-plan">
                                                 Resume subscription
                                             </a>
                                         </t>
+                                        <a href="#"
+                                           class="moyee-btn moyee-btn-ghost"
+                                           data-moyee-modal="moyee-modal-addresses">
+                                            Update delivery address
+                                        </a>
                                     </div>
-
                                 </div>
                             </div>
                         </t>
@@ -450,53 +458,70 @@
                             <div id="moyee-section-faq">
                             <div class="moyee-section-title">Frequently asked questions</div>
                             <div class="moyee-faq-list">
-                                <div class="moyee-faq-item open">
-                                    <div class="moyee-faq-q">
-                                        How can I repeat a previous order?
-                                        <span class="moyee-toggle">+</span>
+                                <!-- Dynamic FAQs from Database -->
+                                <t t-if="faqs">
+                                    <t t-foreach="faqs" t-as="faq">
+                                        <div t-attf-class="moyee-faq-item {{ 'open' if faq_index == 0 else '' }}">
+                                            <div class="moyee-faq-q">
+                                                <t t-esc="faq.question"/>
+                                                <span class="moyee-toggle">+</span>
+                                            </div>
+                                            <div class="moyee-faq-a">
+                                                <t t-esc="faq.answer"/>
+                                            </div>
+                                        </div>
+                                    </t>
+                                </t>
+                                <!-- Fallback standard FAQs if none exist in database -->
+                                <t t-else="">
+                                    <div class="moyee-faq-item open">
+                                        <div class="moyee-faq-q">
+                                            How can I repeat a previous order?
+                                            <span class="moyee-toggle">+</span>
+                                        </div>
+                                        <div class="moyee-faq-a">
+                                            Go to "My orders" above and click on a previous order.
+                                            From the order details page you can reorder the same products
+                                            with just one click.
+                                        </div>
                                     </div>
-                                    <div class="moyee-faq-a">
-                                        Go to "My orders" above and click on a previous order.
-                                        From the order details page you can reorder the same products
-                                        with just one click.
+                                    <div class="moyee-faq-item">
+                                        <div class="moyee-faq-q">
+                                            What are the benefits of a subscription?
+                                            <span class="moyee-toggle">+</span>
+                                        </div>
+                                        <div class="moyee-faq-a">
+                                            With a subscription you'll never run out of coffee.
+                                            Automatically delivered, flexibly adjustable and at a fair
+                                            price for the farmer and you.
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="moyee-faq-item">
-                                    <div class="moyee-faq-q">
-                                        What are the benefits of a subscription?
-                                        <span class="moyee-toggle">+</span>
+                                    <div class="moyee-faq-item">
+                                        <div class="moyee-faq-q">
+                                            How do I change my delivery address?
+                                            <span class="moyee-toggle">+</span>
+                                        </div>
+                                        <div class="moyee-faq-a">
+                                            Click on "Edit" next to your personal details, or navigate
+                                            to your subscription management page to update the delivery
+                                            address specifically for your subscription.
+                                        </div>
                                     </div>
-                                    <div class="moyee-faq-a">
-                                        With a subscription you'll never run out of coffee.
-                                        Automatically delivered, flexibly adjustable and at a fair
-                                        price for the farmer and you.
+                                    <div class="moyee-faq-item">
+                                        <div class="moyee-faq-q">
+                                            What is the difference between the Moyee coffee types?
+                                            <span class="moyee-toggle">+</span>
+                                        </div>
+                                        <div class="moyee-faq-a">
+                                            Single (light, fruity), Double (full, balanced), Triple (complex, powerful),
+                                            Dark Roast (strong, ideal for espresso) and Microlot (limited, monthly rotation).
+                                            All FairChain — roasted in the country of origin.
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="moyee-faq-item">
-                                    <div class="moyee-faq-q">
-                                        How do I change my delivery address?
-                                        <span class="moyee-toggle">+</span>
-                                    </div>
-                                    <div class="moyee-faq-a">
-                                        Click on "Edit" next to your personal details, or navigate
-                                        to your subscription management page to update the delivery
-                                        address specifically for your subscription.
-                                    </div>
-                                </div>
-                                <div class="moyee-faq-item">
-                                    <div class="moyee-faq-q">
-                                        What is the difference between the Moyee coffee types?
-                                        <span class="moyee-toggle">+</span>
-                                    </div>
-                                    <div class="moyee-faq-a">
-                                        Single (light, fruity), Double (full, balanced), Triple (complex, powerful),
-                                        Dark Roast (strong, ideal for espresso) and Microlot (limited, monthly rotation).
-                                        All FairChain — roasted in the country of origin.
-                                    </div>
-                                </div>
+                                </t>
                             </div>
-                        </div>
-                    </t>
+                            </div>
+                        </t>
 
                         <!-- ══════════ INSPIRE + TELL A FRIEND ══════════ -->
                         <div id="moyee-section-extra" t-if="(not moyee_config or moyee_config.get('show_inspire', True)) or (not moyee_config or moyee_config.get('show_taf', True))">
@@ -620,6 +645,450 @@
                 </div>
 
 
+
+                <!-- ══════════════════════════ MODALS ══════════════════════════ -->
+                <t t-if="has_subscription and active_subscription">
+
+                    <!-- Style overrides for modals to make grids look amazing -->
+                    <style>
+                        #moyee-modal-products-add .moyee-product-slider {
+                            flex-wrap: wrap !important;
+                            overflow-x: visible !important;
+                            height: auto;
+                            max-height: 480px;
+                            overflow-y: auto !important;
+                            padding: 10px 4px;
+                            justify-content: center;
+                        }
+                        #moyee-modal-products-add .moyee-slider-card {
+                            flex: 0 0 150px !important;
+                        }
+                        .moyee-modal-overlay {
+                            align-items: center;
+                            justify-content: center;
+                        }
+                    </style>
+
+                    <!-- 1) NEXT SHIPMENT DATE MODAL -->
+                    <div class="moyee-modal-overlay" id="moyee-modal-shipment-date">
+                        <div class="moyee-modal">
+                            <div class="moyee-modal-header">
+                                <div class="moyee-modal-title">Update shipment date</div>
+                                <button class="moyee-modal-close" type="button">×</button>
+                            </div>
+                            <div class="moyee-modal-body">
+                                <p class="text-muted small mb-3">
+                                    Your coffee will be shipped on this date and will arrive within 2 to 3 days.
+                                </p>
+                                <t t-if="not next_date_field">
+                                    <div class="alert alert-warning mb-0">
+                                        This system does not expose a configured next date field for subscriptions.
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/push_delivery_date"
+                                          method="post" class="d-flex flex-column gap-3">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <div>
+                                            <label class="moyee-modal-label">Next shipment date</label>
+                                            <input class="form-control moyee-modal-input" type="date" name="next_date"
+                                                   t-att-value="next_date_value and next_date_value.strftime('%Y-%m-%d') or ''"/>
+                                        </div>
+                                        <button class="moyee-modal-save w-100 mt-2" type="submit">Update date</button>
+                                    </form>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2) SUBSCRIPTION PLAN & PAUSE/RESUME MODAL -->
+                    <div class="moyee-modal-overlay" id="moyee-modal-plan">
+                        <div class="moyee-modal">
+                            <div class="moyee-modal-header">
+                                <div class="moyee-modal-title">Update subscription plan</div>
+                                <button class="moyee-modal-close" type="button">×</button>
+                            </div>
+                            <div class="moyee-modal-body">
+                                <t t-if="not available_plans">
+                                    <div class="alert alert-warning mb-0">
+                                        No intervals are available for this subscription.
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <form t-attf-id="form_interval_home" t-attf-action="/my/subscriptions/{{ active_subscription.id }}/change_interval" method="post" class="d-flex flex-column gap-3">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <div>
+                                            <label class="moyee-modal-label">Current plan</label>
+                                            <select class="form-select moyee-modal-select" name="plan_id" required="required">
+                                                <t t-foreach="available_plans" t-as="pl">
+                                                    <option t-att-value="pl.id"
+                                                            t-att-selected="current_plan_id and current_plan_id == pl.id">
+                                                        <t t-esc="pl.display_name"/>
+                                                    </option>
+                                                </t>
+                                            </select>
+                                        </div>
+                                        <button class="moyee-modal-save w-100" type="submit">Update plan</button>
+                                    </form>
+                                    
+                                    <hr class="my-3" style="opacity: 0.15;"/>
+                                    
+                                    <div class="d-flex flex-column gap-2">
+                                        <div class="fw-bold small text-muted text-uppercase mb-1" style="font-size: 11px; letter-spacing: .5px;">Status management</div>
+                                        <t t-if="not is_paused">
+                                            <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/pause" method="post" class="w-100">
+                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                <button class="btn btn-warning w-100 fw-bold" style="border-radius: 8px; padding: 10px;" type="submit">Pause subscription</button>
+                                            </form>
+                                        </t>
+                                        <t t-if="is_paused">
+                                            <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/resume" method="post" class="w-100">
+                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                <button class="btn btn-success w-100 fw-bold" style="border-radius: 8px; padding: 10px;" type="submit">Resume subscription</button>
+                                            </form>
+                                        </t>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3) EDIT PRODUCTS MODAL (QTY & REMOVE) -->
+                    <div class="moyee-modal-overlay" id="moyee-modal-products-edit">
+                        <div class="moyee-modal" style="max-width: 580px;">
+                            <div class="moyee-modal-header">
+                                <div class="moyee-modal-title">Manage subscription products</div>
+                                <button class="moyee-modal-close" type="button">×</button>
+                            </div>
+                            <div class="moyee-modal-body">
+                                <p class="text-muted small mb-3">
+                                    Update quantities or remove products from your active subscription.
+                                </p>
+                                <t t-if="not visible_lines">
+                                    <div class="text-muted">No active product lines.</div>
+                                </t>
+                                <t t-else="">
+                                    <div class="d-flex flex-column gap-3">
+                                        <t t-foreach="visible_lines" t-as="line">
+                                            <t t-if="not line.display_type">
+                                                <t t-set="lname_check" t-value="(line.product_id.with_context(display_default_code=False).display_name or line.name or '').lower()"/>
+                                                <t t-if="'delivery' not in lname_check">
+                                                    <div class="d-flex align-items-center justify-content-between gap-3 p-2 rounded" style="background: var(--moyee-gray-1);">
+                                                        
+                                                        <div class="d-flex align-items-center gap-2" style="flex: 1; min-width: 0;">
+                                                            <div class="moyee-abo-prod-photo" style="width: 40px; height: 40px; background: #fff; border: 1px solid var(--moyee-gray-2);">
+                                                                <img t-att-src="'/web/image/product.product/%s/image_128' % line.product_id.id"
+                                                                     alt="Product" loading="lazy"/>
+                                                            </div>
+                                                            <div class="text-truncate">
+                                                                <div class="fw-bold small text-truncate" t-esc="line.product_id.with_context(display_default_code=False).display_name or line.name"/>
+                                                                <div class="text-muted" style="font-size: 11px;">€ <t t-esc="'%.2f' % line.price_unit"/> each</div>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div>
+                                                            <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/line/{{ line.id }}/update_qty"
+                                                                  method="post" class="d-flex align-items-center gap-1 mb-0">
+                                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                                <input class="form-control text-center"
+                                                                       name="qty" type="number" step="1" min="1"
+                                                                       t-att-value="int(line.product_uom_qty)"
+                                                                       style="width: 55px; height: 32px; border-radius: 6px; padding: 2px; font-size: 13px; border: 1.5px solid var(--moyee-gray-2);"/>
+                                                                <button class="btn btn-sm btn-outline-primary" type="submit"
+                                                                        title="Update quantity"
+                                                                        style="border-radius: 6px; padding: 2px 6px; height: 32px; font-size: 12px;">
+                                                                    ✓
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                        
+                                                        <div>
+                                                            <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/line/{{ line.id }}/remove"
+                                                                  method="post" class="mb-0">
+                                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                                <input type="hidden" name="reason" value="Removed by customer"/>
+                                                                <button class="btn btn-sm btn-outline-danger"
+                                                                        type="submit"
+                                                                        style="border-radius: 6px; padding: 4px 8px; font-size: 12px; height: 32px;"
+                                                                        onclick="return confirm('Remove this product from your subscription?');">
+                                                                    Remove
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                        
+                                                    </div>
+                                                </t>
+                                            </t>
+                                        </t>
+                                    </div>
+                                </t>
+                                <div class="mt-4 d-flex gap-2">
+                                    <button class="btn btn-outline-primary w-100" type="button" data-moyee-modal="moyee-modal-products-add">
+                                        + Add new products
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4) ADD PRODUCTS MODAL -->
+                    <div class="moyee-modal-overlay" id="moyee-modal-products-add">
+                        <div class="moyee-modal" style="max-width: 820px;">
+                            <div class="moyee-modal-header">
+                                <div class="moyee-modal-title">Add products to subscription</div>
+                                <button class="moyee-modal-close" type="button">×</button>
+                            </div>
+                            <div class="moyee-modal-body">
+                                <t t-if="not available_products">
+                                    <div class="text-muted small">No products available to add.</div>
+                                </t>
+                                <t t-else="">
+                                    <div class="row g-3">
+                                        <!-- Filter Sidebar -->
+                                        <div class="col-12 col-md-4">
+                                            <div class="moyee-filter-sidebar p-3 rounded" style="background: var(--moyee-gray-1); height: 100%; border: 1px solid var(--moyee-gray-2);">
+                                                
+                                                <!-- Grind Filter -->
+                                                <div class="moyee-filter-group mb-3">
+                                                    <div class="fw-bold small text-muted mb-2 text-uppercase" style="letter-spacing: .5px; font-size: 11px;">Grind</div>
+                                                    <div class="moyee-filter-options d-flex flex-column gap-2">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input moyee-filter-check" type="checkbox" value="whole" id="grindWhole"/>
+                                                            <label class="form-check-label small" for="grindWhole">Whole Beans</label>
+                                                        </div>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input moyee-filter-check" type="checkbox" value="filter" id="grindFilter"/>
+                                                            <label class="form-check-label small" for="grindFilter">Filter Grind</label>
+                                                        </div>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input moyee-filter-check" type="checkbox" value="espresso" id="grindEspresso"/>
+                                                            <label class="form-check-label small" for="grindEspresso">Espresso Grind</label>
+                                                        </div>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input moyee-filter-check" type="checkbox" value="capsules" id="grindCapsules"/>
+                                                            <label class="form-check-label small" for="grindCapsules">Capsules</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <hr style="opacity: 0.15;"/>
+
+                                                <!-- Weight/Size Filter -->
+                                                <div class="moyee-filter-group">
+                                                    <div class="fw-bold small text-muted mb-2 text-uppercase" style="letter-spacing: .5px; font-size: 11px;">Weight</div>
+                                                    <div class="moyee-filter-options d-flex flex-column gap-2">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input moyee-filter-check" type="checkbox" value="1kg" id="weight1kg"/>
+                                                            <label class="form-check-label small" for="weight1kg">1 kg</label>
+                                                        </div>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input moyee-filter-check" type="checkbox" value="250g" id="weight250g"/>
+                                                            <label class="form-check-label small" for="weight250g">250 gram</label>
+                                                        </div>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input moyee-filter-check" type="checkbox" value="25caps" id="weight25caps"/>
+                                                            <label class="form-check-label small" for="weight25caps">25 Capsules</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                            </div>
+                                        </div>
+
+                                        <!-- Products Area -->
+                                        <div class="col-12 col-md-8">
+                                            <p class="text-muted small mb-3">
+                                                Select quantity and click "Add" to insert a coffee product into your subscription.
+                                            </p>
+                                            <div class="moyee-product-slider-wrap">
+                                                <div class="moyee-product-slider" id="moyeeProductSlider">
+                                                    <t t-foreach="available_products" t-as="p">
+                                                        <t t-set="p_meta" t-value="active_subscription._moyee_extract_product_metadata(p)"/>
+                                                        <div class="moyee-slider-card js_moyee_product_card" 
+                                                             t-att-data-grind="p_meta[0]" 
+                                                             t-att-data-weight="p_meta[1]" 
+                                                             t-att-data-price="p.lst_price">
+                                                            <div class="moyee-slider-img">
+                                                                <img t-att-src="'/web/image/product.product/%s/image_256' % p.id"
+                                                                     t-att-alt="p.with_context(display_default_code=False).display_name"
+                                                                     loading="lazy"/>
+                                                            </div>
+                                                            <div class="moyee-slider-name">
+                                                                <t t-esc="p.with_context(display_default_code=False).display_name"/>
+                                                            </div>
+                                                            <div class="moyee-slider-price">
+                                                                <t t-esc="'€ %.2f' % (p.lst_price or 0.0)"/>
+                                                            </div>
+                                                            <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/add_product"
+                                                                  method="post" class="moyee-slider-form">
+                                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                                <input type="hidden" name="product_id" t-att-value="p.id"/>
+                                                                <div class="d-flex align-items-center gap-1 mb-2 justify-content-center">
+                                                                    <label class="moyee-label mb-0" style="white-space:nowrap; font-size: 11px;">Qty</label>
+                                                                    <input class="form-control form-control-sm text-center"
+                                                                           name="qty" type="number" step="1" min="1" value="1"
+                                                                           style="width:50px; height: 26px; padding: 2px; border-radius: 5px;"/>
+                                                                </div>
+                                                                <button class="btn btn-primary btn-sm w-100" style="font-size: 11px; padding: 4px;" type="submit">Add</button>
+                                                            </form>
+                                                        </div>
+                                                    </t>
+                                                </div>
+                                                <div id="moyeeNoResults" class="text-center py-4 d-none">
+                                                    <div class="text-muted">No products match your filters.</div>
+                                                    <button class="btn btn-link btn-sm mt-2" id="clearMoyeeFilters">Clear all filters</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5) ADDRESSES MODAL -->
+                    <div class="moyee-modal-overlay" id="moyee-modal-addresses">
+                        <div class="moyee-modal" style="max-width: 650px;">
+                            <div class="moyee-modal-header">
+                                <div class="moyee-modal-title">Manage subscription addresses</div>
+                                <button class="moyee-modal-close" type="button">×</button>
+                            </div>
+                            <div class="moyee-modal-body">
+                                <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/change_address"
+                                      method="post" class="row g-3">
+                                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                                    <div class="col-12">
+                                        <div class="fw-bold border-bottom pb-1 text-primary">Shipping address</div>
+                                    </div>
+                                    
+                                    <div class="col-12 col-sm-6">
+                                        <label class="form-label moyee-modal-label">Name</label>
+                                        <input class="form-control moyee-modal-input" name="ship_name" type="text" required="required"
+                                               t-att-value="(active_subscription.partner_shipping_id and active_subscription.partner_shipping_id.name) or ''"/>
+                                    </div>
+                                    <div class="col-12 col-sm-6">
+                                        <label class="form-label moyee-modal-label">Phone</label>
+                                        <input class="form-control moyee-modal-input" name="ship_phone" type="text"
+                                               t-att-value="(active_subscription.partner_shipping_id and active_subscription.partner_shipping_id.phone) or ''"/>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label moyee-modal-label">Street</label>
+                                        <input class="form-control moyee-modal-input" name="ship_street" type="text" required="required"
+                                               t-att-value="(active_subscription.partner_shipping_id and active_subscription.partner_shipping_id.street) or ''"/>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label moyee-modal-label">Street 2</label>
+                                        <input class="form-control moyee-modal-input" name="ship_street2" type="text"
+                                               t-att-value="(active_subscription.partner_shipping_id and active_subscription.partner_shipping_id.street2) or ''"/>
+                                    </div>
+                                    <div class="col-12 col-sm-4">
+                                        <label class="form-label moyee-modal-label">City</label>
+                                        <input class="form-control moyee-modal-input" name="ship_city" type="text" required="required"
+                                               t-att-value="(active_subscription.partner_shipping_id and active_subscription.partner_shipping_id.city) or ''"/>
+                                    </div>
+                                    <div class="col-12 col-sm-4">
+                                        <label class="form-label moyee-modal-label">ZIP</label>
+                                        <input class="form-control moyee-modal-input" name="ship_zip" type="text" required="required"
+                                               t-att-value="(active_subscription.partner_shipping_id and active_subscription.partner_shipping_id.zip) or ''"/>
+                                    </div>
+                                    <div class="col-12 col-sm-4">
+                                        <label class="form-label moyee-modal-label">Country</label>
+                                        <select class="form-select moyee-modal-select" name="ship_country_id" required="required">
+                                            <option value="">--</option>
+                                            <t t-foreach="countries" t-as="c">
+                                                <option t-att-value="c.id"
+                                                        t-att-selected="active_subscription.partner_shipping_id and active_subscription.partner_shipping_id.country_id and active_subscription.partner_shipping_id.country_id.id == c.id">
+                                                    <t t-esc="c.name"/>
+                                                </option>
+                                            </t>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-12 my-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox"
+                                                   name="same_as_shipping" value="1"
+                                                   id="moyeeSameAsShipping"/>
+                                            <label class="form-check-label fw-bold" for="moyeeSameAsShipping">
+                                                Use same address for invoicing
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <div class="d-flex align-items-center justify-content-between border-bottom pb-1">
+                                            <div class="fw-bold text-primary">Invoice address</div>
+                                            <button class="btn btn-sm btn-light"
+                                                    type="button"
+                                                    data-bs-toggle="collapse"
+                                                    data-bs-target="#moyeeInvAddress"
+                                                    aria-expanded="false"
+                                                    aria-controls="moyeeInvAddress"
+                                                    style="border-radius: 6px; font-size: 11px;">
+                                                Manage invoice address ▾
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <div id="moyeeInvAddress" class="collapse">
+                                            <div class="row g-3 mt-1">
+                                                <div class="col-12 col-sm-6">
+                                                    <label class="form-label moyee-modal-label">Name</label>
+                                                    <input class="form-control moyee-modal-input" name="inv_name" type="text"
+                                                           t-att-value="(active_subscription.partner_invoice_id and active_subscription.partner_invoice_id.name) or ''"/>
+                                                </div>
+                                                <div class="col-12 col-sm-6">
+                                                    <label class="form-label moyee-modal-label">Phone</label>
+                                                    <input class="form-control moyee-modal-input" name="inv_phone" type="text"
+                                                           t-att-value="(active_subscription.partner_invoice_id and active_subscription.partner_invoice_id.phone) or ''"/>
+                                                </div>
+                                                <div class="col-12">
+                                                    <label class="form-label moyee-modal-label">Street</label>
+                                                    <input class="form-control moyee-modal-input" name="inv_street" type="text"
+                                                           t-att-value="(active_subscription.partner_invoice_id and active_subscription.partner_invoice_id.street) or ''"/>
+                                                </div>
+                                                <div class="col-12">
+                                                    <label class="form-label moyee-modal-label">Street 2</label>
+                                                    <input class="form-control moyee-modal-input" name="inv_street2" type="text"
+                                                           t-att-value="(active_subscription.partner_invoice_id and active_subscription.partner_invoice_id.street2) or ''"/>
+                                                </div>
+                                                <div class="col-12 col-sm-4">
+                                                    <label class="form-label moyee-modal-label">City</label>
+                                                    <input class="form-control moyee-modal-input" name="inv_city" type="text"
+                                                           t-att-value="(active_subscription.partner_invoice_id and active_subscription.partner_invoice_id.city) or ''"/>
+                                                </div>
+                                                <div class="col-12 col-sm-4">
+                                                    <label class="form-label moyee-modal-label">ZIP</label>
+                                                    <input class="form-control moyee-modal-input" name="inv_zip" type="text"
+                                                           t-att-value="(active_subscription.partner_invoice_id and active_subscription.partner_invoice_id.zip) or ''"/>
+                                                </div>
+                                                <div class="col-12 col-sm-4">
+                                                    <label class="form-label moyee-modal-label">Country</label>
+                                                    <select class="form-select moyee-modal-select" name="inv_country_id">
+                                                        <option value="">--</option>
+                                                        <t t-foreach="countries" t-as="c">
+                                                            <option t-att-value="c.id"
+                                                                    t-att-selected="active_subscription.partner_invoice_id and active_subscription.partner_invoice_id.country_id and active_subscription.partner_invoice_id.country_id.id == c.id">
+                                                                <t t-esc="c.name"/>
+                                                            </option>
+                                                        </t>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12 d-flex gap-2 mt-4">
+                                        <button class="moyee-modal-save w-100" type="submit">Update addresses</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                </t>
 
             </div><!-- /moyee-account-page -->
 

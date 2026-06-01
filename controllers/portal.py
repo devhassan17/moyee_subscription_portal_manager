@@ -30,11 +30,16 @@ class MoyeePortalHome(CustomerPortal):
         active_subscription = False
         has_subscription = False
         visible_lines = False
+        next_date_field = False
         next_date_value = False
         current_plan_display = ""
         current_plan_id = False
         is_paused = False
         available_plans = SaleOrder.browse()
+        available_products = request.env["product.product"].browse()
+        countries = request.env["res.country"].browse()
+        min_price = 0.0
+        max_price = 0.0
 
         # Find the user's active subscription order
         sub_domain = [
@@ -82,9 +87,47 @@ class MoyeePortalHome(CustomerPortal):
             except Exception:
                 available_plans = SaleOrder.browse()
 
+            # Hard fallback for plans
+            if not available_plans and plan_field_name and plan_field_name in active_subscription._fields:
+                try:
+                    plan_model = active_subscription._fields[plan_field_name].comodel_name
+                    Plan = request.env[plan_model].sudo()
+                    company_ids = request.env["res.company"].sudo().search([]).ids
+                    Plan = Plan.with_context(allowed_company_ids=company_ids, active_test=False)
+                    domain = []
+                    if "company_id" in Plan._fields and getattr(active_subscription, "company_id", False):
+                        domain = [("company_id", "in", [False, active_subscription.company_id.id])]
+                    order_by = "sequence, name, id" if "sequence" in Plan._fields else "name, id"
+                    available_plans = Plan.search(domain, order=order_by)
+                except Exception:
+                    pass
+
             # Paused state
             if "subscription_state" in active_subscription._fields and active_subscription.subscription_state == "4_paused":
                 is_paused = True
+            else:
+                PAUSED_STATES = {"paused", "pause", "suspended", "suspend", "hold", "2_paused", "on_hold"}
+                for sfield in ("subscription_state", "subscription_status"):
+                    if sfield in active_subscription._fields and active_subscription[sfield]:
+                        sval = str(active_subscription[sfield]).lower()
+                        if sval in PAUSED_STATES or any(p in sval for p in ("pause", "suspend", "hold")):
+                            is_paused = True
+                            break
+
+            # Available products (for "Add product" popup)
+            try:
+                available_products = active_subscription._moyee_get_portal_addable_products()
+            except Exception:
+                pass
+
+            # Countries (for "Change address" popup)
+            countries = request.env["res.country"].sudo().search([], order="name, id")
+
+            # Price filters
+            if available_products:
+                prices = available_products.mapped("lst_price") or [0.0]
+                min_price = min(prices)
+                max_price = max(prices)
 
         # ── Recent orders ──
         order_domain = [
@@ -101,6 +144,10 @@ class MoyeePortalHome(CustomerPortal):
             ("state", "=", "posted"),
         ]
         recent_invoices = AccountMove.search(inv_domain, order="invoice_date desc, id desc", limit=10)
+
+        # ── Portal FAQs ──
+        PortalFaq = request.env["moyee.portal.faq"].sudo()
+        faqs = PortalFaq.search([("is_active", "=", True)])
 
         # ── Flash messages from redirect ──
         moyee_home_message = kw.get("moyee_message", "")
@@ -136,13 +183,19 @@ class MoyeePortalHome(CustomerPortal):
             "has_subscription": has_subscription,
             "active_subscription": active_subscription,
             "visible_lines": visible_lines,
+            "next_date_field": next_date_field,
             "next_date_value": next_date_value,
             "current_plan_display": current_plan_display,
             "current_plan_id": current_plan_id,
             "is_paused": is_paused,
             "available_plans": available_plans,
+            "available_products": available_products,
+            "countries": countries,
+            "min_price": min_price,
+            "max_price": max_price,
             "recent_orders": recent_orders,
             "recent_invoices": recent_invoices,
+            "faqs": faqs,
             "moyee_home_message": moyee_home_message,
             "moyee_home_error": moyee_home_error,
             "moyee_config": moyee_config,
@@ -151,9 +204,9 @@ class MoyeePortalHome(CustomerPortal):
 
     @http.route(["/my", "/my/home"], type="http", auth="user", website=True)
     def home(self, **kw):
-        # Check if custom redesign is enabled
-        ICP = request.env["ir.config_parameter"].sudo()
-        enable_redesign = ICP.get_param("moyee_subscription_portal_manager.enable_portal_redesign", "True").lower() in ("true", "1", "yes")
+        # Check if custom redesign is enabled for the current company
+        company = getattr(request, "website", None) and request.website.company_id or request.env.company
+        enable_redesign = company.moyee_enable_portal_redesign if "moyee_enable_portal_redesign" in company._fields else True
         if not enable_redesign:
             return super().home(**kw)
 
@@ -202,7 +255,10 @@ class MoyeeSubscriptionPortal(http.Controller):
             params["moyee_message"] = message
         if error:
             params["moyee_error"] = error
-        return request.redirect(self._moyee_manage_url(order, params=params or None, access_token=access_token))
+        if access_token:
+            params["access_token"] = access_token
+        # Redirect back to /my/home instead of the manage page
+        return request.redirect("/my/home?" + urlencode(params))
 
     # ------------------------------------------------------------
     # Helpers (Plans) - UNIVERSAL + PORTAL SAFE

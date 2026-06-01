@@ -15,7 +15,7 @@
             <tr t-if="sale_order and sale_order.is_subscription_order">
                 <th class="ps-0 pb-0">Subscription:</th>
                 <td class="w-100 pb-0 text-wrap">
-                    <a t-attf-href="/my/subscriptions/{{ sale_order.id }}/moyee/manage"
+                    <a href="/my/home"
                        class="btn btn-sm btn-outline-primary">
                         Manage Subscription
                     </a>
@@ -28,7 +28,7 @@
             <tr t-if="sale_order and sale_order.is_subscription_order">
                 <th class="ps-0 pb-0">Subscription:</th>
                 <td class="w-100 pb-0 text-wrap">
-                    <a t-attf-href="/my/subscriptions/{{ sale_order.id }}/moyee/manage"
+                    <a href="/my/home"
                        class="btn btn-sm btn-outline-primary">
                         Manage Subscription
                     </a>
