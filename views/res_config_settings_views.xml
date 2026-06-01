@@ -2,6 +2,46 @@
 <!-- File: moyee_subscription_portal_manager/views/res_config_settings_views.xml -->
 <odoo>
 
+    <!-- FAQ Views & Window Action -->
+    <record id="moyee_portal_faq_view_tree" model="ir.ui.view">
+        <field name="name">moyee.portal.faq.view.tree</field>
+        <field name="model">moyee.portal.faq</field>
+        <field name="arch" type="xml">
+            <list editable="bottom" multi_edit="1">
+                <field name="sequence" widget="handle"/>
+                <field name="question"/>
+                <field name="answer"/>
+                <field name="is_active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="moyee_portal_faq_view_form" model="ir.ui.view">
+        <field name="name">moyee.portal.faq.view.form</field>
+        <field name="model">moyee.portal.faq</field>
+        <field name="arch" type="xml">
+            <form string="Portal FAQ">
+                <sheet>
+                    <group>
+                        <field name="sequence"/>
+                        <field name="is_active"/>
+                    </group>
+                    <group>
+                        <field name="question" placeholder="e.g. How do I change my billing address?"/>
+                        <field name="answer" placeholder="e.g. Click on Update address in the billing modal..."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_moyee_portal_faq" model="ir.actions.act_window">
+        <field name="name">Portal FAQs</field>
+        <field name="res_model">moyee.portal.faq</field>
+        <field name="view_mode">list,form</field>
+        <field name="target">current</field>
+    </record>
+
     <record id="res_config_settings_view_form" model="ir.ui.view">
         <field name="name">res.config.settings.view.form.inherit.moyee</field>
         <field name="model">res.config.settings</field>
@@ -197,46 +237,6 @@
                 </app>
             </xpath>
         </field>
-    </record>
-
-    <!-- FAQ Views & Window Action -->
-    <record id="moyee_portal_faq_view_tree" model="ir.ui.view">
-        <field name="name">moyee.portal.faq.view.tree</field>
-        <field name="model">moyee.portal.faq</field>
-        <field name="arch" type="xml">
-            <list editable="bottom" multi_edit="1">
-                <field name="sequence" widget="handle"/>
-                <field name="question"/>
-                <field name="answer"/>
-                <field name="is_active"/>
-            </list>
-        </field>
-    </record>
-
-    <record id="moyee_portal_faq_view_form" model="ir.ui.view">
-        <field name="name">moyee.portal.faq.view.form</field>
-        <field name="model">moyee.portal.faq</field>
-        <field name="arch" type="xml">
-            <form string="Portal FAQ">
-                <sheet>
-                    <group>
-                        <field name="sequence"/>
-                        <field name="is_active"/>
-                    </group>
-                    <group>
-                        <field name="question" placeholder="e.g. How do I change my billing address?"/>
-                        <field name="answer" placeholder="e.g. Click on Update address in the billing modal..."/>
-                    </group>
-                </sheet>
-            </form>
-        </field>
-    </record>
-
-    <record id="action_moyee_portal_faq" model="ir.actions.act_window">
-        <field name="name">Portal FAQs</field>
-        <field name="res_model">moyee.portal.faq</field>
-        <field name="view_mode">list,form</field>
-        <field name="target">current</field>
     </record>
 
     <!-- Settings Menu & Action -->
