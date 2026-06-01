@@ -666,13 +666,17 @@ class SaleOrder(models.Model):
     # ============================================================
     def _moyee_get_tracking_url(self):
         self.ensure_one()
-        # 1. Look at associated pickings (standard delivery carrier setups)
+        # 1. Look at associated pickings (standard delivery carrier setups + custom Monta fields)
         if "picking_ids" in self._fields:
             for picking in self.picking_ids:
+                # Prioritize Monta Odoo Integration custom field: monta_track_trace
+                if "monta_track_trace" in picking._fields and picking.monta_track_trace:
+                    return picking.monta_track_trace
+                # Fallback to standard Odoo delivery carrier tracking URL
                 if "carrier_tracking_url" in picking._fields and picking.carrier_tracking_url:
                     return picking.carrier_tracking_url
-        # 2. Look at custom database fields for Monta or other tracking links
-        for fname in ("x_monta_tracking_url", "x_tracking_url", "x_track_trace", "carrier_tracking_url"):
+        # 2. Look at custom database fields on sale.order itself
+        for fname in ("x_monta_tracking_url", "x_tracking_url", "x_track_trace", "carrier_tracking_url", "monta_track_trace"):
             if fname in self._fields and getattr(self, fname, False):
                 return getattr(self, fname)
         return False

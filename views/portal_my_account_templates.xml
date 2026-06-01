@@ -1314,18 +1314,21 @@
                                                     </t>
                                                 </span>
                                             </t>
-                                        </div>
 
-                                        <!-- Track & Trace (Dynamic from Pickings / Monta Integration) -->
-                                        <t t-set="tracking_url" t-value="so._moyee_get_tracking_url()"/>
-                                        <t t-if="tracking_url">
+                                            <!-- Track & Trace (Dynamic from Pickings / Monta Integration) -->
+                                            <t t-set="tracking_url" t-value="so._moyee_get_tracking_url()"/>
                                             <div class="d-flex align-items-center justify-content-between">
                                                 <span class="text-muted">Track &amp; Trace</span>
-                                                <a t-att-href="tracking_url" target="_blank" style="font-weight: 700; color: var(--moyee-pink); text-decoration: underline;">
-                                                    Track shipment ➔
-                                                </a>
+                                                <t t-if="tracking_url">
+                                                    <a t-att-href="tracking_url" target="_blank" style="font-weight: 700; color: var(--moyee-pink); text-decoration: underline;">
+                                                        Track shipment ➔
+                                                    </a>
+                                                </t>
+                                                <t t-else="">
+                                                    <span class="text-muted" style="font-weight: 700; color: #777;">—</span>
+                                                </t>
                                             </div>
-                                        </t>
+                                        </div>
                                     </div>
 
                                     <!-- Footer Actions -->
