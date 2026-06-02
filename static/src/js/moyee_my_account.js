@@ -27,6 +27,10 @@ publicWidget.registry.MoyeeMyAccountPage = publicWidget.Widget.extend({
 
         /* Tell a Friend */
         "click .moyee-taf-send": "_onTafSend",
+
+        /* Cascading select dropdowns for Edit modal */
+        "change .js_moyee_edit_line_form select[name='grind']": "_onGrindChange",
+        "change .js_moyee_edit_line_form select[name='coffee_type']": "_onCoffeeTypeChange",
     },
 
     // ──────────────────────────────────────────
@@ -89,8 +93,15 @@ publicWidget.registry.MoyeeMyAccountPage = publicWidget.Widget.extend({
         ev.stopPropagation();
         var modalId = $(ev.currentTarget).data("moyee-modal");
         if (modalId) {
-            this.$("#" + modalId).addClass("open");
+            var $modal = this.$("#" + modalId);
+            $modal.addClass("open");
             $("body").css("overflow", "hidden");
+
+            // If this is an edit product modal, initialize the cascading dropdowns
+            var $form = $modal.find(".js_moyee_edit_line_form");
+            if ($form.length) {
+                this._initCascadingDropdowns($form);
+            }
         }
     },
 
@@ -142,6 +153,116 @@ publicWidget.registry.MoyeeMyAccountPage = publicWidget.Widget.extend({
                 $input.css("border-color", "");
             }, 2000);
         }
+    },
+
+    // ──────────────────────────────────────────
+    // Cascading Dropdowns Logic for Edit Modal
+    // ──────────────────────────────────────────
+
+    _initCascadingDropdowns: function ($form) {
+        var variantsStr = $form.attr("data-variants");
+        if (!variantsStr) return;
+        
+        try {
+            var variants = JSON.parse(variantsStr);
+            $form.data("variants-list", variants);
+
+            // Store the initial selected values so we don't overwrite them on first load
+            var initialGrind = $form.find("select[name='grind']").val();
+            var initialCoffeeType = $form.find("select[name='coffee_type']").val();
+            var initialWeight = $form.find("select[name='weight']").val();
+
+            this._updateCoffeeTypes($form, initialGrind, initialCoffeeType);
+            this._updateWeights($form, initialGrind, $form.find("select[name='coffee_type']").val(), initialWeight);
+        } catch (e) {
+            console.error("Moyee error parsing variants JSON:", e);
+        }
+    },
+
+    _onGrindChange: function (ev) {
+        var $form = $(ev.currentTarget).closest(".js_moyee_edit_line_form");
+        var grind = $(ev.currentTarget).val();
+        
+        this._updateCoffeeTypes($form, grind);
+        this._updateWeights($form, grind, $form.find("select[name='coffee_type']").val());
+    },
+
+    _onCoffeeTypeChange: function (ev) {
+        var $form = $(ev.currentTarget).closest(".js_moyee_edit_line_form");
+        var grind = $form.find("select[name='grind']").val();
+        var coffeeType = $(ev.currentTarget).val();
+        
+        this._updateWeights($form, grind, coffeeType);
+    },
+
+    _updateCoffeeTypes: function ($form, grind, selectedValue) {
+        var variants = $form.data("variants-list") || [];
+        var $coffeeSelect = $form.find("select[name='coffee_type']");
+        var currentValue = selectedValue || $coffeeSelect.val();
+
+        // Find templates available for this grind
+        var templatesMap = {};
+        variants.forEach(function (v) {
+            if (v.grind === grind) {
+                templatesMap[v.tmpl_id] = v.tmpl_name;
+            }
+        });
+
+        // Rebuild options
+        $coffeeSelect.empty();
+        var keys = Object.keys(templatesMap);
+        if (keys.length === 0) {
+            $coffeeSelect.append($("<option>", {
+                value: "",
+                text: "No coffee available"
+            }));
+            return;
+        }
+
+        keys.forEach(function (tmplId) {
+            $coffeeSelect.append($("<option>", {
+                value: tmplId,
+                text: templatesMap[tmplId],
+                selected: String(tmplId) === String(currentValue)
+            }));
+        });
+    },
+
+    _updateWeights: function ($form, grind, coffeeType, selectedValue) {
+        var variants = $form.data("variants-list") || [];
+        var $weightSelect = $form.find("select[name='weight']");
+        var currentValue = selectedValue || $weightSelect.val();
+
+        // Find weights available for this grind and coffee template
+        var weightsMap = {};
+        variants.forEach(function (v) {
+            if (v.grind === grind && String(v.tmpl_id) === String(coffeeType)) {
+                var displayWeight = v.weight;
+                if (v.weight === "1kg") displayWeight = "1 kg";
+                else if (v.weight === "250g") displayWeight = "250g";
+                else if (v.weight === "25caps") displayWeight = "25 Capsules";
+                weightsMap[v.weight] = displayWeight;
+            }
+        });
+
+        // Rebuild options
+        $weightSelect.empty();
+        var keys = Object.keys(weightsMap);
+        if (keys.length === 0) {
+            $weightSelect.append($("<option>", {
+                value: "",
+                text: "No amount available"
+            }));
+            return;
+        }
+
+        keys.forEach(function (weightVal) {
+            $weightSelect.append($("<option>", {
+                value: weightVal,
+                text: weightsMap[weightVal],
+                selected: String(weightVal) === String(currentValue)
+            }));
+        });
     },
 });
 

@@ -82,6 +82,11 @@ class ResConfigSettings(models.TransientModel):
         config_parameter="moyee_subscription_portal_manager.show_taf",
         default=True,
     )
+    moyee_show_brew_guides = fields.Boolean(
+        string="Show Brew Guides Section",
+        config_parameter="moyee_subscription_portal_manager.show_brew_guides",
+        default=True,
+    )
 
     # Sidebar Visibility Controls
     moyee_show_sidebar_profile = fields.Boolean(
@@ -104,6 +109,11 @@ class ResConfigSettings(models.TransientModel):
     moyee_upsell_cta_url = fields.Char(
         string="Upsell CTA URL",
         config_parameter="moyee_subscription_portal_manager.upsell_cta_url",
+        default="/shop",
+    )
+    moyee_brew_guides_all_url = fields.Char(
+        string="All Brew Guides URL",
+        config_parameter="moyee_subscription_portal_manager.brew_guides_all_url",
         default="/shop",
     )
     moyee_support_email = fields.Char(

@@ -1,6 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- File: moyee_subscription_portal_manager/views/res_config_settings_views.xml -->
 <odoo>
+
+    <!-- Brew Guide Views & Window Action -->
+    <record id="moyee_portal_brew_guide_view_tree" model="ir.ui.view">
+        <field name="name">moyee.portal.brew.guide.view.tree</field>
+        <field name="model">moyee.portal.brew.guide</field>
+        <field name="arch" type="xml">
+            <list editable="bottom" multi_edit="1">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="sub_info"/>
+                <field name="url"/>
+                <field name="is_active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="moyee_portal_brew_guide_view_form" model="ir.ui.view">
+        <field name="name">moyee.portal.brew.guide.view.form</field>
+        <field name="model">moyee.portal.brew.guide</field>
+        <field name="arch" type="xml">
+            <form string="Portal Brew Guide">
+                <sheet>
+                    <group>
+                        <field name="sequence"/>
+                        <field name="is_active"/>
+                    </group>
+                    <group>
+                        <field name="name" placeholder="e.g. V60"/>
+                        <field name="sub_info" placeholder="e.g. 3 min · 1:16"/>
+                        <field name="url" placeholder="e.g. /shop"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_moyee_portal_brew_guide" model="ir.actions.act_window">
+        <field name="name">Portal Brew Guides</field>
+        <field name="res_model">moyee.portal.brew.guide</field>
+        <field name="view_mode">list,form</field>
+        <field name="target">current</field>
+    </record>
 
     <!-- FAQ Views & Window Action -->
     <record id="moyee_portal_faq_view_tree" model="ir.ui.view">
@@ -167,6 +208,15 @@
                                     <div class="text-muted">Show Tell-a-Friend recommendation form.</div>
                                 </div>
                             </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane">
+                                    <field name="moyee_show_brew_guides"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_show_brew_guides"/>
+                                    <div class="text-muted">Show dynamic Brew Guides section.</div>
+                                </div>
+                            </div>
                         </div>
                     </block>
 
@@ -220,6 +270,14 @@
                                     <field name="moyee_support_email"/>
                                 </div>
                             </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_brew_guides_all_url"/>
+                                    <div class="text-muted">Destination link for the "ALL BREW GUIDES" button.</div>
+                                    <field name="moyee_brew_guides_all_url"/>
+                                </div>
+                            </div>
                         </div>
                     </block>
 
@@ -234,6 +292,20 @@
                                         <button name="%(action_moyee_portal_faq)d" 
                                                 icon="oi-arrow-right"
                                                 string="Configure Portal FAQs" 
+                                                type="action" 
+                                                class="btn-link"/>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <span class="o_form_label">Manage Brew Guides</span>
+                                    <div class="text-muted">Create, edit, delete and reorder Brew Guide blocks displayed on the customer portal dashboard.</div>
+                                    <div class="mt8">
+                                        <button name="%(action_moyee_portal_brew_guide)d" 
+                                                icon="oi-arrow-right"
+                                                string="Configure Brew Guides" 
                                                 type="action" 
                                                 class="btn-link"/>
                                     </div>
@@ -271,5 +343,11 @@
               parent="menu_moyee_portal_root"
               action="action_moyee_portal_faq"
               sequence="20"/>
+
+    <menuitem id="menu_moyee_portal_brew_guide"
+              name="Portal Brew Guides"
+              parent="menu_moyee_portal_root"
+              action="action_moyee_portal_brew_guide"
+              sequence="30"/>
 
 </odoo>

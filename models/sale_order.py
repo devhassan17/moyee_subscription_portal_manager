@@ -391,7 +391,7 @@ class SaleOrder(models.Model):
 
         raise UserError(_("Pause/resume is not available for this subscription implementation."))
 
-    def moyee_portal_pause(self, *, portal_user_id):
+    def moyee_portal_pause(self, *, portal_user_id, pause_until_date=None):
         self.ensure_one()
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
         if not portal_user:
@@ -400,8 +400,85 @@ class SaleOrder(models.Model):
         self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
         self._moyee_set_subscription_paused_state(paused=True)
 
+        if pause_until_date:
+            field_name = self._moyee_get_subscription_next_date_field_name()
+            if field_name:
+                try:
+                    parsed_date = fields.Date.from_string(pause_until_date)
+                    if parsed_date:
+                        self.sudo().write({field_name: parsed_date})
+                except Exception:
+                    pass
+
         self.with_user(1).message_post(
-            body=_("Moyee: customer paused the subscription via portal."),
+            body=_("Moyee: customer paused the subscription via portal. Next resume date: %s") % (pause_until_date or 'No change'),
+            subtype_xmlid="mail.mt_note",
+            author_id=portal_user.partner_id.id,
+        )
+        return True
+
+    # ============================================================
+    # ✅ Skip delivery (portal)
+    # ============================================================
+    def moyee_portal_skip_delivery(self, *, portal_user_id):
+        self.ensure_one()
+        portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
+        if not portal_user:
+            raise AccessError(_("Invalid user."))
+
+        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
+
+        field_name = self._moyee_get_subscription_next_date_field_name()
+        if not field_name:
+            raise UserError(_("This subscription does not expose a next date field."))
+
+        current_date = self[field_name] or fields.Date.today()
+        
+        # Calculate interval to skip
+        plan = self._moyee_get_current_plan_record()
+        months = 1  # default fallback
+        weeks = 0
+        days = 0
+
+        if plan:
+            if "billing_period_value" in plan._fields and "billing_period_unit" in plan._fields:
+                val = plan.billing_period_value or 1
+                unit = plan.billing_period_unit
+                if unit == "month":
+                    months = val
+                elif unit == "week":
+                    weeks = val
+                    months = 0
+                elif unit == "year":
+                    months = val * 12
+                elif unit == "day":
+                    days = val
+                    months = 0
+            else:
+                pname = (plan.display_name or plan.name or "").lower()
+                if "2 weeks" in pname:
+                    weeks = 2
+                    months = 0
+                elif "week" in pname:
+                    weeks = 1
+                    months = 0
+                elif "2 months" in pname:
+                    months = 2
+                elif "3 months" in pname:
+                    months = 3
+                elif "6 months" in pname:
+                    months = 6
+                elif "month" in pname:
+                    months = 1
+                elif "year" in pname:
+                    months = 12
+
+        from dateutil.relativedelta import relativedelta
+        new_date = current_date + relativedelta(months=months, weeks=weeks, days=days)
+
+        self.sudo().write({field_name: new_date})
+        self.with_user(1).message_post(
+            body=_("Moyee: customer skipped next delivery via portal. Next date: %s") % new_date,
             subtype_xmlid="mail.mt_note",
             author_id=portal_user.partner_id.id,
         )
@@ -422,6 +499,99 @@ class SaleOrder(models.Model):
             author_id=portal_user.partner_id.id,
         )
         return True
+
+    # ============================================================
+    # ✅ Cancel / Close (robust)
+    # ============================================================
+    def _moyee_set_subscription_closed_state(self):
+        self.ensure_one()
+
+        # 1) Try standard methods first
+        for m in ("action_close", "action_cancel", "action_subscription_close", "action_set_to_close"):
+            if hasattr(self, m):
+                try:
+                    getattr(self.sudo(), m)()
+                    return True
+                except Exception:
+                    pass
+
+        # 2) Generic selection field fallback for subscription_state
+        if "subscription_state" in self._fields:
+            selection = self._fields["subscription_state"].selection or []
+            keys = [k for k, _lbl in selection]
+            def _pick(candidates):
+                for cand in candidates:
+                    for k in keys:
+                        if k == cand:
+                            return k
+                for cand in candidates:
+                    for k in keys:
+                        if cand in str(k).lower():
+                            return k
+                return None
+            key = _pick(("5_churn", "6_churn", "4_closed", "closed", "cancel", "churned", "churn", "close"))
+            if key:
+                self.sudo().write({"subscription_state": key})
+                return True
+
+        # 3) stage-based fallback
+        for stage_field in ("subscription_stage_id", "stage_id"):
+            if stage_field in self._fields:
+                Stage = self.env[self._fields[stage_field].comodel_name].sudo()
+                target = (
+                    Stage.search([("name", "ilike", "closed")], limit=1)
+                    or Stage.search([("name", "ilike", "cancel")], limit=1)
+                    or Stage.search([("name", "ilike", "churn")], limit=1)
+                )
+                if target:
+                    self.sudo().write({stage_field: target.id})
+                    return True
+
+        # 4) generic selection field fallback for subscription_status
+        if "subscription_status" in self._fields:
+            selection = self._fields["subscription_status"].selection or []
+            keys = [k for k, _lbl in selection]
+            def _pick(candidates):
+                for cand in candidates:
+                    for k in keys:
+                        if k == cand:
+                            return k
+                for cand in candidates:
+                    for k in keys:
+                        if cand in str(k).lower():
+                            return k
+                return None
+            key = _pick(("closed", "cancel", "churned", "churn", "close"))
+            if key:
+                self.sudo().write({"subscription_status": key})
+                return True
+
+        # 5) standard sale.order cancel if nothing else worked
+        if hasattr(self, "action_cancel"):
+            try:
+                self.sudo().action_cancel()
+                return True
+            except Exception:
+                pass
+
+        raise UserError(_("Close/cancel is not available for this subscription implementation."))
+
+    def moyee_portal_close(self, *, portal_user_id):
+        self.ensure_one()
+        portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
+        if not portal_user:
+            raise AccessError(_("Invalid user."))
+
+        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
+        self._moyee_set_subscription_closed_state()
+
+        self.with_user(1).message_post(
+            body=_("Moyee: customer cancelled/closed the subscription via portal."),
+            subtype_xmlid="mail.mt_note",
+            author_id=portal_user.partner_id.id,
+        )
+        return True
+
 
     # ============================================================
     # Push next date (portal)

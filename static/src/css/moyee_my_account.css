@@ -701,7 +701,7 @@
 .moyee-alert-error   { background: #FFEBEE; color: #C62828; }
 
 /* ── RESPONSIVE ── */
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .moyee-page-wrap {
     grid-template-columns: 1fr;
     padding: 24px 16px 80px;
@@ -738,4 +738,64 @@
 .moyee-account-page .o_portal_doc_table,
 .moyee-account-page .o_portal_category {
   display: none !important;
+}
+
+/* ── BREW GUIDES SECTION ── */
+.moyee-brew-card:hover {
+  background: #3A3A3C !important;
+  border-color: var(--moyee-pink) !important;
+  box-shadow: 0 4px 12px rgba(233, 30, 140, 0.15);
+}
+.moyee-brew-card:hover .moyee-brew-card-arrow {
+  transform: translateX(4px);
+}
+
+/* ── CHANGE FREQUENCY CUSTOM STYLES ── */
+.moyee-frequency-option {
+  position: relative;
+  cursor: pointer;
+  display: block;
+  margin-bottom: 12px;
+}
+.moyee-frequency-option-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--moyee-gray-1);
+  border: 1.5px solid transparent;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+.moyee-frequency-option:hover .moyee-frequency-option-card {
+  background: #FFFFFF;
+  border-color: var(--moyee-gray-3);
+  box-shadow: var(--moyee-shadow);
+}
+.moyee-frequency-radio:checked ~ .moyee-frequency-option-card {
+  background: #FFF0F6 !important;
+  border-color: var(--moyee-pink) !important;
+  box-shadow: 0 2px 8px rgba(233, 30, 140, 0.08);
+}
+.moyee-frequency-circle {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--moyee-gray-3);
+  border-radius: 50%;
+  background: #FFFFFF;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+.moyee-frequency-radio:checked ~ .moyee-frequency-option-card .moyee-frequency-circle {
+  border-color: var(--moyee-pink) !important;
+  background: var(--moyee-pink) !important;
+  box-shadow: inset 0 0 0 4px #FFFFFF !important;
+}
+.moyee-frequency-current-badge {
+  color: var(--moyee-pink);
+  font-weight: 800;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  margin-left: 8px;
+  text-transform: uppercase;
 }

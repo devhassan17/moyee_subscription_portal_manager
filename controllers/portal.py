@@ -149,6 +149,10 @@ class MoyeePortalHome(CustomerPortal):
         PortalFaq = request.env["moyee.portal.faq"].sudo()
         faqs = PortalFaq.search([("is_active", "=", True)])
 
+        # ── Portal Brew Guides ──
+        PortalBrewGuide = request.env["moyee.portal.brew.guide"].sudo()
+        brew_guides = PortalBrewGuide.search([("is_active", "=", True)])
+
         # ── Flash messages from redirect ──
         moyee_home_message = kw.get("moyee_message", "")
         moyee_home_error = kw.get("moyee_error", "")
@@ -171,12 +175,49 @@ class MoyeePortalHome(CustomerPortal):
             "show_faq": _get_bool("moyee_subscription_portal_manager.show_faq", True),
             "show_inspire": _get_bool("moyee_subscription_portal_manager.show_inspire", True),
             "show_taf": _get_bool("moyee_subscription_portal_manager.show_taf", True),
+            "show_brew_guides": _get_bool("moyee_subscription_portal_manager.show_brew_guides", True),
+            "brew_guides_all_url": ICP.get_param("moyee_subscription_portal_manager.brew_guides_all_url", "/shop"),
             "show_sidebar_profile": _get_bool("moyee_subscription_portal_manager.show_sidebar_profile", True),
             "show_sidebar_upsell": _get_bool("moyee_subscription_portal_manager.show_sidebar_upsell", True),
             "show_sidebar_support": _get_bool("moyee_subscription_portal_manager.show_sidebar_support", True),
             "upsell_cta_url": ICP.get_param("moyee_subscription_portal_manager.upsell_cta_url", "/shop"),
             "support_email": ICP.get_param("moyee_subscription_portal_manager.support_email", "hello@moyeecoffee.com"),
         }
+
+        # Variant map for front-end cascading selections
+        import json
+        variant_map = []
+        if active_subscription:
+            try:
+                # Include both available_products and any products currently on the subscription lines
+                existing_products = active_subscription.order_line.filtered(lambda l: not l.x_moyee_is_removed).mapped("product_id")
+                all_possible_products = available_products | existing_products
+                for p in all_possible_products:
+                    grind, weight = active_subscription._moyee_extract_product_metadata(p)
+                    variant_map.append({
+                        "id": p.id,
+                        "tmpl_id": p.product_tmpl_id.id,
+                        "tmpl_name": p.product_tmpl_id.name,
+                        "grind": grind,
+                        "weight": weight,
+                    })
+            except Exception:
+                pass
+        # Precompute pause options resume dates
+        pause_options = []
+        base_date = next_date_value or fields.Date.today()
+        if base_date:
+            from dateutil.relativedelta import relativedelta
+            for months in [1, 2, 3, 6]:
+                resume_date = base_date + relativedelta(months=months)
+                day = resume_date.day
+                month_names = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+                formatted_date = f"{day} {month_names[resume_date.month - 1]} {resume_date.year}"
+                pause_options.append({
+                    "months": months,
+                    "date_str": resume_date.strftime('%Y-%m-%d'),
+                    "display": f"{months} month{'s' if months > 1 else ''} (resumes {formatted_date})"
+                })
 
         values.update({
             "partner": partner,
@@ -196,9 +237,12 @@ class MoyeePortalHome(CustomerPortal):
             "recent_orders": recent_orders,
             "recent_invoices": recent_invoices,
             "faqs": faqs,
+            "brew_guides": brew_guides,
             "moyee_home_message": moyee_home_message,
             "moyee_home_error": moyee_home_error,
             "moyee_config": moyee_config,
+            "variant_map_json": variant_map_json,
+            "pause_options": pause_options,
         })
         return values
 
@@ -582,10 +626,30 @@ class MoyeeSubscriptionPortal(http.Controller):
     def moyee_pause_subscription(self, order_id, access_token=None, **post):
         order = self._moyee_get_order_sudo(order_id, access_token=access_token, require_subscription=True)
         try:
-            order.moyee_portal_pause(portal_user_id=request.env.user.id)
+            pause_until_date = post.get("pause_until_date")
+            order.moyee_portal_pause(portal_user_id=request.env.user.id, pause_until_date=pause_until_date)
         except (AccessError, UserError, ValidationError) as e:
             return self._moyee_redirect_back(order, error=str(e), access_token=access_token)
         return self._moyee_redirect_back(order, message=_("Subscription paused successfully."), access_token=access_token)
+
+    @http.route(
+        [
+            "/my/subscriptions/<int:order_id>/skip_delivery",
+            "/my/subscription/<int:order_id>/skip_delivery",
+        ],
+        type="http",
+        auth="public",
+        website=True,
+        methods=["POST"],
+        csrf=True,
+    )
+    def moyee_skip_delivery(self, order_id, access_token=None, **post):
+        order = self._moyee_get_order_sudo(order_id, access_token=access_token, require_subscription=True)
+        try:
+            order.moyee_portal_skip_delivery(portal_user_id=request.env.user.id)
+        except (AccessError, UserError, ValidationError) as e:
+            return self._moyee_redirect_back(order, error=str(e), access_token=access_token)
+        return self._moyee_redirect_back(order, message=_("Subscription delivery skipped successfully."), access_token=access_token)
 
     @http.route(
         [
@@ -605,6 +669,25 @@ class MoyeeSubscriptionPortal(http.Controller):
         except (AccessError, UserError, ValidationError) as e:
             return self._moyee_redirect_back(order, error=str(e), access_token=access_token)
         return self._moyee_redirect_back(order, message=_("Subscription resumed successfully."), access_token=access_token)
+
+    @http.route(
+        [
+            "/my/subscriptions/<int:order_id>/cancel",
+            "/my/subscription/<int:order_id>/cancel",
+        ],
+        type="http",
+        auth="public",
+        website=True,
+        methods=["POST"],
+        csrf=True,
+    )
+    def moyee_cancel_subscription(self, order_id, access_token=None, **post):
+        order = self._moyee_get_order_sudo(order_id, access_token=access_token, require_subscription=True)
+        try:
+            order.moyee_portal_close(portal_user_id=request.env.user.id)
+        except (AccessError, UserError, ValidationError) as e:
+            return self._moyee_redirect_back(order, error=str(e), access_token=access_token)
+        return self._moyee_redirect_back(order, message=_("Subscription cancelled successfully."), access_token=access_token)
 
     @http.route(
         [

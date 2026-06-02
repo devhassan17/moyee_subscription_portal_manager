@@ -186,6 +186,13 @@
                                                     <button class="btn btn-success" type="submit">Resume</button>
                                                 </form>
                                             </t>
+
+                                            <!-- Cancel Subscription -->
+                                            <form t-attf-action="/my/subscriptions/{{ order.id }}/cancel" method="post" class="d-inline mb-0">
+                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                <button class="btn btn-outline-danger" type="submit"
+                                                        onclick="return confirm('Are you sure you want to cancel your subscription?');">Cancel</button>
+                                            </form>
                                         </div>
                                     </div>
                                 </t>
