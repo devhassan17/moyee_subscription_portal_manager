@@ -188,6 +188,9 @@ class SaleOrder(models.Model):
 
         return grind, weight
 
+    def moyee_extract_product_metadata(self, product):
+        return self._moyee_extract_product_metadata(product)
+
     # ============================================================
     # ✅ UNIVERSAL: Plan field + plan model resolver (FIXED)
     # ============================================================

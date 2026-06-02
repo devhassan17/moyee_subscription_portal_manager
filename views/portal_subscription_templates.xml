@@ -372,7 +372,7 @@
                                         <div class="moyee-product-slider" id="moyeeProductSlider">
                                             <t t-foreach="available_products" t-as="p">
                                                 <!-- Metadata for JS filtering -->
-                                                <t t-set="p_meta" t-value="order._moyee_extract_product_metadata(p)"/>
+                                                <t t-set="p_meta" t-value="order.moyee_extract_product_metadata(p)"/>
                                                 <div class="moyee-slider-card js_moyee_product_card" 
                                                      t-att-data-grind="p_meta[0]" 
                                                      t-att-data-weight="p_meta[1]" 
