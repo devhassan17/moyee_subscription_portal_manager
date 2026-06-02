@@ -781,7 +781,7 @@
                                 </t>
                                 <t t-else="">
                                     <p style="font-size: 15px; color: #555; line-height: 1.5; margin-bottom: 20px;">
-                                        Your next delivery is scheduled for <strong><t t-esc="f'{next_date_value.day} {next_date_value.strftime(\'%B\')} {next_date_value.year}\' if next_date_value else \'\'"/></strong>. Choose a new delivery date or skip a delivery.
+                                        Your next delivery is scheduled for <strong><t t-esc="next_date_value and ('%s %s %s' % (next_date_value.day, next_date_value.strftime('%B'), next_date_value.year)) or ''"/></strong>. Choose a new delivery date or skip a delivery.
                                     </p>
                                     
                                     <!-- Main Date Update Form -->
@@ -1365,14 +1365,14 @@
                                             <t t-if="so.is_subscription_order">
                                                 Expected: 
                                                 <t t-if="so.expected_date">
-                                                    <t t-esc="f'{so.expected_date.day} {so.expected_date.strftime(\'%B\')} {so.expected_date.year}'"/>
+                                                    <t t-esc="'%s %s %s' % (so.expected_date.day, so.expected_date.strftime('%B'), so.expected_date.year)"/>
                                                 </t>
                                                 <t t-else="">
-                                                    <t t-esc="f'{so.date_order.day} {so.date_order.strftime(\'%B\')} {so.date_order.year}'"/>
+                                                    <t t-esc="'%s %s %s' % (so.date_order.day, so.date_order.strftime('%B'), so.date_order.year)"/>
                                                 </t>
                                             </t>
                                             <t t-else="">
-                                                <t t-esc="so.name"/> · <t t-esc="f'{so.date_order.day} {so.date_order.strftime(\'%B\')} {so.date_order.year}'"/>
+                                                <t t-esc="so.name"/> · <t t-esc="'%s %s %s' % (so.date_order.day, so.date_order.strftime('%B'), so.date_order.year)"/>
                                             </t>
                                         </div>
                                     </div>
@@ -1503,10 +1503,10 @@
                                                 <span style="font-weight: 700; color: #111;">
                                                     Expected: 
                                                     <t t-if="so.expected_date">
-                                                        <t t-esc="f'{so.expected_date.day} {so.expected_date.strftime(\'%B\')} {so.expected_date.year}'"/>
+                                                        <t t-esc="'%s %s %s' % (so.expected_date.day, so.expected_date.strftime('%B'), so.expected_date.year)"/>
                                                     </t>
                                                     <t t-else="">
-                                                        <t t-esc="f'{so.date_order.day} {so.date_order.strftime(\'%B\')} {so.date_order.year}'"/>
+                                                        <t t-esc="'%s %s %s' % (so.date_order.day, so.date_order.strftime('%B'), so.date_order.year)"/>
                                                     </t>
                                                 </span>
                                             </t>
@@ -1514,13 +1514,13 @@
                                                 <span style="color: #666;">Delivery date</span>
                                                 <span style="font-weight: 700; color: #111;">
                                                     <t t-if="so.commitment_date">
-                                                        <t t-esc="f'{so.commitment_date.day} {so.commitment_date.strftime(\'%B\')} {so.commitment_date.year}'"/>
+                                                        <t t-esc="'%s %s %s' % (so.commitment_date.day, so.commitment_date.strftime('%B'), so.commitment_date.year)"/>
                                                     </t>
                                                     <t t-elif="so.expected_date">
-                                                        <t t-esc="f'{so.expected_date.day} {so.expected_date.strftime(\'%B\')} {so.expected_date.year}'"/>
+                                                        <t t-esc="'%s %s %s' % (so.expected_date.day, so.expected_date.strftime('%B'), so.expected_date.year)"/>
                                                     </t>
                                                     <t t-else="">
-                                                        <t t-esc="f'{so.date_order.day} {so.date_order.strftime(\'%B\')} {so.date_order.year}'"/>
+                                                        <t t-esc="'%s %s %s' % (so.date_order.day, so.date_order.strftime('%B'), so.date_order.year)"/>
                                                     </t>
                                                 </span>
                                             </t>
