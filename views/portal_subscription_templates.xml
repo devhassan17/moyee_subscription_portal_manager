@@ -373,8 +373,8 @@
                                             <t t-foreach="available_products" t-as="p">
                                                 <!-- Metadata for JS filtering -->
                                                 <t t-set="pname" t-value="(p.with_context(display_default_code=False).display_name or p.name or '').lower()"/>
-                                                <t t-set="p_grind" t-value="'whole' if 'whole' in pname else ('filter' if 'filter' in pname else ('espresso' if 'espresso' in pname else ('capsules' if 'capsule' in pname or 'cups' in pname else 'whole')))"/>
-                                                <t t-set="p_weight" t-value="'1kg' if '1kg' in pname.replace(' ', '') or '1 kg' in pname else ('250g' if '250' in pname else ('25caps' if '25' in pname or 'capsule' in pname else '1kg'))"/>
+                                                <t t-set="p_grind" t-value="'whole' in pname and 'whole' or 'filter' in pname and 'filter' or 'espresso' in pname and 'espresso' or ('capsule' in pname or 'cups' in pname) and 'capsules' or 'whole'"/>
+                                                <t t-set="p_weight" t-value="('1kg' in pname.replace(' ', '') or '1 kg' in pname) and '1kg' or '250' in pname and '250g' or ('25' in pname or 'capsule' in pname) and '25caps' or '1kg'"/>
                                                 <div class="moyee-slider-card js_moyee_product_card" 
                                                      t-att-data-grind="p_grind" 
                                                      t-att-data-weight="p_weight" 

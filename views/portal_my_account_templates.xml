@@ -114,8 +114,8 @@
                                                 <t t-if="not line.display_type">
                                                     <t t-set="lname_check" t-value="(line.product_id.with_context(display_default_code=False).display_name or line.name or '').lower()"/>
                                                     <t t-if="'delivery' not in lname_check">
-                                                        <t t-set="line_grind_val" t-value="'Whole beans' if 'whole' in lname_check else ('Filter grind' if 'filter' in lname_check else ('Espresso grind' if 'espresso' in lname_check else ('Capsules' if 'capsule' in lname_check or 'cups' in lname_check else 'Whole beans')))"/>
-                                                        <t t-set="line_weight_val" t-value="'1 kg' if '1kg' in lname_check.replace(' ', '') or '1 kg' in lname_check else ('250g' if '250' in lname_check else ('25 Capsules' if '25' in lname_check and 'capsule' in lname_check else '1 kg'))"/>
+                                                        <t t-set="line_grind_val" t-value="'whole' in lname_check and 'Whole beans' or 'filter' in lname_check and 'Filter grind' or 'espresso' in lname_check and 'Espresso grind' or 'capsule' in lname_check and 'Capsules' or 'cups' in lname_check and 'Capsules' or 'Whole beans'"/>
+                                                        <t t-set="line_weight_val" t-value="'1kg' in lname_check.replace(' ', '') and '1 kg' or '1 kg' in lname_check and '1 kg' or '250' in lname_check and '250g' or '25' in lname_check and '25 Capsules' or '1 kg'"/>
                                                         <tr class="moyee-abo-prod-row">
                                                             <td>
                                                                 <div class="moyee-abo-prod-photo">
@@ -1096,8 +1096,8 @@
                                                 <div class="moyee-product-slider" id="moyeeProductSlider">
                                                     <t t-foreach="available_products" t-as="p">
                                                         <t t-set="pname" t-value="(p.with_context(display_default_code=False).display_name or p.name or '').lower()"/>
-                                                        <t t-set="p_grind" t-value="'whole' if 'whole' in pname else ('filter' if 'filter' in pname else ('espresso' if 'espresso' in pname else ('capsules' if 'capsule' in pname or 'cups' in pname else 'whole')))"/>
-                                                        <t t-set="p_weight" t-value="'1kg' if '1kg' in pname.replace(' ', '') or '1 kg' in pname else ('250g' if '250' in pname else ('25caps' if '25' in pname and 'capsule' in pname else '1kg'))"/>
+                                                        <t t-set="p_grind" t-value="'whole' in pname and 'whole' or 'filter' in pname and 'filter' or 'espresso' in pname and 'espresso' or ('capsule' in pname or 'cups' in pname) and 'capsules' or 'whole'"/>
+                                                        <t t-set="p_weight" t-value="('1kg' in pname.replace(' ', '') or '1 kg' in pname) and '1kg' or '250' in pname and '250g' or '25' in pname and '25caps' or '1kg'"/>
                                                         <div class="moyee-slider-card js_moyee_product_card" 
                                                              t-att-data-grind="p_grind"
                                                              t-att-data-weight="p_weight" 
@@ -1288,8 +1288,8 @@
                             <t t-set="lname_check" t-value="(line.product_id.with_context(display_default_code=False).display_name or line.name or '').lower()"/>
                             <t t-if="'delivery' not in lname_check">
                                 <t t-set="lname" t-value="(line.product_id.with_context(display_default_code=False).display_name or line.name or '').lower()"/>
-                                <t t-set="line_grind" t-value="'whole' if 'whole' in lname else ('filter' if 'filter' in lname else ('espresso' if 'espresso' in lname else ('capsules' if 'capsule' in lname or 'cups' in lname else 'whole')))"/>
-                                <t t-set="line_weight" t-value="'1kg' if '1kg' in lname.replace(' ', '') or '1 kg' in lname else ('250g' if '250' in lname else ('25caps' if '25' in lname and 'capsule' in lname else '1kg'))"/>
+                                <t t-set="line_grind" t-value="'whole' in lname and 'whole' or 'filter' in lname and 'filter' or 'espresso' in lname and 'espresso' or ('capsule' in lname or 'cups' in lname) and 'capsules' or 'whole'"/>
+                                <t t-set="line_weight" t-value="('1kg' in lname.replace(' ', '') or '1 kg' in lname) and '1kg' or '250' in lname and '250g' or '25' in lname and '25caps' or '1kg'"/>
                                 <t t-set="available_templates" t-value="available_products.mapped('product_tmpl_id')"/>
                                 <t t-set="all_templates" t-value="available_templates | line.product_id.product_tmpl_id"/>
 
@@ -1411,8 +1411,8 @@
                                             <t t-if="not line.display_type">
                                                 <t t-set="lname" t-value="(line.product_id.with_context(display_default_code=False).display_name or line.name or '').lower()"/>
                                                 <t t-if="'delivery' not in lname and not getattr(line, 'is_delivery', False)">
-                                                    <t t-set="l_grind" t-value="'Whole beans' if 'whole' in lname else ('Filter grind' if 'filter' in lname else ('Espresso grind' if 'espresso' in lname else ('Capsules' if 'capsule' in lname or 'cups' in lname else 'Whole beans')))"/>
-                                                    <t t-set="l_weight" t-value="'1 kg' if '1kg' in lname.replace(' ', '') or '1 kg' in lname else ('250g' if '250' in lname else ('25 Capsules' if '25' in lname and 'capsule' in lname else '1 kg'))"/>
+                                                    <t t-set="l_grind" t-value="'whole' in lname and 'Whole beans' or 'filter' in lname and 'Filter grind' or 'espresso' in lname and 'Espresso grind' or ('capsule' in lname or 'cups' in lname) and 'Capsules' or 'Whole beans'"/>
+                                                    <t t-set="l_weight" t-value="('1kg' in lname.replace(' ', '') or '1 kg' in lname) and '1 kg' or '250' in lname and '250g' or ('25' in lname and 'capsule' in lname) and '25 Capsules' or '1 kg'"/>
                                                     
                                                     <div class="d-flex align-items-center justify-content-between py-2">
                                                         <div>
