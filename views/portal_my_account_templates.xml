@@ -1410,7 +1410,7 @@
                                         <t t-foreach="so.order_line" t-as="line">
                                             <t t-if="not line.display_type">
                                                 <t t-set="lname" t-value="(line.product_id and line.product_id.name or line.name or '').lower()"/>
-                                                <t t-if="'delivery' not in lname and not getattr(line, 'is_delivery', False)">
+                                                <t t-if="'delivery' not in lname and not ('is_delivery' in line._fields and line.is_delivery)">
                                                     <t t-set="l_grind" t-value="'whole' in lname and 'Whole beans' or 'filter' in lname and 'Filter grind' or 'espresso' in lname and 'Espresso grind' or ('capsule' in lname or 'cups' in lname) and 'Capsules' or 'Whole beans'"/>
                                                     <t t-set="l_weight" t-value="('1kg' in lname.replace(' ', '') or '1 kg' in lname) and '1 kg' or '250' in lname and '250g' or ('25' in lname and 'capsule' in lname) and '25 Capsules' or '1 kg'"/>
                                                     
@@ -1441,9 +1441,9 @@
                                     </div>
 
                                     <!-- Price Breakdown Section (Requested: Costs, Tax, Delivery separately) -->
-                                    <t t-set="delivery_lines" t-value="so.order_line.filtered(lambda l: getattr(l, 'is_delivery', False) or 'delivery' in (l.product_id.name or l.name or '').lower())"/>
+                                    <t t-set="delivery_lines" t-value="so.order_line.filtered(lambda l: ('is_delivery' in l._fields and l.is_delivery) or 'delivery' in (l.product_id and l.product_id.name or l.name or '').lower())"/>
                                     <t t-set="delivery_cost" t-value="sum(delivery_lines.mapped('price_subtotal'))"/>
-                                    <t t-set="product_lines" t-value="so.order_line.filtered(lambda l: not l.display_type and not getattr(l, 'is_delivery', False) and 'delivery' not in (l.product_id.name or l.name or '').lower())"/>
+                                    <t t-set="product_lines" t-value="so.order_line.filtered(lambda l: not l.display_type and not ('is_delivery' in l._fields and l.is_delivery) and 'delivery' not in (l.product_id and l.product_id.name or l.name or '').lower())"/>
                                     <t t-set="product_cost" t-value="sum(product_lines.mapped('price_subtotal'))"/>
 
                                     <div class="d-flex flex-column gap-2 mb-3" style="font-size: 14px;">
