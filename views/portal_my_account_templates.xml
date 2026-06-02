@@ -112,7 +112,7 @@
                                         <tbody>
                                             <t t-foreach="visible_lines or []" t-as="line">
                                                 <t t-if="not line.display_type">
-                                                    <t t-set="lname_check" t-value="(line.product_id.with_context(display_default_code=False).display_name or line.name or '').lower()"/>
+                                                    <t t-set="lname_check" t-value="(line.product_id and line.product_id.name or line.name or '').lower()"/>
                                                     <t t-if="'delivery' not in lname_check">
                                                         <t t-set="line_grind_val" t-value="'whole' in lname_check and 'Whole beans' or 'filter' in lname_check and 'Filter grind' or 'espresso' in lname_check and 'Espresso grind' or 'capsule' in lname_check and 'Capsules' or 'cups' in lname_check and 'Capsules' or 'Whole beans'"/>
                                                         <t t-set="line_weight_val" t-value="'1kg' in lname_check.replace(' ', '') and '1 kg' or '1 kg' in lname_check and '1 kg' or '250' in lname_check and '250g' or '25' in lname_check and '25 Capsules' or '1 kg'"/>
@@ -968,7 +968,7 @@
                                     <div class="d-flex flex-column gap-3">
                                         <t t-foreach="visible_lines" t-as="line">
                                             <t t-if="not line.display_type">
-                                                <t t-set="lname_check" t-value="(line.product_id.with_context(display_default_code=False).display_name or line.name or '').lower()"/>
+                                                <t t-set="lname_check" t-value="(line.product_id and line.product_id.name or line.name or '').lower()"/>
                                                 <t t-if="'delivery' not in lname_check">
                                                     <div class="d-flex align-items-center justify-content-between gap-3 p-2 rounded" style="background: var(--moyee-gray-1);">
                                                         
@@ -1285,9 +1285,9 @@
                     <!-- 6) LINE EDIT MODALS (ONE FOR EACH PRODUCT LINE) -->
                     <t t-foreach="visible_lines or []" t-as="line">
                         <t t-if="not line.display_type">
-                            <t t-set="lname_check" t-value="(line.product_id.with_context(display_default_code=False).display_name or line.name or '').lower()"/>
+                            <t t-set="lname_check" t-value="(line.product_id and line.product_id.name or line.name or '').lower()"/>
                             <t t-if="'delivery' not in lname_check">
-                                <t t-set="lname" t-value="(line.product_id.with_context(display_default_code=False).display_name or line.name or '').lower()"/>
+                                <t t-set="lname" t-value="lname_check"/>
                                 <t t-set="line_grind" t-value="'whole' in lname and 'whole' or 'filter' in lname and 'filter' or 'espresso' in lname and 'espresso' or ('capsule' in lname or 'cups' in lname) and 'capsules' or 'whole'"/>
                                 <t t-set="line_weight" t-value="('1kg' in lname.replace(' ', '') or '1 kg' in lname) and '1kg' or '250' in lname and '250g' or '25' in lname and '25caps' or '1kg'"/>
                                 <t t-set="available_templates" t-value="available_products.mapped('product_tmpl_id')"/>
@@ -1409,7 +1409,7 @@
                                     <div class="d-flex flex-column mb-3" style="border-top: 1.5px solid #F0F0F0; border-bottom: 1.5px solid #F0F0F0; padding: 12px 0;">
                                         <t t-foreach="so.order_line" t-as="line">
                                             <t t-if="not line.display_type">
-                                                <t t-set="lname" t-value="(line.product_id.with_context(display_default_code=False).display_name or line.name or '').lower()"/>
+                                                <t t-set="lname" t-value="(line.product_id and line.product_id.name or line.name or '').lower()"/>
                                                 <t t-if="'delivery' not in lname and not getattr(line, 'is_delivery', False)">
                                                     <t t-set="l_grind" t-value="'whole' in lname and 'Whole beans' or 'filter' in lname and 'Filter grind' or 'espresso' in lname and 'Espresso grind' or ('capsule' in lname or 'cups' in lname) and 'Capsules' or 'Whole beans'"/>
                                                     <t t-set="l_weight" t-value="('1kg' in lname.replace(' ', '') or '1 kg' in lname) and '1 kg' or '250' in lname and '250g' or ('25' in lname and 'capsule' in lname) and '25 Capsules' or '1 kg'"/>

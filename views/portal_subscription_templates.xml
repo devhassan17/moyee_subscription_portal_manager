@@ -372,7 +372,7 @@
                                         <div class="moyee-product-slider" id="moyeeProductSlider">
                                             <t t-foreach="available_products" t-as="p">
                                                 <!-- Metadata for JS filtering -->
-                                                <t t-set="pname" t-value="(p.with_context(display_default_code=False).display_name or p.name or '').lower()"/>
+                                                <t t-set="pname" t-value="(p.name or '').lower()"/>
                                                 <t t-set="p_grind" t-value="'whole' in pname and 'whole' or 'filter' in pname and 'filter' or 'espresso' in pname and 'espresso' or ('capsule' in pname or 'cups' in pname) and 'capsules' or 'whole'"/>
                                                 <t t-set="p_weight" t-value="('1kg' in pname.replace(' ', '') or '1 kg' in pname) and '1kg' or '250' in pname and '250g' or ('25' in pname or 'capsule' in pname) and '25caps' or '1kg'"/>
                                                 <div class="moyee-slider-card js_moyee_product_card" 
@@ -382,12 +382,12 @@
                                                     <!-- Product image -->
                                                     <div class="moyee-slider-img">
                                                         <img t-att-src="'/web/image/product.product/%s/image_256' % p.id"
-                                                             t-att-alt="p.with_context(display_default_code=False).display_name"
+                                                             t-att-alt="p.name"
                                                              loading="lazy"/>
                                                     </div>
                                                     <!-- Name -->
                                                     <div class="moyee-slider-name">
-                                                        <t t-esc="p.with_context(display_default_code=False).display_name"/>
+                                                        <t t-esc="p.name"/>
                                                     </div>
                                                     <!-- Price -->
                                                     <div class="moyee-slider-price">
