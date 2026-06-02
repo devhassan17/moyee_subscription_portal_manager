@@ -203,6 +203,7 @@ class MoyeePortalHome(CustomerPortal):
                     })
             except Exception:
                 pass
+        variant_map_json = json.dumps(variant_map)
         # Precompute pause options resume dates
         pause_options = []
         base_date = next_date_value or fields.Date.today()
