@@ -372,10 +372,12 @@
                                         <div class="moyee-product-slider" id="moyeeProductSlider">
                                             <t t-foreach="available_products" t-as="p">
                                                 <!-- Metadata for JS filtering -->
-                                                <t t-set="p_meta" t-value="order.moyee_extract_product_metadata(p)"/>
+                                                <t t-set="pname" t-value="(p.with_context(display_default_code=False).display_name or p.name or '').lower()"/>
+                                                <t t-set="p_grind" t-value="'whole' if 'whole' in pname else ('filter' if 'filter' in pname else ('espresso' if 'espresso' in pname else ('capsules' if 'capsule' in pname or 'cups' in pname else 'whole')))"/>
+                                                <t t-set="p_weight" t-value="'1kg' if '1kg' in pname.replace(' ', '') or '1 kg' in pname else ('250g' if '250' in pname else ('25caps' if '25' in pname or 'capsule' in pname else '1kg'))"/>
                                                 <div class="moyee-slider-card js_moyee_product_card" 
-                                                     t-att-data-grind="p_meta[0]" 
-                                                     t-att-data-weight="p_meta[1]" 
+                                                     t-att-data-grind="p_grind" 
+                                                     t-att-data-weight="p_weight" 
                                                      t-att-data-price="p.lst_price">
                                                     <!-- Product image -->
                                                     <div class="moyee-slider-img">
