@@ -1656,9 +1656,9 @@
                                             </span>
                                         </div>
 
-                                        <!-- Expected/Delivery Date -->
-                                        <div class="d-flex align-items-center justify-content-between">
-                                            <t t-if="so.is_subscription_order">
+                                        <!-- Expected/Delivery Date (Subscription only) -->
+                                        <t t-if="so.is_subscription_order">
+                                            <div class="d-flex align-items-center justify-content-between">
                                                 <span style="color: #666;">Expected delivery</span>
                                                 <span style="font-weight: 700; color: #111;">
                                                     Expected: 
@@ -1669,22 +1669,8 @@
                                                         <t t-esc="'%s %s %s' % (so.date_order.day, so.date_order.strftime('%B'), so.date_order.year)"/>
                                                     </t>
                                                 </span>
-                                            </t>
-                                            <t t-else="">
-                                                <span style="color: #666;">Delivery date</span>
-                                                <span style="font-weight: 700; color: #111;">
-                                                    <t t-if="so.commitment_date">
-                                                        <t t-esc="'%s %s %s' % (so.commitment_date.day, so.commitment_date.strftime('%B'), so.commitment_date.year)"/>
-                                                    </t>
-                                                    <t t-elif="so.expected_date">
-                                                        <t t-esc="'%s %s %s' % (so.expected_date.day, so.expected_date.strftime('%B'), so.expected_date.year)"/>
-                                                    </t>
-                                                    <t t-else="">
-                                                        <t t-esc="'%s %s %s' % (so.date_order.day, so.date_order.strftime('%B'), so.date_order.year)"/>
-                                                    </t>
-                                                </span>
-                                            </t>
-                                        </div>
+                                            </div>
+                                        </t>
 
                                         <!-- Monta Delivery Date -->
                                         <t t-set="m_date" t-value="so._moyee_get_monta_delivery_date()"/>
@@ -1700,7 +1686,7 @@
                                         <!-- Track & Trace (Dynamic from Pickings / Monta Integration) -->
                                         <t t-set="tracking_url" t-value="so._moyee_get_tracking_url()"/>
                                         <t t-set="tracking_ref" t-value="so._moyee_get_tracking_ref()"/>
-                                        <t t-if="tracking_url or tracking_ref">
+                                        <t t-if="tracking_url or tracking_ref or not so.is_subscription_order">
                                             <div class="d-flex align-items-center justify-content-between">
                                                 <span style="color: #666;">Track &amp; Trace</span>
                                                 <t t-if="tracking_url">
@@ -1708,8 +1694,11 @@
                                                          Track shipment <t t-if="tracking_ref">(<t t-esc="tracking_ref"/>)</t> ➔
                                                      </a>
                                                 </t>
-                                                <t t-else="">
+                                                <t t-elif="tracking_ref">
                                                      <span style="font-weight: 700; color: #111;"><t t-esc="tracking_ref"/></span>
+                                                </t>
+                                                <t t-else="">
+                                                     <span style="font-weight: 700; color: #999;">Not available yet</span>
                                                 </t>
                                             </div>
                                         </t>
