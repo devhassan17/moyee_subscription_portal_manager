@@ -2,7 +2,7 @@
 import logging
 from urllib.parse import urlencode
 
-from odoo import _, http
+from odoo import _, http, fields
 from odoo.addons.portal.controllers.portal import CustomerPortal
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.http import request
@@ -41,11 +41,16 @@ class MoyeePortalHome(CustomerPortal):
         min_price = 0.0
         max_price = 0.0
 
+        current_website = getattr(request, "website", False)
+        current_company_id = current_website and current_website.company_id.id or False
+
         # Find the user's active subscription order
         sub_domain = [
             ("partner_id.commercial_partner_id", "=", commercial.id),
             ("state", "in", ("sale", "done")),
         ]
+        if current_company_id:
+            sub_domain.append(("company_id", "=", current_company_id))
         # Odoo 18: subscription_state in active states
         if "subscription_state" in SaleOrder._fields:
             sub_domain.append(("subscription_state", "in", ("3_progress", "4_paused", "2_renewal")))
@@ -131,6 +136,8 @@ class MoyeePortalHome(CustomerPortal):
             ("partner_id.commercial_partner_id", "=", commercial.id),
             ("state", "in", ("sale", "done", "cancel")),
         ]
+        if current_company_id:
+            order_domain.append(("company_id", "=", current_company_id))
         recent_orders = SaleOrder.search(order_domain, order="date_order desc, id desc", limit=15)
 
         # ── Recent invoices ──
@@ -140,6 +147,8 @@ class MoyeePortalHome(CustomerPortal):
             ("move_type", "in", ("out_invoice", "out_refund")),
             ("state", "=", "posted"),
         ]
+        if current_company_id:
+            inv_domain.append(("company_id", "=", current_company_id))
         recent_invoices = AccountMove.search(inv_domain, order="invoice_date desc, id desc", limit=10)
 
         # ── Portal FAQs ──
