@@ -25,6 +25,8 @@ publicWidget.registry.MoyeeProductFilter = publicWidget.Widget.extend({
             this._copyShippingToInvoice();
         }
 
+        this._updateFilterStates();
+
         return this._super.apply(this, arguments);
     },
 
@@ -118,6 +120,56 @@ publicWidget.registry.MoyeeProductFilter = publicWidget.Widget.extend({
             this.$slider.removeClass("d-none");
             this.$noResults.addClass("d-none");
         }
+
+        this._updateFilterStates();
+    },
+
+    _updateFilterStates: function () {
+        const grindWholeChecked = this.$("#grindWhole").is(":checked");
+        const grindFilterChecked = this.$("#grindFilter").is(":checked");
+        const grindEspressoChecked = this.$("#grindEspresso").is(":checked");
+        const grindCapsulesChecked = this.$("#grindCapsules").is(":checked");
+
+        const weight1kgChecked = this.$("#weight1kg").is(":checked");
+        const weight250gChecked = this.$("#weight250g").is(":checked");
+        const weight25capsChecked = this.$("#weight25caps").is(":checked");
+
+        const isAnyBeansGrindChecked = grindWholeChecked || grindFilterChecked || grindEspressoChecked;
+        const isAnyBeansWeightChecked = weight1kgChecked || weight250gChecked;
+
+        const setOptionDisabled = (selector, disable) => {
+            const $check = this.$(selector);
+            const $parent = $check.closest('.form-check');
+            $check.prop('disabled', disable);
+            if (disable) {
+                $parent.css({
+                    'opacity': '0.4',
+                    'pointer-events': 'none',
+                    'transition': 'opacity 0.2s ease-in-out'
+                });
+            } else {
+                $parent.css({
+                    'opacity': '',
+                    'pointer-events': '',
+                    'transition': 'opacity 0.2s ease-in-out'
+                });
+            }
+        };
+
+        const disableCapsuleWeight = isAnyBeansGrindChecked || isAnyBeansWeightChecked;
+        const disableCapsuleGrind = isAnyBeansGrindChecked || isAnyBeansWeightChecked;
+
+        const disableBeansGrinds = grindCapsulesChecked || weight25capsChecked;
+        const disableBeansWeights = grindCapsulesChecked || weight25capsChecked;
+
+        setOptionDisabled("#grindWhole", disableBeansGrinds);
+        setOptionDisabled("#grindFilter", disableBeansGrinds);
+        setOptionDisabled("#grindEspresso", disableBeansGrinds);
+        setOptionDisabled("#grindCapsules", disableCapsuleGrind);
+
+        setOptionDisabled("#weight1kg", disableBeansWeights);
+        setOptionDisabled("#weight250g", disableBeansWeights);
+        setOptionDisabled("#weight25caps", disableCapsuleWeight);
     },
 
     _onDateInputClick: function (ev) {

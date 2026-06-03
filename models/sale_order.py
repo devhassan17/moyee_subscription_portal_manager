@@ -219,6 +219,9 @@ class SaleOrder(models.Model):
         # Exclude internal/delivery/non-coffee products
         domain.append(("name", "not ilike", "delivery"))
         domain.append(("name", "not ilike", "rent"))
+        domain.append(("name", "not ilike", "onderhoud"))
+        domain.append(("name", "not ilike", "service"))
+        domain.append(("name", "not ilike", "lease"))
 
         products = Product.search(domain, order="name, id", limit=200)
 

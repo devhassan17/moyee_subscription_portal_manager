@@ -194,7 +194,7 @@ class MoyeePortalHome(CustomerPortal):
                     variant_map.append({
                         "id": p.id,
                         "tmpl_id": p.product_tmpl_id.id,
-                        "tmpl_name": p.product_tmpl_id.name,
+                        "tmpl_name": (p.product_tmpl_id.name or '').replace('(Subscription)', '').replace('(subscription)', '').replace('(SUBSCRIPTION)', '').strip(),
                         "grind": grind,
                         "weight": weight,
                     })

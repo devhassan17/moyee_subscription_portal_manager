@@ -350,7 +350,7 @@
                                             <div class="moyee-nav-card-desc">View or download your invoices</div>
                                         </div>
                                     </a>
-                                    <a href="/contactus" class="moyee-nav-card">
+                                    <a href="/contact" class="moyee-nav-card">
                                         <div>
                                             <div class="moyee-nav-card-title">Support</div>
                                             <div class="moyee-nav-card-desc">Submit a question or view your messages</div>
@@ -836,7 +836,7 @@
                         <t t-if="not moyee_config or moyee_config.get('show_sidebar_support', True)">
                             <div class="moyee-support-card">
                                 <div class="moyee-support-title">Need help?</div>
-                                <a href="/contactus" class="moyee-support-link">Ask a question</a>
+                                <a href="/contact" class="moyee-support-link">Ask a question</a>
                                 <a t-attf-href="mailto:{{ moyee_config.get('support_email', 'hello@moyeecoffee.com') }}" class="moyee-support-link">
                                     <t t-esc="moyee_config.get('support_email', 'hello@moyeecoffee.com')"/>
                                 </a>
@@ -1418,7 +1418,7 @@
                                 <div class="moyee-modal-overlay" t-attf-id="moyee-modal-line-edit-{{ line.id }}">
                                     <div class="moyee-modal" style="max-width: 480px;">
                                         <div class="moyee-modal-header">
-                                            <div class="moyee-modal-title">Edit <t t-esc="line.product_id.product_tmpl_id.name or line.product_id.name"/></div>
+                                            <div class="moyee-modal-title">Edit <t t-esc="((line.product_id.product_tmpl_id.name or line.product_id.name or '').replace('(Subscription)', '').replace('(subscription)', '').replace('(SUBSCRIPTION)', '').strip())"/></div>
                                             <button class="moyee-modal-close" type="button">×</button>
                                         </div>
                                         <div class="moyee-modal-body">

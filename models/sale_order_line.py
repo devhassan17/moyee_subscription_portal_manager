@@ -1,10 +1,31 @@
 # File: moyee_subscription_portal_manager/models/sale_order_line.py
-from odoo import _, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
 
 
 class SaleOrderLine(models.Model):
     _inherit = "sale.order.line"
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if 'name' in vals and vals['name']:
+                vals['name'] = self._clean_subscription_name(vals['name'])
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if 'name' in vals and vals['name']:
+            vals['name'] = self._clean_subscription_name(vals['name'])
+        return super().write(vals)
+
+    def _clean_subscription_name(self, name):
+        if not name:
+            return name
+        import re
+        # Case-insensitive replacement of (subscription) or [subscription] with optional surrounding spaces
+        name = re.sub(r'\s*\(\s*subscription\s*\)', '', name, flags=re.IGNORECASE)
+        name = re.sub(r'\s*\[\s*subscription\s*\]', '', name, flags=re.IGNORECASE)
+        return name.strip()
 
     x_moyee_is_removed = fields.Boolean(
         string="Removed from Subscription",
