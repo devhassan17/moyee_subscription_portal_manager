@@ -82,14 +82,48 @@ class SaleOrder(models.Model):
                         order.amount_untaxed = totals.get(order.currency_id, {}).get('amount_untaxed', 0.0)
                         order.amount_tax = totals.get(order.currency_id, {}).get('amount_tax', 0.0)
                         order.amount_total = order.amount_untaxed + order.amount_tax
-                        continue
                     except Exception:
-                        pass
-                
-                # Fallback to simple line-summation
-                order.amount_untaxed = sum(order_lines.mapped('price_subtotal'))
-                order.amount_tax = sum(order_lines.mapped('price_tax'))
-                order.amount_total = sum(order_lines.mapped('price_total'))
+                        order.amount_untaxed = sum(order_lines.mapped('price_subtotal'))
+                        order.amount_tax = sum(order_lines.mapped('price_tax'))
+                        order.amount_total = sum(order_lines.mapped('price_total'))
+                else:
+                    order.amount_untaxed = sum(order_lines.mapped('price_subtotal'))
+                    order.amount_tax = sum(order_lines.mapped('price_tax'))
+                    order.amount_total = sum(order_lines.mapped('price_total'))
+
+                # Update standard Odoo subscription fields if present (e.g. Recurring Amount / MRR)
+                for fname in ("recurring_amount_untaxed", "recurring_amount_tax", "recurring_amount_total"):
+                    if fname in order._fields:
+                        active_sub_lines = order_lines.filtered(lambda l: l._moyee_is_subscription_line() if hasattr(l, "_moyee_is_subscription_line") else True)
+                        if fname == "recurring_amount_untaxed":
+                            order[fname] = sum(active_sub_lines.mapped('price_subtotal'))
+                        elif fname == "recurring_amount_tax":
+                            order[fname] = sum(active_sub_lines.mapped('price_tax'))
+                        elif fname == "recurring_amount_total":
+                            order[fname] = sum(active_sub_lines.mapped('price_total'))
+
+                for fname in ("non_recurring_amount_untaxed", "non_recurring_amount_tax", "non_recurring_amount_total"):
+                    if fname in order._fields:
+                        one_time_lines = order_lines.filtered(lambda l: not l._moyee_is_subscription_line() if hasattr(l, "_moyee_is_subscription_line") else False)
+                        if fname == "non_recurring_amount_untaxed":
+                            order[fname] = sum(one_time_lines.mapped('price_subtotal'))
+                        elif fname == "non_recurring_amount_tax":
+                            order[fname] = sum(one_time_lines.mapped('price_tax'))
+                        elif fname == "non_recurring_amount_total":
+                            order[fname] = sum(one_time_lines.mapped('price_total'))
+
+    def read(self, fields=None, load='_record_write'):
+        # Force a recompute if the stored totals on a subscription do not match the active lines
+        for order in self:
+            try:
+                if order._moyee_is_subscription_order():
+                    active_lines = order.order_line.filtered(lambda x: not x.display_type and not x.x_moyee_is_removed)
+                    active_total = sum(active_lines.mapped('price_total'))
+                    if abs(order.amount_total - active_total) > 0.01:
+                        order._compute_amounts()
+            except Exception:
+                pass
+        return super().read(fields=fields, load=load)
 
     # ============================================================
     # Portal security helpers
