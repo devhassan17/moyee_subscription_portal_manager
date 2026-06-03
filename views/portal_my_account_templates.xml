@@ -513,6 +513,9 @@
                                                         <t t-esc="inv.invoice_date.strftime('%d %B %Y')"/>
                                                     </t>
                                                     · € <t t-esc="'%.2f' % inv.amount_total"/>
+                                                    <t t-if="inv.invoice_origin">
+                                                        · <span style="color: var(--moyee-pink); font-weight: 600;">Order: <t t-esc="inv.invoice_origin"/></span>
+                                                    </t>
                                                 </div>
                                             </div>
                                             <t t-set="inv_state" t-value="inv.payment_state or ''"/>
@@ -525,7 +528,7 @@
                                             <t t-else="">
                                                 <span class="moyee-invoice-status moyee-invoice-open">Open</span>
                                             </t>
-                                            <a t-attf-href="/my/invoices/{{ inv.id }}" class="moyee-invoice-download">
+                                            <a t-attf-href="/my/invoices/{{ inv.id }}?report_type=pdf&amp;download=1" class="moyee-invoice-download">
                                                 ⬇ PDF
                                             </a>
                                         </div>
@@ -545,9 +548,12 @@
                                                                 <t t-esc="inv.invoice_date.strftime('%d %B %Y')"/>
                                                             </t>
                                                             · € <t t-esc="'%.2f' % inv.amount_total"/>
+                                                            <t t-if="inv.invoice_origin">
+                                                                · <span style="color: var(--moyee-pink); font-weight: 600;">Order: <t t-esc="inv.invoice_origin"/></span>
+                                                            </t>
                                                         </div>
                                                     </div>
-                                                    <a t-attf-href="/my/invoices/{{ inv.id }}" class="moyee-invoice-download">
+                                                    <a t-attf-href="/my/invoices/{{ inv.id }}?report_type=pdf&amp;download=1" class="moyee-invoice-download">
                                                         ⬇ PDF
                                                     </a>
                                                 </div>
@@ -573,7 +579,7 @@
                         <div id="moyee-section-details">
                             <div class="moyee-section-title">
                                 <span>Personal details</span>
-                                <a href="/my/account" class="moyee-edit-link">Edit</a>
+                                <a href="#" data-moyee-modal="moyee-modal-personal-details" class="moyee-edit-link">Edit</a>
                             </div>
                             <div class="moyee-gegevens-block">
                                 <div>
@@ -768,15 +774,18 @@
                         <div id="moyee-section-extra" t-if="(not moyee_config or moyee_config.get('show_inspire', True)) or (not moyee_config or moyee_config.get('show_taf', True))">
                             <t t-if="not moyee_config or moyee_config.get('show_inspire', True)">
                                 <div class="moyee-inspire-section">
-                                    <div class="moyee-inspire-eyebrow">Do you know where your coffee comes from?</div>
-                                    <div class="moyee-inspire-title">Your coffee comes from Ethiopia</div>
+                                    <div class="moyee-inspire-eyebrow"><t t-esc="moyee_config.get('inspire_eyebrow', 'Do you know where your coffee comes from?')"/></div>
+                                    <div class="moyee-inspire-title"><t t-esc="moyee_config.get('inspire_title', 'Your coffee comes from Ethiopia')"/></div>
                                     <div class="moyee-inspire-body">
-                                        Your Moyee coffee comes from small farmers in the Kaffa forest in Ethiopia.
-                                        They receive a fair price — thanks to you.
+                                        <t t-esc="moyee_config.get('inspire_body', 'Your Moyee coffee comes from small farmers in the Kaffa forest in Ethiopia. They receive a fair price — thanks to you.')"/>
                                     </div>
                                     <div class="moyee-inspire-actions">
-                                        <a href="/radical-impact-coffee" class="moyee-btn moyee-btn-white">Read the story</a>
-                                        <a t-att-href="moyee_config.get('upsell_cta_url', '/shop')" class="moyee-btn moyee-btn-outline-white">Browse our coffee</a>
+                                        <a t-att-href="moyee_config.get('inspire_btn1_url', '/radical-impact-coffee')" class="moyee-btn moyee-btn-white">
+                                            <t t-esc="moyee_config.get('inspire_btn1_text', 'Read the story')"/>
+                                        </a>
+                                        <a t-att-href="moyee_config.get('inspire_btn2_url', '/shop')" class="moyee-btn moyee-btn-outline-white">
+                                            <t t-esc="moyee_config.get('inspire_btn2_text', 'Browse our coffee')"/>
+                                        </a>
                                     </div>
                                 </div>
                             </t>
@@ -826,7 +835,7 @@
                             <div class="moyee-profile-detail">
                                 <span><t t-esc="partner.email or ''"/></span>
                             </div>
-                            <a href="/my/account" class="moyee-profile-edit">Edit details</a>
+                            <a href="#" data-moyee-modal="moyee-modal-personal-details" class="moyee-profile-edit">Edit details</a>
                         </div>
                     </t>
 
@@ -1295,6 +1304,75 @@
                                         </div>
                                     </div>
                                 </t>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5b) PERSONAL DETAILS EDIT MODAL -->
+                    <div class="moyee-modal-overlay" id="moyee-modal-personal-details">
+                        <div class="moyee-modal" style="max-width: 600px;">
+                            <div class="moyee-modal-header" style="border-bottom: none; padding: 24px 24px 0;">
+                                <div class="moyee-modal-title" style="font-size: 22px; font-weight: 800; color: #111;">Edit personal details</div>
+                                <button class="moyee-modal-close" type="button" style="align-self: flex-start; font-size: 24px;">×</button>
+                            </div>
+                            <div class="moyee-modal-body" style="padding: 16px 24px 24px;">
+                                <form action="/my/account" method="post" class="row g-3">
+                                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                    <input type="hidden" name="redirect" value="/my/home"/>
+                                    
+                                    <div class="col-12 col-sm-6">
+                                        <label class="form-label moyee-modal-label" style="font-size: 11px; font-weight: 800; color: #555; text-transform: uppercase;">Name</label>
+                                        <input class="form-control moyee-modal-input" name="name" type="text" required="required"
+                                               t-att-value="partner.name or ''"/>
+                                    </div>
+                                    <div class="col-12 col-sm-6">
+                                        <label class="form-label moyee-modal-label" style="font-size: 11px; font-weight: 800; color: #555; text-transform: uppercase;">Company</label>
+                                        <input class="form-control moyee-modal-input" name="company_name" type="text"
+                                               t-att-value="partner.parent_id.name if partner.parent_id else partner.company_name or ''"/>
+                                    </div>
+                                    <div class="col-12 col-sm-6">
+                                        <label class="form-label moyee-modal-label" style="font-size: 11px; font-weight: 800; color: #555; text-transform: uppercase;">Email</label>
+                                        <input class="form-control moyee-modal-input" name="email" type="email" required="required"
+                                               t-att-value="partner.email or ''"/>
+                                    </div>
+                                    <div class="col-12 col-sm-6">
+                                        <label class="form-label moyee-modal-label" style="font-size: 11px; font-weight: 800; color: #555; text-transform: uppercase;">Phone</label>
+                                        <input class="form-control moyee-modal-input" name="phone" type="text"
+                                               t-att-value="partner.phone or partner.mobile or ''"/>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label moyee-modal-label" style="font-size: 11px; font-weight: 800; color: #555; text-transform: uppercase;">Street</label>
+                                        <input class="form-control moyee-modal-input" name="street" type="text" required="required"
+                                               t-att-value="partner.street or ''"/>
+                                    </div>
+                                    <div class="col-12 col-sm-4">
+                                        <label class="form-label moyee-modal-label" style="font-size: 11px; font-weight: 800; color: #555; text-transform: uppercase;">ZIP</label>
+                                        <input class="form-control moyee-modal-input" name="zipcode" type="text" required="required"
+                                               t-att-value="partner.zip or ''"/>
+                                    </div>
+                                    <div class="col-12 col-sm-4">
+                                        <label class="form-label moyee-modal-label" style="font-size: 11px; font-weight: 800; color: #555; text-transform: uppercase;">City</label>
+                                        <input class="form-control moyee-modal-input" name="city" type="text" required="required"
+                                               t-att-value="partner.city or ''"/>
+                                    </div>
+                                    <div class="col-12 col-sm-4">
+                                        <label class="form-label moyee-modal-label" style="font-size: 11px; font-weight: 800; color: #555; text-transform: uppercase;">Country</label>
+                                        <select class="form-select moyee-modal-select" name="country_id" required="required">
+                                            <option value="">--</option>
+                                            <t t-foreach="countries" t-as="c">
+                                                <option t-att-value="c.id"
+                                                        t-att-selected="partner.country_id and partner.country_id.id == c.id">
+                                                    <t t-esc="c.name"/>
+                                                </option>
+                                            </t>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="col-12 d-flex gap-3 mt-4" style="width: 100%;">
+                                        <button class="moyee-modal-cancel btn" type="button" style="flex: 1; background: #F5F6F8; border: none; border-radius: 12px; font-weight: 700; height: 48px; color: #444; font-size: 15px; padding: 0;">Cancel</button>
+                                        <button class="btn" type="submit" style="flex: 2.5; background: var(--moyee-pink); border: none; border-radius: 12px; font-weight: 700; height: 48px; color: white; font-size: 15px; padding: 0;">Save changes</button>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                     </div>

@@ -281,6 +281,67 @@
                         </div>
                     </block>
 
+                    <block title="Inspire Section Customizations" name="moyee_inspire_customization_block">
+                        <div class="row mt16 o_settings_container">
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_inspire_eyebrow"/>
+                                    <div class="text-muted">Tagline/Eyebrow text displayed at the top of the block.</div>
+                                    <field name="moyee_inspire_eyebrow"/>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_inspire_title"/>
+                                    <div class="text-muted">Main headline of the inspire story.</div>
+                                    <field name="moyee_inspire_title"/>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_inspire_body"/>
+                                    <div class="text-muted">The body paragraph of the inspire story.</div>
+                                    <field name="moyee_inspire_body"/>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_inspire_btn1_text"/>
+                                    <div class="text-muted">Text for the primary story button.</div>
+                                    <field name="moyee_inspire_btn1_text"/>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_inspire_btn1_url"/>
+                                    <div class="text-muted">Link/URL for the primary story button.</div>
+                                    <field name="moyee_inspire_btn1_url"/>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_inspire_btn2_text"/>
+                                    <div class="text-muted">Text for the secondary shop/browse button.</div>
+                                    <field name="moyee_inspire_btn2_text"/>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_inspire_btn2_url"/>
+                                    <div class="text-muted">Link/URL for the secondary shop/browse button.</div>
+                                    <field name="moyee_inspire_btn2_url"/>
+                                </div>
+                            </div>
+                        </div>
+                    </block>
+
                     <block title="Portal FAQs Management" name="moyee_faq_mgmt_block">
                         <div class="row mt16 o_settings_container">
                             <div class="col-12 col-lg-6 o_setting_box">

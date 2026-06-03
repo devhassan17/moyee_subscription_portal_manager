@@ -179,6 +179,13 @@ class MoyeePortalHome(CustomerPortal):
             "show_sidebar_support": _get_bool("moyee_subscription_portal_manager.show_sidebar_support", True),
             "upsell_cta_url": ICP.get_param("moyee_subscription_portal_manager.upsell_cta_url", "/shop"),
             "support_email": ICP.get_param("moyee_subscription_portal_manager.support_email", "hello@moyeecoffee.com"),
+            "inspire_eyebrow": ICP.get_param("moyee_subscription_portal_manager.inspire_eyebrow", "Do you know where your coffee comes from?"),
+            "inspire_title": ICP.get_param("moyee_subscription_portal_manager.inspire_title", "Your coffee comes from Ethiopia"),
+            "inspire_body": ICP.get_param("moyee_subscription_portal_manager.inspire_body", "Your Moyee coffee comes from small farmers in the Kaffa forest in Ethiopia. They receive a fair price — thanks to you."),
+            "inspire_btn1_text": ICP.get_param("moyee_subscription_portal_manager.inspire_btn1_text", "Read the story"),
+            "inspire_btn1_url": ICP.get_param("moyee_subscription_portal_manager.inspire_btn1_url", "/radical-impact-coffee"),
+            "inspire_btn2_text": ICP.get_param("moyee_subscription_portal_manager.inspire_btn2_text", "Browse our coffee"),
+            "inspire_btn2_url": ICP.get_param("moyee_subscription_portal_manager.inspire_btn2_url", "/shop"),
         }
 
         # Variant map for front-end cascading selections

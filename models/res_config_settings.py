@@ -121,3 +121,40 @@ class ResConfigSettings(models.TransientModel):
         config_parameter="moyee_subscription_portal_manager.support_email",
         default="hello@moyeecoffee.com",
     )
+
+    # Inspire Content Overrides
+    moyee_inspire_eyebrow = fields.Char(
+        string="Inspire Section Eyebrow",
+        config_parameter="moyee_subscription_portal_manager.inspire_eyebrow",
+        default="Do you know where your coffee comes from?",
+    )
+    moyee_inspire_title = fields.Char(
+        string="Inspire Section Title",
+        config_parameter="moyee_subscription_portal_manager.inspire_title",
+        default="Your coffee comes from Ethiopia",
+    )
+    moyee_inspire_body = fields.Text(
+        string="Inspire Section Body",
+        config_parameter="moyee_subscription_portal_manager.inspire_body",
+        default="Your Moyee coffee comes from small farmers in the Kaffa forest in Ethiopia. They receive a fair price — thanks to you.",
+    )
+    moyee_inspire_btn1_text = fields.Char(
+        string="Inspire Section Button 1 Text",
+        config_parameter="moyee_subscription_portal_manager.inspire_btn1_text",
+        default="Read the story",
+    )
+    moyee_inspire_btn1_url = fields.Char(
+        string="Inspire Section Button 1 URL",
+        config_parameter="moyee_subscription_portal_manager.inspire_btn1_url",
+        default="/radical-impact-coffee",
+    )
+    moyee_inspire_btn2_text = fields.Char(
+        string="Inspire Section Button 2 Text",
+        config_parameter="moyee_subscription_portal_manager.inspire_btn2_text",
+        default="Browse our coffee",
+    )
+    moyee_inspire_btn2_url = fields.Char(
+        string="Inspire Section Button 2 URL",
+        config_parameter="moyee_subscription_portal_manager.inspire_btn2_url",
+        default="/shop",
+    )
