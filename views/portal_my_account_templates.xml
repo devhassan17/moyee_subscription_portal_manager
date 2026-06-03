@@ -390,17 +390,34 @@
                                                     </t>
                                                     ·
                                                     <t t-esc="len(so.order_line.filtered(lambda l: not l.display_type and not l.x_moyee_is_removed))"/> items
+                                                    <!-- Monta Delivery Date -->
+                                                    <t t-set="m_date" t-value="so._moyee_get_monta_delivery_date()"/>
+                                                    · <span style="color: var(--moyee-pink); font-weight: 600;">
+                                                        Delivery: 
+                                                        <t t-if="m_date">
+                                                            <t t-esc="m_date.strftime('%d %B %Y')"/>
+                                                        </t>
+                                                        <t t-else="">
+                                                            Not available yet
+                                                        </t>
+                                                    </span>
                                                     <!-- Track & Trace info -->
                                                     <t t-set="t_ref" t-value="so._moyee_get_tracking_ref()"/>
                                                     <t t-set="t_url" t-value="so._moyee_get_tracking_url()"/>
-                                                    <t t-if="t_ref or t_url">
-                                                        · <span class="text-muted">T&amp;T: <t t-esc="t_ref or 'Track shipment'"/></span>
-                                                    </t>
-                                                    <!-- Monta Delivery Date -->
-                                                    <t t-set="m_date" t-value="so._moyee_get_monta_delivery_date()"/>
-                                                    <t t-if="m_date">
-                                                        · <span style="color: var(--moyee-pink); font-weight: 600;">Delivery: <t t-esc="m_date.strftime('%d %B %Y')"/></span>
-                                                    </t>
+                                                    · <span class="text-muted">
+                                                        T&amp;T: 
+                                                        <t t-if="t_url">
+                                                            <a t-att-href="t_url" target="_blank" onclick="event.stopPropagation();" style="color: var(--moyee-pink); text-decoration: underline; font-weight: 700;">
+                                                                Track shipment <t t-if="t_ref">(<t t-esc="t_ref"/>)</t>
+                                                            </a>
+                                                        </t>
+                                                        <t t-elif="t_ref">
+                                                            <span style="font-weight: 700; color: #111;"><t t-esc="t_ref"/></span>
+                                                        </t>
+                                                        <t t-else="">
+                                                            <span style="color: #999;">Not available yet</span>
+                                                        </t>
+                                                    </span>
                                                 </div>
                                             </div>
                                             <t t-set="so_state" t-value="so.state or ''"/>
@@ -445,17 +462,34 @@
                                                             </t>
                                                             ·
                                                             <t t-esc="len(so.order_line.filtered(lambda l: not l.display_type and not l.x_moyee_is_removed))"/> items
+                                                            <!-- Monta Delivery Date -->
+                                                            <t t-set="m_date" t-value="so._moyee_get_monta_delivery_date()"/>
+                                                            · <span style="color: var(--moyee-pink); font-weight: 600;">
+                                                                Delivery: 
+                                                                <t t-if="m_date">
+                                                                    <t t-esc="m_date.strftime('%d %B %Y')"/>
+                                                                </t>
+                                                                <t t-else="">
+                                                                    Not available yet
+                                                                </t>
+                                                            </span>
                                                             <!-- Track & Trace info -->
                                                             <t t-set="t_ref" t-value="so._moyee_get_tracking_ref()"/>
                                                             <t t-set="t_url" t-value="so._moyee_get_tracking_url()"/>
-                                                            <t t-if="t_ref or t_url">
-                                                                · <span class="text-muted">T&amp;T: <t t-esc="t_ref or 'Track shipment'"/></span>
-                                                            </t>
-                                                            <!-- Monta Delivery Date -->
-                                                            <t t-set="m_date" t-value="so._moyee_get_monta_delivery_date()"/>
-                                                            <t t-if="m_date">
-                                                                · <span style="color: var(--moyee-pink); font-weight: 600;">Delivery: <t t-esc="m_date.strftime('%d %B %Y')"/></span>
-                                                            </t>
+                                                            · <span class="text-muted">
+                                                                T&amp;T: 
+                                                                <t t-if="t_url">
+                                                                    <a t-att-href="t_url" target="_blank" onclick="event.stopPropagation();" style="color: var(--moyee-pink); text-decoration: underline; font-weight: 700;">
+                                                                        Track shipment <t t-if="t_ref">(<t t-esc="t_ref"/>)</t>
+                                                                    </a>
+                                                                </t>
+                                                                <t t-elif="t_ref">
+                                                                    <span style="font-weight: 700; color: #111;"><t t-esc="t_ref"/></span>
+                                                                </t>
+                                                                <t t-else="">
+                                                                    <span style="color: #999;">Not available yet</span>
+                                                                </t>
+                                                            </span>
                                                         </div>
                                                     </div>
                                                     <t t-set="so_state" t-value="so.state or ''"/>
@@ -528,7 +562,7 @@
                                             <t t-else="">
                                                 <span class="moyee-invoice-status moyee-invoice-open">Open</span>
                                             </t>
-                                            <a t-attf-href="/my/invoices/{{ inv.id }}?report_type=pdf&amp;download=1" class="moyee-invoice-download">
+                                            <a t-att-href="inv.get_portal_url(report_type='pdf', download=True)" class="moyee-invoice-download">
                                                 ⬇ PDF
                                             </a>
                                         </div>
@@ -553,7 +587,17 @@
                                                             </t>
                                                         </div>
                                                     </div>
-                                                    <a t-attf-href="/my/invoices/{{ inv.id }}?report_type=pdf&amp;download=1" class="moyee-invoice-download">
+                                                    <t t-set="inv_state" t-value="inv.payment_state or ''"/>
+                                                    <t t-if="inv_state == 'paid'">
+                                                        <span class="moyee-invoice-status moyee-invoice-paid">Paid</span>
+                                                    </t>
+                                                    <t t-elif="inv_state == 'in_payment'">
+                                                        <span class="moyee-invoice-status moyee-invoice-paid">In payment</span>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <span class="moyee-invoice-status moyee-invoice-open">Open</span>
+                                                    </t>
+                                                    <a t-att-href="inv.get_portal_url(report_type='pdf', download=True)" class="moyee-invoice-download">
                                                         ⬇ PDF
                                                     </a>
                                                 </div>
@@ -1600,18 +1644,7 @@
                                             <t t-else="">One-time order</t>
                                         </div>
                                         <div class="text-muted" style="font-size: 14px; margin-top: 4px; font-weight: 500;">
-                                            <t t-if="so.is_subscription_order">
-                                                Expected: 
-                                                <t t-if="so.expected_date">
-                                                    <t t-esc="'%s %s %s' % (so.expected_date.day, so.expected_date.strftime('%B'), so.expected_date.year)"/>
-                                                </t>
-                                                <t t-else="">
-                                                    <t t-esc="'%s %s %s' % (so.date_order.day, so.date_order.strftime('%B'), so.date_order.year)"/>
-                                                </t>
-                                            </t>
-                                            <t t-else="">
-                                                <t t-esc="so.name"/> · <t t-esc="'%s %s %s' % (so.date_order.day, so.date_order.strftime('%B'), so.date_order.year)"/>
-                                            </t>
+                                            <t t-esc="so.name"/> · <t t-esc="'%s %s %s' % (so.date_order.day, so.date_order.strftime('%B'), so.date_order.year)"/>
                                         </div>
                                     </div>
                                     <button class="moyee-modal-close" type="button" style="align-self: flex-start; font-size: 24px;">×</button>
@@ -1734,52 +1767,39 @@
                                             </span>
                                         </div>
 
-                                        <!-- Expected/Delivery Date (Subscription only) -->
-                                        <t t-if="so.is_subscription_order">
-                                            <div class="d-flex align-items-center justify-content-between">
-                                                <span style="color: #666;">Expected delivery</span>
-                                                <span style="font-weight: 700; color: #111;">
-                                                    Expected: 
-                                                    <t t-if="so.expected_date">
-                                                        <t t-esc="'%s %s %s' % (so.expected_date.day, so.expected_date.strftime('%B'), so.expected_date.year)"/>
-                                                    </t>
-                                                    <t t-else="">
-                                                        <t t-esc="'%s %s %s' % (so.date_order.day, so.date_order.strftime('%B'), so.date_order.year)"/>
-                                                    </t>
-                                                </span>
-                                            </div>
-                                        </t>
+
 
                                         <!-- Monta Delivery Date -->
                                         <t t-set="m_date" t-value="so._moyee_get_monta_delivery_date()"/>
-                                        <t t-if="m_date">
-                                            <div class="d-flex align-items-center justify-content-between">
-                                                <span style="color: #666;">Monta Delivery Date</span>
-                                                <span style="font-weight: 700; color: #111;">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <span style="color: #666;">Monta Delivery Date</span>
+                                            <span style="font-weight: 700; color: #111;">
+                                                <t t-if="m_date">
                                                     <t t-esc="m_date.strftime('%d %B %Y')"/>
-                                                </span>
-                                            </div>
-                                        </t>
+                                                </t>
+                                                <t t-else="">
+                                                    <span style="color: #999;">Not available yet</span>
+                                                </t>
+                                            </span>
+                                        </div>
 
                                         <!-- Track & Trace (Dynamic from Pickings / Monta Integration) -->
                                         <t t-set="tracking_url" t-value="so._moyee_get_tracking_url()"/>
                                         <t t-set="tracking_ref" t-value="so._moyee_get_tracking_ref()"/>
-                                        <t t-if="tracking_url or tracking_ref or not so.is_subscription_order">
-                                            <div class="d-flex align-items-center justify-content-between">
-                                                <span style="color: #666;">Track &amp; Trace</span>
-                                                <t t-if="tracking_url">
-                                                     <a t-att-href="tracking_url" target="_blank" style="font-weight: 700; color: var(--moyee-pink); text-decoration: underline;">
-                                                         Track shipment <t t-if="tracking_ref">(<t t-esc="tracking_ref"/>)</t> ➔
-                                                     </a>
-                                                </t>
-                                                <t t-elif="tracking_ref">
-                                                     <span style="font-weight: 700; color: #111;"><t t-esc="tracking_ref"/></span>
-                                                </t>
-                                                <t t-else="">
-                                                     <span style="font-weight: 700; color: #999;">Not available yet</span>
-                                                </t>
-                                            </div>
-                                        </t>
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <span style="color: #666;">Track &amp; Trace</span>
+                                            <t t-if="tracking_url">
+                                                 <a t-att-href="tracking_url" target="_blank" style="font-weight: 700; color: var(--moyee-pink); text-decoration: underline;">
+                                                     Track shipment <t t-if="tracking_ref">(<t t-esc="tracking_ref"/>)</t> ➔
+                                                 </a>
+                                            </t>
+                                            <t t-elif="tracking_ref">
+                                                 <span style="font-weight: 700; color: #111;"><t t-esc="tracking_ref"/></span>
+                                            </t>
+                                            <t t-else="">
+                                                 <span style="font-weight: 700; color: #999;">Not available yet</span>
+                                            </t>
+                                        </div>
                                     </div>
 
                                     <!-- Footer Actions -->
