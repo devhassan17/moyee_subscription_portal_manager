@@ -226,10 +226,44 @@
                                         </tbody>
                                     </table>
 
+                                    <!-- Totals Breakdown -->
+                                    <div style="border-top:1px solid var(--moyee-gray-2);margin-top:8px;padding-top:8px;font-size:14px;color:#555;display:flex;flex-direction:column;gap:6px;">
+                                        <t t-set="sub_delivery_lines" t-value="active_subscription.order_line.filtered(lambda l: ('is_delivery' in l._fields and l.is_delivery) or 'delivery' in (l.product_id and l.product_id.name or l.name or '').lower())"/>
+                                        <t t-set="sub_delivery_cost" t-value="sum(sub_delivery_lines.mapped('price_total'))"/>
+                                        <t t-set="sub_discount_lines" t-value="active_subscription.order_line.filtered(lambda l: not l.display_type and (l.price_total &lt; 0 or l.price_subtotal &lt; 0 or 'discount' in (l.product_id and l.product_id.name or l.name or '').lower() or 'promo' in (l.product_id and l.product_id.name or l.name or '').lower() or 'coupon' in (l.product_id and l.product_id.name or l.name or '').lower()))"/>
+                                        <t t-set="sub_discount_cost" t-value="sum(sub_discount_lines.mapped('price_total'))"/>
+                                        <t t-set="sub_product_lines" t-value="active_subscription.order_line.filtered(lambda l: not l.display_type and not ('is_delivery' in l._fields and l.is_delivery) and 'delivery' not in (l.product_id and l.product_id.name or l.name or '').lower() and l not in sub_discount_lines)"/>
+                                        <t t-set="sub_product_cost" t-value="sum(sub_product_lines.mapped('price_total'))"/>
+
+                                        <div style="display:flex;align-items:center;">
+                                            <span>Products (incl. VAT)</span>
+                                            <span style="margin-left:auto;font-weight:600;color:#111;">€ <t t-esc="'%.2f' % sub_product_cost"/></span>
+                                        </div>
+                                        <div style="display:flex;align-items:center;">
+                                            <span>Delivery (incl. VAT)</span>
+                                            <t t-if="sub_delivery_cost &gt; 0">
+                                                <span style="margin-left:auto;font-weight:600;color:#111;">€ <t t-esc="'%.2f' % sub_delivery_cost"/></span>
+                                            </t>
+                                            <t t-else="">
+                                                <span style="margin-left:auto;font-weight:700;color:#2E7D32;">Free</span>
+                                            </t>
+                                        </div>
+                                        <t t-if="sub_discount_cost != 0">
+                                            <div style="display:flex;align-items:center;color:#2E7D32;">
+                                                <span>Discount</span>
+                                                <span style="margin-left:auto;font-weight:600;">-€ <t t-esc="'%.2f' % abs(sub_discount_cost)"/></span>
+                                            </div>
+                                        </t>
+                                        <div style="display:flex;align-items:center;font-size:12px;color:#777;margin-top:2px;">
+                                            <span>VAT (included)</span>
+                                            <span style="margin-left:auto;">€ <t t-esc="'%.2f' % active_subscription.amount_tax"/></span>
+                                        </div>
+                                    </div>
+
                                     <!-- Totals -->
                                     <div style="border-top:1px solid var(--moyee-gray-2);margin-top:4px;padding-top:4px;">
                                         <div style="display:flex;align-items:center;padding:12px 0 6px;font-size:16px;font-weight:800;">
-                                            <span>Total</span>
+                                            <span>Total payment</span>
                                             <span style="margin-left:auto;">€ <t t-esc="'%.2f' % active_subscription.amount_total"/></span>
                                         </div>
                                     </div>
