@@ -407,9 +407,9 @@
                                                     · <span class="text-muted">
                                                         T&amp;T: 
                                                         <t t-if="t_url">
-                                                            <a t-att-href="t_url" target="_blank" onclick="event.stopPropagation();" style="color: var(--moyee-pink); text-decoration: underline; font-weight: 700;">
+                                                            <span class="moyee-track-link" t-att-data-url="t_url" style="color: var(--moyee-pink); text-decoration: underline; font-weight: 700; cursor: pointer;">
                                                                 Track shipment <t t-if="t_ref">(<t t-esc="t_ref"/>)</t>
-                                                            </a>
+                                                            </span>
                                                         </t>
                                                         <t t-elif="t_ref">
                                                             <span style="font-weight: 700; color: #111;"><t t-esc="t_ref"/></span>
@@ -479,9 +479,9 @@
                                                             · <span class="text-muted">
                                                                 T&amp;T: 
                                                                 <t t-if="t_url">
-                                                                    <a t-att-href="t_url" target="_blank" onclick="event.stopPropagation();" style="color: var(--moyee-pink); text-decoration: underline; font-weight: 700;">
+                                                                    <span class="moyee-track-link" t-att-data-url="t_url" style="color: var(--moyee-pink); text-decoration: underline; font-weight: 700; cursor: pointer;">
                                                                         Track shipment <t t-if="t_ref">(<t t-esc="t_ref"/>)</t>
-                                                                    </a>
+                                                                    </span>
                                                                 </t>
                                                                 <t t-elif="t_ref">
                                                                     <span style="font-weight: 700; color: #111;"><t t-esc="t_ref"/></span>

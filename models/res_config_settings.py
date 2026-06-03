@@ -133,7 +133,7 @@ class ResConfigSettings(models.TransientModel):
         config_parameter="moyee_subscription_portal_manager.inspire_title",
         default="Your coffee comes from Ethiopia",
     )
-    moyee_inspire_body = fields.Text(
+    moyee_inspire_body = fields.Char(
         string="Inspire Section Body",
         config_parameter="moyee_subscription_portal_manager.inspire_body",
         default="Your Moyee coffee comes from small farmers in the Kaffa forest in Ethiopia. They receive a fair price — thanks to you.",

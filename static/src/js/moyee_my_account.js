@@ -34,6 +34,9 @@ publicWidget.registry.MoyeeMyAccountPage = publicWidget.Widget.extend({
 
         /* Date picker click */
         "click input[type='date']": "_onDateInputClick",
+
+        /* Track & Trace Link */
+        "click .moyee-track-link": "_onTrackLinkClick",
     },
 
     // ──────────────────────────────────────────
@@ -275,6 +278,15 @@ publicWidget.registry.MoyeeMyAccountPage = publicWidget.Widget.extend({
             } catch (err) {
                 console.warn("showPicker is not supported or failed:", err);
             }
+        }
+    },
+
+    _onTrackLinkClick: function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        var url = $(ev.currentTarget).data("url");
+        if (url) {
+            window.open(url, '_blank');
         }
     },
 });

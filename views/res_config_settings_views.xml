@@ -304,7 +304,7 @@
                                 <div class="o_setting_right_pane">
                                     <label for="moyee_inspire_body"/>
                                     <div class="text-muted">The body paragraph of the inspire story.</div>
-                                    <field name="moyee_inspire_body"/>
+                                    <field name="moyee_inspire_body" widget="text"/>
                                 </div>
                             </div>
                             <div class="col-12 col-lg-6 o_setting_box">
