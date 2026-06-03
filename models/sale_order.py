@@ -932,7 +932,7 @@ class SaleOrder(models.Model):
                 if "carrier_tracking_url" in picking._fields and picking.carrier_tracking_url:
                     return picking.carrier_tracking_url
         # 2. Look at custom database fields on sale.order itself
-        for fname in ("x_monta_tracking_url", "x_tracking_url", "x_track_trace", "carrier_tracking_url", "monta_track_trace"):
+        for fname in ("postnl_track_trace_url", "x_monta_tracking_url", "x_tracking_url", "x_track_trace", "carrier_tracking_url", "monta_track_trace"):
             if fname in self._fields and getattr(self, fname, False):
                 return getattr(self, fname)
         return False
@@ -945,7 +945,7 @@ class SaleOrder(models.Model):
                 if "carrier_tracking_ref" in picking._fields and picking.carrier_tracking_ref:
                     return picking.carrier_tracking_ref
         # 2. Look at custom order fields
-        for fname in ("x_tracking_ref", "x_carrier_tracking_ref", "carrier_tracking_ref"):
+        for fname in ("postnl_track_trace_code", "x_tracking_ref", "x_carrier_tracking_ref", "carrier_tracking_ref"):
             if fname in self._fields and getattr(self, fname, False):
                 return getattr(self, fname)
         return False
@@ -960,4 +960,15 @@ class SaleOrder(models.Model):
             for picking in self.picking_ids:
                 if "monta_delivery_date" in picking._fields and picking.monta_delivery_date:
                     return picking.monta_delivery_date
+                # Fallback to actual done/shipped date if shipped
+                if picking.state == 'done' and picking.date_done:
+                    return picking.date_done.date()
+                # Fallback to scheduled date if not shipped yet
+                if picking.state not in ('done', 'cancel') and picking.scheduled_date:
+                    return picking.scheduled_date.date()
+        # 3. Fallback to order standard dates
+        if self.commitment_date:
+            return self.commitment_date.date() if hasattr(self.commitment_date, 'date') else self.commitment_date
+        if self.expected_date:
+            return self.expected_date.date() if hasattr(self.expected_date, 'date') else self.expected_date
         return False
