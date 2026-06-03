@@ -936,3 +936,28 @@ class SaleOrder(models.Model):
             if fname in self._fields and getattr(self, fname, False):
                 return getattr(self, fname)
         return False
+
+    def _moyee_get_tracking_ref(self):
+        self.ensure_one()
+        # 1. Look at pickings
+        if "picking_ids" in self._fields:
+            for picking in self.picking_ids:
+                if "carrier_tracking_ref" in picking._fields and picking.carrier_tracking_ref:
+                    return picking.carrier_tracking_ref
+        # 2. Look at custom order fields
+        for fname in ("x_tracking_ref", "x_carrier_tracking_ref", "carrier_tracking_ref"):
+            if fname in self._fields and getattr(self, fname, False):
+                return getattr(self, fname)
+        return False
+
+    def _moyee_get_monta_delivery_date(self):
+        self.ensure_one()
+        # 1. Check custom field on sale.order
+        if "monta_delivery_date" in self._fields and self.monta_delivery_date:
+            return self.monta_delivery_date
+        # 2. Check pickings
+        if "picking_ids" in self._fields:
+            for picking in self.picking_ids:
+                if "monta_delivery_date" in picking._fields and picking.monta_delivery_date:
+                    return picking.monta_delivery_date
+        return False
