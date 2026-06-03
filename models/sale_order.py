@@ -112,6 +112,24 @@ class SaleOrder(models.Model):
                         elif fname == "non_recurring_amount_total":
                             order[fname] = sum(one_time_lines.mapped('price_total'))
 
+    @api.depends('order_line.price_subtotal', 'order_line.price_tax', 'order_line.price_total', 'order_line.x_moyee_is_removed')
+    def _compute_tax_totals(self):
+        super()._compute_tax_totals()
+        for order in self:
+            if order._moyee_is_subscription_order():
+                order_lines = order.order_line.filtered(lambda x: not x.display_type and not x.x_moyee_is_removed)
+                try:
+                    if hasattr(self.env['sale.order.line'], '_convert_to_tax_base_line_dict'):
+                        tax_base_lines = [line._convert_to_tax_base_line_dict() for line in order_lines]
+                    else:
+                        tax_base_lines = [line._prepare_base_line_for_taxes_computation() for line in order_lines]
+                    order.tax_totals = self.env['account.tax']._prepare_tax_totals(
+                        tax_base_lines,
+                        order.currency_id or order.company_id.currency_id,
+                    )
+                except Exception:
+                    pass
+
     def read(self, fields=None, load='_record_write'):
         # Force a recompute if the stored totals on a subscription do not match the active lines
         for order in self:
@@ -121,6 +139,7 @@ class SaleOrder(models.Model):
                     active_total = sum(active_lines.mapped('price_total'))
                     if abs(order.amount_total - active_total) > 0.01:
                         order._compute_amounts()
+                        order._compute_tax_totals()
             except Exception:
                 pass
         return super().read(fields=fields, load=load)
