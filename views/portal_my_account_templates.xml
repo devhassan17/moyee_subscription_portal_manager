@@ -113,7 +113,59 @@
                                             <t t-foreach="visible_lines or []" t-as="line">
                                                 <t t-if="not line.display_type">
                                                     <t t-set="lname_check" t-value="(line.product_id and line.product_id.name or line.name or '').lower()"/>
-                                                    <t t-if="'delivery' not in lname_check">
+                                                    <t t-set="clean_name" t-value="((line.product_id.product_tmpl_id.name or line.name or '').replace('(Subscription)', '').replace('(subscription)', '').replace('(SUBSCRIPTION)', '').strip())"/>
+                                                    <t t-set="is_delivery_line" t-value="('is_delivery' in line._fields and line.is_delivery) or 'delivery' in lname_check"/>
+                                                    <t t-set="is_discount_line" t-value="line.price_total &lt; 0 or line.price_subtotal &lt; 0 or 'discount' in lname_check or 'promo' in lname_check or 'coupon' in lname_check"/>
+
+                                                    <!-- Case 1: Delivery Line -->
+                                                    <t t-if="is_delivery_line">
+                                                        <tr class="moyee-abo-prod-row" style="opacity: 0.85;">
+                                                            <td>
+                                                                <div class="moyee-abo-prod-photo" style="font-size: 20px; background: transparent; border: none; display: flex; align-items: center; justify-content: center;">🚚</div>
+                                                            </td>
+                                                            <td>
+                                                                <div class="moyee-abo-prod-name">
+                                                                    <div style="font-weight:700;">Delivery</div>
+                                                                </div>
+                                                            </td>
+                                                            <td>—</td>
+                                                            <td>—</td>
+                                                            <td style="font-weight:700">
+                                                                <t t-if="line.price_total &gt; 0">
+                                                                    € <t t-esc="'%.2f' % line.price_total"/>
+                                                                </t>
+                                                                <t t-else="">
+                                                                    <span style="color: #2E7D32; font-weight: 700;">Free</span>
+                                                                </t>
+                                                            </td>
+                                                            <td class="moyee-abo-td-actions">
+                                                            </td>
+                                                        </tr>
+                                                    </t>
+
+                                                    <!-- Case 2: Discount Line -->
+                                                    <t t-elif="is_discount_line">
+                                                        <tr class="moyee-abo-prod-row" style="background-color: #F4FBF7;">
+                                                            <td>
+                                                                <div class="moyee-abo-prod-photo" style="font-size: 20px; background: transparent; border: none; display: flex; align-items: center; justify-content: center;">🏷️</div>
+                                                            </td>
+                                                            <td>
+                                                                <div class="moyee-abo-prod-name">
+                                                                    <div style="font-weight:700; color: #2E7D32;" t-esc="clean_name"/>
+                                                                </div>
+                                                            </td>
+                                                            <td>—</td>
+                                                            <td>—</td>
+                                                            <td style="font-weight:700; color: #2E7D32;">
+                                                                -€ <t t-esc="'%.2f' % abs(line.price_total)"/>
+                                                            </td>
+                                                            <td class="moyee-abo-td-actions">
+                                                            </td>
+                                                        </tr>
+                                                    </t>
+
+                                                    <!-- Case 3: Regular Product Line -->
+                                                    <t t-else="">
                                                         <t t-set="line_grind_val" t-value="'whole' in lname_check and 'Whole beans' or 'filter' in lname_check and 'Filter grind' or 'espresso' in lname_check and 'Espresso grind' or 'capsule' in lname_check and 'Capsules' or 'cups' in lname_check and 'Capsules' or 'Whole beans'"/>
                                                         <t t-set="line_weight_val" t-value="'1kg' in lname_check.replace(' ', '') and '1 kg' or '1 kg' in lname_check and '1 kg' or '250' in lname_check and '250g' or '25' in lname_check and '25 Capsules' or '1 kg'"/>
                                                         <tr class="moyee-abo-prod-row">
@@ -126,8 +178,7 @@
                                                             </td>
                                                             <td>
                                                                 <div class="moyee-abo-prod-name">
-                                                                    <div style="font-weight:700;" t-esc="line.product_id.product_tmpl_id.name or line.name"/>
-                                                                    <div class="text-muted" style="font-size:11px;" t-esc="line_grind_val"/>
+                                                                    <div style="font-weight:700;" t-esc="clean_name"/>
                                                                 </div>
                                                             </td>
                                                             <td>
@@ -137,7 +188,17 @@
                                                                 <t t-esc="line_weight_val"/>
                                                             </td>
                                                             <td style="font-weight:700">
-                                                                € <t t-esc="'%.2f' % line.price_subtotal"/>
+                                                                <t t-if="line.discount &gt; 0">
+                                                                    <div style="text-decoration: line-through; color: #999; font-size: 12px; font-weight: 500;">
+                                                                        € <t t-esc="'%.2f' % (line.price_total / (1.0 - line.discount / 100.0))"/>
+                                                                    </div>
+                                                                    <div style="color: #2E7D32;">
+                                                                        € <t t-esc="'%.2f' % line.price_total"/>
+                                                                    </div>
+                                                                </t>
+                                                                <t t-else="">
+                                                                    € <t t-esc="'%.2f' % line.price_total"/>
+                                                                </t>
                                                             </td>
                                                             <td class="moyee-abo-td-actions" style="width: 80px;">
                                                                 <div class="d-flex align-items-center gap-1">
@@ -978,8 +1039,21 @@
                                                                      alt="Product" loading="lazy"/>
                                                             </div>
                                                             <div class="text-truncate">
-                                                                <div class="fw-bold small text-truncate" t-esc="line.product_id.with_context(display_default_code=False).display_name or line.name"/>
-                                                                <div class="text-muted" style="font-size: 11px;">€ <t t-esc="'%.2f' % line.price_unit"/> each</div>
+                                                                <div class="fw-bold small text-truncate" t-esc="((line.product_id.with_context(display_default_code=False).display_name or line.name or '').replace('(Subscription)', '').replace('(subscription)', '').replace('(SUBSCRIPTION)', '').strip())"/>
+                                                                <div class="text-muted" style="font-size: 11px;">
+                                                                    <t t-if="line.discount &gt; 0">
+                                                                        <span style="text-decoration: line-through; color: #999; margin-right: 4px;">
+                                                                            € <t t-esc="'%.2f' % ((line.price_total / (1.0 - line.discount / 100.0)) / line.product_uom_qty if line.product_uom_qty else line.price_unit)"/>
+                                                                        </span>
+                                                                        <span style="color: #2E7D32; font-weight: 700;">
+                                                                            € <t t-esc="'%.2f' % (line.price_total / line.product_uom_qty if line.product_uom_qty else line.price_unit)"/>
+                                                                        </span>
+                                                                    </t>
+                                                                    <t t-else="">
+                                                                        € <t t-esc="'%.2f' % (line.price_total / line.product_uom_qty if line.product_uom_qty else line.price_unit)"/>
+                                                                    </t>
+                                                                    each
+                                                                </div>
                                                             </div>
                                                         </div>
                                                         
@@ -1108,7 +1182,7 @@
                                                                      loading="lazy"/>
                                                             </div>
                                                             <div class="moyee-slider-name">
-                                                                <t t-esc="p.with_context(display_default_code=False).display_name"/>
+                                                                <t t-esc="((p.with_context(display_default_code=False).display_name or p.name or '').replace('(Subscription)', '').replace('(subscription)', '').replace('(SUBSCRIPTION)', '').strip())"/>
                                                             </div>
                                                             <div class="moyee-slider-price">
                                                                 <t t-esc="'€ %.2f' % (p.lst_price or 0.0)"/>

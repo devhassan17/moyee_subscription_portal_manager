@@ -9,6 +9,7 @@ publicWidget.registry.MoyeeProductFilter = publicWidget.Widget.extend({
         'click #clearMoyeeFilters': '_onClearFilters',
         'change #moyeeSameAsShipping': '_onSameAsShipping',
         'input [name^="ship_"], select[name^="ship_"]': '_onShipAddressChange',
+        'click input[type="date"]': '_onDateInputClick',
     },
 
     /**
@@ -116,6 +117,16 @@ publicWidget.registry.MoyeeProductFilter = publicWidget.Widget.extend({
         } else {
             this.$slider.removeClass("d-none");
             this.$noResults.addClass("d-none");
+        }
+    },
+
+    _onDateInputClick: function (ev) {
+        if (typeof ev.currentTarget.showPicker === 'function') {
+            try {
+                ev.currentTarget.showPicker();
+            } catch (err) {
+                console.warn("showPicker is not supported or failed:", err);
+            }
         }
     },
 });

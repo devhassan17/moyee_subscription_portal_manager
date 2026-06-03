@@ -31,6 +31,9 @@ publicWidget.registry.MoyeeMyAccountPage = publicWidget.Widget.extend({
         /* Cascading select dropdowns for Edit modal */
         "change .js_moyee_edit_line_form select[name='grind']": "_onGrindChange",
         "change .js_moyee_edit_line_form select[name='coffee_type']": "_onCoffeeTypeChange",
+
+        /* Date picker click */
+        "click input[type='date']": "_onDateInputClick",
     },
 
     // ──────────────────────────────────────────
@@ -263,6 +266,16 @@ publicWidget.registry.MoyeeMyAccountPage = publicWidget.Widget.extend({
                 selected: String(weightVal) === String(currentValue)
             }));
         });
+    },
+
+    _onDateInputClick: function (ev) {
+        if (typeof ev.currentTarget.showPicker === 'function') {
+            try {
+                ev.currentTarget.showPicker();
+            } catch (err) {
+                console.warn("showPicker is not supported or failed:", err);
+            }
+        }
     },
 });
 

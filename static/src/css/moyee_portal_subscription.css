@@ -290,3 +290,8 @@
 #clearMoyeeFilters:hover {
     text-decoration: underline;
 }
+
+/* Make date inputs behave like clickable buttons */
+input[type="date"] {
+    cursor: pointer;
+}

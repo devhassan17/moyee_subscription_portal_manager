@@ -240,7 +240,7 @@
                                                     <input class="form-control moyee-input"
                                                            type="text"
                                                            readonly="readonly"
-                                                           t-att-value="line.product_id.with_context(display_default_code=False).display_name or line.name"/>
+                                                           t-att-value="((line.product_id.with_context(display_default_code=False).display_name or line.name or '').replace('(Subscription)', '').replace('(subscription)', '').replace('(SUBSCRIPTION)', '').strip())"/>
                                                 </div>
 
                                                 <!-- Qty (editable) -->
@@ -387,7 +387,7 @@
                                                     </div>
                                                     <!-- Name -->
                                                     <div class="moyee-slider-name">
-                                                        <t t-esc="p.name"/>
+                                                         <t t-esc="((p.name or '').replace('(Subscription)', '').replace('(subscription)', '').replace('(SUBSCRIPTION)', '').strip())"/>
                                                     </div>
                                                     <!-- Price -->
                                                     <div class="moyee-slider-price">

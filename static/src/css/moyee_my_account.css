@@ -799,3 +799,9 @@
   margin-left: 8px;
   text-transform: uppercase;
 }
+
+/* Make date inputs behave like clickable buttons */
+input[type="date"] {
+  cursor: pointer;
+}
+
