@@ -1,3 +1,9 @@
 .moyee_hide_line {
     display: none !important;
 }
+
+/* Hide the x_moyee_is_removed column from the tree/list view */
+th[data-name="x_moyee_is_removed"],
+td[name="x_moyee_is_removed"] {
+    display: none !important;
+}

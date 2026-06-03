@@ -25,25 +25,25 @@ class SaleOrder(models.Model):
     # ============================================================
     # Subscription detection (robust across Odoo builds)
     # ============================================================
+    def _moyee_is_subscription_order(self):
+        self.ensure_one()
+        for fname in (
+            "is_subscription",
+            "plan_id",
+            "subscription_state",
+            "subscription_status",
+            "recurring_plan_id",
+            "subscription_pricing_id",
+            "subscription_plan_id",
+            "recurring_pricing_id",
+        ):
+            if fname in self._fields and getattr(self, fname, False):
+                return True
+        return False
+
     def _compute_is_subscription_order(self):
         for order in self:
-            is_sub = False
-            # Odoo 18 in your DB uses: is_subscription + plan_id + subscription_state
-            for fname in (
-                "is_subscription",
-                "plan_id",  # ✅ IMPORTANT (your DB)
-                "subscription_state",
-                "subscription_status",
-                # Other builds / customizations
-                "recurring_plan_id",
-                "subscription_pricing_id",
-                "subscription_plan_id",
-                "recurring_pricing_id",
-            ):
-                if fname in order._fields and getattr(order, fname, False):
-                    is_sub = True
-                    break
-            order.is_subscription_order = is_sub
+            order.is_subscription_order = order._moyee_is_subscription_order()
 
     # ============================================================
     # Hide removed lines in invoices / reports / PDFs
@@ -68,7 +68,7 @@ class SaleOrder(models.Model):
     def _compute_amounts(self):
         super()._compute_amounts()
         for order in self:
-            if order.is_subscription_order:
+            if order._moyee_is_subscription_order():
                 order_lines = order.order_line.filtered(lambda x: not x.display_type and not x.x_moyee_is_removed)
                 
                 # Check company rounding method (global vs per-line)

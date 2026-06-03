@@ -12,14 +12,38 @@ function parseQty(td) {
     return m ? Number(m[0]) : NaN;
 }
 
-function hideZeroQtyRows(root = document) {
+function hideRemovedRows(root = document) {
     const rows = root.querySelectorAll("tr.o_data_row");
     for (const tr of rows) {
-        const qtyTd = tr.querySelector('td[name="product_uom_qty"]');
-        if (!qtyTd) continue; // not a sale.order.line list row (or not the list we want)
+        const hasQty = tr.querySelector('td[name="product_uom_qty"]');
+        if (!hasQty) continue;
 
-        const qty = parseQty(qtyTd);
-        if (!Number.isNaN(qty) && qty <= 0) {
+        let shouldHide = false;
+
+        // 1. Check if marked as soft-removed (x_moyee_is_removed)
+        const removedTd = tr.querySelector('td[name="x_moyee_is_removed"]');
+        if (removedTd) {
+            const checkbox = removedTd.querySelector('input[type="checkbox"]');
+            const isChecked = checkbox ? checkbox.checked : false;
+            const valText = (removedTd.textContent || "").trim().toLowerCase();
+            const isTrueText = valText === "true" || valText === "1" || valText === "yes";
+            if (isChecked || isTrueText) {
+                shouldHide = true;
+            }
+        }
+
+        // 2. Check if quantity is 0 or less
+        if (!shouldHide) {
+            const qtyTd = tr.querySelector('td[name="product_uom_qty"]');
+            if (qtyTd) {
+                const qty = parseQty(qtyTd);
+                if (!Number.isNaN(qty) && qty <= 0) {
+                    shouldHide = true;
+                }
+            }
+        }
+
+        if (shouldHide) {
             tr.classList.add(HIDE_CLASS);
         } else {
             tr.classList.remove(HIDE_CLASS);
@@ -29,10 +53,10 @@ function hideZeroQtyRows(root = document) {
 
 function start() {
     // initial
-    hideZeroQtyRows(document);
+    hideRemovedRows(document);
 
     // keep applying on list rerenders
-    const obs = new MutationObserver(() => hideZeroQtyRows(document));
+    const obs = new MutationObserver(() => hideRemovedRows(document));
     obs.observe(document.body, { childList: true, subtree: true, characterData: true });
 }
 
