@@ -1,5 +1,5 @@
 # File: moyee_subscription_portal_manager/models/sale_order.py
-from odoo import _, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 
 
@@ -63,6 +63,33 @@ class SaleOrder(models.Model):
         return lines.filtered(
             lambda l: l.display_type or (not l.x_moyee_is_removed and float(l.product_uom_qty or 0.0) > 0.0)
         )
+
+    @api.depends('order_line.price_subtotal', 'order_line.price_tax', 'order_line.price_total', 'order_line.x_moyee_is_removed')
+    def _compute_amounts(self):
+        super()._compute_amounts()
+        for order in self:
+            if order.is_subscription_order:
+                order_lines = order.order_line.filtered(lambda x: not x.display_type and not x.x_moyee_is_removed)
+                
+                # Check company rounding method (global vs per-line)
+                round_globally = getattr(order.company_id, 'tax_calculation_rounding_method', False) == 'round_globally'
+                if round_globally:
+                    try:
+                        tax_results = self.env['account.tax']._compute_taxes([
+                            line._convert_to_tax_base_line_dict() for line in order_lines
+                        ])
+                        totals = tax_results.get('totals', {})
+                        order.amount_untaxed = totals.get(order.currency_id, {}).get('amount_untaxed', 0.0)
+                        order.amount_tax = totals.get(order.currency_id, {}).get('amount_tax', 0.0)
+                        order.amount_total = order.amount_untaxed + order.amount_tax
+                        continue
+                    except Exception:
+                        pass
+                
+                # Fallback to simple line-summation
+                order.amount_untaxed = sum(order_lines.mapped('price_subtotal'))
+                order.amount_tax = sum(order_lines.mapped('price_tax'))
+                order.amount_total = sum(order_lines.mapped('price_total'))
 
     # ============================================================
     # Portal security helpers

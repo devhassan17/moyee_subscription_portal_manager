@@ -57,11 +57,11 @@ class MoyeePortalHome(CustomerPortal):
             active_subscription = subscriptions[0]
             has_subscription = True
 
-            # Visible lines (include all lines with quantity > 0)
+            # Visible lines (include active lines with quantity > 0)
             visible_lines = active_subscription.order_line.filtered(
                 lambda l: (
                     l.display_type
-                    or float(l.product_uom_qty or 0.0) > 0.0
+                    or (not l.x_moyee_is_removed and float(l.product_uom_qty or 0.0) > 0.0)
                 )
             )
 
@@ -379,7 +379,7 @@ class MoyeeSubscriptionPortal(http.Controller):
         )
 
         visible_lines = order.order_line.filtered(
-            lambda l: l.display_type or float(l.product_uom_qty or 0.0) > 0.0
+            lambda l: l.display_type or (not l.x_moyee_is_removed and float(l.product_uom_qty or 0.0) > 0.0)
         )
 
         countries = request.env["res.country"].sudo().search([], order="name, id")

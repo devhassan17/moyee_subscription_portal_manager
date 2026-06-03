@@ -23,6 +23,36 @@ class SaleOrderLine(models.Model):
     # -----------------------
     # Internal helpers
     # -----------------------
+    def _moyee_get_portal_weight_display(self):
+        self.ensure_one()
+        # Try product weight first
+        weight = self.product_id.weight
+        if weight == 1.0:
+            return "1 kg"
+        elif weight == 0.25:
+            return "250g"
+        
+        # Try searching name / display name / code
+        lname = (self.product_id.display_name or self.name or "").lower()
+        if "1kg" in lname.replace(" ", "") or "1 kg" in lname:
+            return "1 kg"
+        if "250" in lname:
+            return "250g"
+        if "25" in lname or "capsule" in lname or "cups" in lname:
+            return "25 Capsules"
+        
+        return "—"
+
+    def _moyee_get_portal_weight_value(self):
+        self.ensure_one()
+        disp = self._moyee_get_portal_weight_display()
+        if disp == "1 kg":
+            return "1kg"
+        elif disp == "250g":
+            return "250g"
+        elif disp == "25 Capsules":
+            return "25caps"
+        return ""
     def _moyee_check_manager_rights(self):
         """Backend-only: allow employees (and superuser)."""
         if self.env.is_superuser():
