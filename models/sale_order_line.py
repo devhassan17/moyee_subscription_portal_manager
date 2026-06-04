@@ -61,7 +61,6 @@ class SaleOrderLine(models.Model):
             return "250g"
         if "25" in lname or "capsule" in lname or "cups" in lname:
             return "25 Capsules"
-        
         return "—"
 
     def _moyee_get_portal_weight_value(self):
@@ -74,6 +73,25 @@ class SaleOrderLine(models.Model):
         elif disp == "25 Capsules":
             return "25caps"
         return ""
+
+    def _moyee_get_portal_grind_value(self):
+        self.ensure_one()
+        grind, _ = self.order_id._moyee_extract_product_metadata(self.product_id)
+        return grind
+
+    def _moyee_get_portal_grind_display(self):
+        self.ensure_one()
+        val = self._moyee_get_portal_grind_value()
+        if val == "whole":
+            return "Whole beans"
+        elif val == "filter":
+            return "Filter grind"
+        elif val == "espresso":
+            return "Espresso grind"
+        elif val == "capsules":
+            return "Capsules"
+        return "Whole beans"
+
     def _moyee_check_manager_rights(self):
         """Backend-only: allow employees (and superuser)."""
         if self.env.is_superuser():
