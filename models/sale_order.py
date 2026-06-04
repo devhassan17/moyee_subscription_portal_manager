@@ -710,6 +710,72 @@ class SaleOrder(models.Model):
         )
         return True
 
+    def _moyee_recompute_line_price(self, line):
+        """
+        Recalculates and updates the price_unit on a subscription line
+        based on the order's pricelist, quantity, and product.
+        """
+        if not line:
+            return
+        line = line.sudo()
+
+        # 1. First, try executing standard Odoo compute methods
+        if hasattr(line, "_compute_pricelist_item_id"):
+            try:
+                line._compute_pricelist_item_id()
+            except Exception:
+                pass
+        if hasattr(line, "_compute_price_unit"):
+            try:
+                line._compute_price_unit()
+            except Exception:
+                pass
+
+        # 2. Try fetching the display price (either with or without product arg)
+        price = 0.0
+        if hasattr(line, "_get_display_price"):
+            try:
+                price = line._get_display_price()
+            except TypeError:
+                try:
+                    price = line._get_display_price(line.product_id)
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
+        # 3. Fallback to manual pricelist lookup
+        if not price and line.order_id.pricelist_id:
+            try:
+                pricelist = line.order_id.pricelist_id
+                product = line.product_id
+                qty = line.product_uom_qty or 1.0
+                partner = line.order_id.partner_id
+                uom_id = (line.product_uom or product.uom_id).id
+
+                if hasattr(pricelist, "_get_product_price"):
+                    price = pricelist._get_product_price(product, qty, partner, uom_id=uom_id)
+                elif hasattr(pricelist, "get_product_price"):
+                    price = pricelist.get_product_price(product, qty, partner, uom_id=uom_id)
+            except Exception:
+                pass
+
+        # 4. Fallback to product's list price
+        if not price and line.product_id:
+            price = getattr(line.product_id, "lst_price", 0.0) or getattr(line.product_id, "list_price", 0.0)
+
+        # 5. Fix tax-included price if applicable
+        if price and hasattr(self.env["account.tax"], "_fix_tax_included_price_company"):
+            try:
+                price = self.env["account.tax"]._fix_tax_included_price_company(
+                    price, line.product_id.taxes_id, line.tax_id, line.company_id
+                )
+            except Exception:
+                pass
+
+        if price:
+            line.write({"price_unit": price})
+
     # ============================================================
     # Add product (portal)
     # ============================================================
@@ -736,9 +802,11 @@ class SaleOrder(models.Model):
             lambda l: (not l.display_type) and l.product_id.id == product.id and not l.x_moyee_is_removed
         )
         if line:
-            line[:1].sudo().write({"product_uom_qty": float(line[:1].product_uom_qty or 0.0) + qty})
+            line_to_update = line[:1].sudo()
+            line_to_update.write({"product_uom_qty": float(line_to_update.product_uom_qty or 0.0) + qty})
+            self._moyee_recompute_line_price(line_to_update)
         else:
-            self.env["sale.order.line"].sudo().create(
+            new_line = self.env["sale.order.line"].sudo().create(
                 {
                     "order_id": self.id,
                     "product_id": product.id,
@@ -746,6 +814,7 @@ class SaleOrder(models.Model):
                     "name": product.display_name,
                 }
             )
+            self._moyee_recompute_line_price(new_line)
 
         self.with_user(1).message_post(
             body=_("Moyee: customer added product via portal (%s x %s).") % (product.display_name, qty),
@@ -835,7 +904,9 @@ class SaleOrder(models.Model):
             )
 
         old_qty = line.product_uom_qty
-        line.sudo().write({"product_uom_qty": qty})
+        line_to_update = line.sudo()
+        line_to_update.write({"product_uom_qty": qty})
+        self._moyee_recompute_line_price(line_to_update)
 
         product_label = line.product_id.display_name if line.product_id else (line.name or _("(no product)"))
         self.with_user(1).message_post(
@@ -894,19 +965,19 @@ class SaleOrder(models.Model):
             )
             if existing_line:
                 # Merge quantities
-                existing_line[:1].sudo().write({"product_uom_qty": existing_line[:1].product_uom_qty + line.product_uom_qty})
+                existing_line_sudo = existing_line[:1].sudo()
+                existing_line_sudo.write({"product_uom_qty": existing_line_sudo.product_uom_qty + line.product_uom_qty})
                 # Soft remove the current line
                 line.sudo().write({"x_moyee_is_removed": True, "product_uom_qty": 0.0})
+                self._moyee_recompute_line_price(existing_line_sudo)
             else:
-                line.sudo().write({
+                line_sudo = line.sudo()
+                line_sudo.write({
                     "product_id": target_product.id,
                     "name": target_product.with_context(display_default_code=False).display_name or target_product.display_name,
                     "product_uom": target_product.uom_id.id,
                 })
-                if hasattr(line, "_compute_pricelist_item_id"):
-                    line.sudo()._compute_pricelist_item_id()
-                elif hasattr(line, "_compute_price_unit"):
-                    line.sudo()._compute_price_unit()
+                self._moyee_recompute_line_price(line_sudo)
 
         self.with_user(1).message_post(
             body=_("Moyee: customer edited line product via portal — %s → %s.") % (
