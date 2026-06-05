@@ -381,7 +381,11 @@
                             </div>
                         </t>
 
-                                        <t t-if="recent_orders">
+                        <!-- ══════════ ORDERS ══════════ -->
+                        <t t-if="not moyee_config or moyee_config.get('show_orders', True)">
+                            <div id="moyee-section-orders">
+                            <div class="moyee-section-title">My orders</div>
+                            <t t-if="recent_orders">
                                 <div class="moyee-order-list js-moyee-paginated-orders">
                                     <t t-foreach="recent_orders" t-as="so">
                                         <a href="#" t-attf-data-moyee-modal="moyee-modal-order-detail-{{ so.id }}"

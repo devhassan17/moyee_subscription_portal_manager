@@ -24,7 +24,7 @@
         </xpath>
 
         <!-- Fallback if theme/build changed table id -->
-        <xpath expr="//table[contains(@class,'table')][1]//tbody" position="inside">
+        <xpath expr="//table[hasclass('table')][1]//tbody" position="inside">
             <tr t-if="sale_order and sale_order.is_subscription_order">
                 <th class="ps-0 pb-0">Subscription:</th>
                 <td class="w-100 pb-0 text-wrap">
