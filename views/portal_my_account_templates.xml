@@ -73,6 +73,26 @@
                                     <span t-if="is_paused" class="moyee-abo-status-badge moyee-abo-status-paused">⏸ Paused</span>
                                 </div>
 
+                                <!-- Subscription Switching Tabs -->
+                                <t t-if="subscriptions and len(subscriptions) &gt; 1">
+                                    <ul class="moyee-sub-tabs mb-3">
+                                        <t t-foreach="subscriptions" t-as="sub">
+                                            <li class="nav-item">
+                                                <a t-attf-href="/my/home?sub_id={{ sub.id }}#moyee-section-subscription"
+                                                   t-attf-class="nav-link #{'active' if active_subscription.id == sub.id else ''}">
+                                                    <span t-esc="sub.name"/>
+                                                    <t t-if="sub.subscription_state == '4_paused' or 'paused' in (sub.subscription_state or '')">
+                                                        <span class="badge bg-warning ms-1 text-dark" style="font-size: 10px; font-weight:700;">Paused</span>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <span class="badge bg-success ms-1 text-white" style="font-size: 10px; font-weight:700;">Active</span>
+                                                    </t>
+                                                </a>
+                                            </li>
+                                        </t>
+                                    </ul>
+                                </t>
+
                                 <!-- Delivery banner -->
                                 <t t-if="next_date_value and not is_paused">
                                     <div class="moyee-levering-banner">
@@ -315,12 +335,7 @@
                                             </form>
                                         </t>
                                         <!-- Cancel Subscription Button -->
-                                        <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/cancel" method="post" class="d-inline-block mb-0">
-                                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                            <button type="submit"
-                                                    class="moyee-btn-danger"
-                                                    onclick="return confirm('Are you sure you want to cancel your subscription?');">Cancel subscription</button>
-                                        </form>
+                                        <button type="button" class="moyee-btn-danger" data-moyee-modal="moyee-modal-cancel-subscription">Cancel subscription</button>
                                         <a href="#"
                                            class="moyee-btn moyee-btn-ghost"
                                            data-moyee-modal="moyee-modal-addresses">
@@ -366,14 +381,12 @@
                             </div>
                         </t>
 
-                        <!-- ══════════ ORDERS ══════════ -->
-                        <t t-if="not moyee_config or moyee_config.get('show_orders', True)">
-                            <div id="moyee-section-orders">
-                            <div class="moyee-section-title">My orders</div>
-                            <t t-if="recent_orders">
-                                <div class="moyee-order-list">
-                                    <t t-foreach="recent_orders[:5]" t-as="so">
-                                        <a href="#" t-attf-data-moyee-modal="moyee-modal-order-detail-{{ so.id }}" class="moyee-order-row">
+                                        <t t-if="recent_orders">
+                                <div class="moyee-order-list js-moyee-paginated-orders">
+                                    <t t-foreach="recent_orders" t-as="so">
+                                        <a href="#" t-attf-data-moyee-modal="moyee-modal-order-detail-{{ so.id }}"
+                                           class="moyee-order-row js-order-item"
+                                           t-att-style="'display: none;' if so_index &gt;= 5 else ''">
                                             <div class="moyee-order-info">
                                                 <div class="moyee-order-coffee">
                                                     <t t-if="so.is_subscription_order">
@@ -435,89 +448,29 @@
                                                     <t t-esc="so_state"/>
                                                 </span>
                                             </t>
-                                            <div class="moyee-order-price">
-                                                € <t t-esc="'%.2f' % so.amount_total"/>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <t t-if="not so.is_subscription_order">
+                                                    <form t-attf-action="/my/orders/{{ so.id }}/reorder" method="post" class="mb-0">
+                                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                        <button type="submit" class="moyee-btn moyee-btn-primary moyee-reorder-btn" style="padding: 4px 10px; font-size: 11px; border-radius: 6px;">Reorder</button>
+                                                    </form>
+                                                </t>
+                                                <div class="moyee-order-price">
+                                                    € <t t-esc="'%.2f' % so.amount_total"/>
+                                                </div>
                                             </div>
                                         </a>
                                     </t>
-
-                                    <!-- Extra orders (hidden by default) -->
-                                    <t t-if="len(recent_orders) &gt; 5">
-                                        <div class="moyee-orders-extra" style="display:none;flex-direction:column;gap:10px;">
-                                            <t t-foreach="recent_orders[5:]" t-as="so">
-                                                <a href="#" t-attf-data-moyee-modal="moyee-modal-order-detail-{{ so.id }}" class="moyee-order-row">
-                                                    <div class="moyee-order-info">
-                                                        <div class="moyee-order-coffee">
-                                                            <t t-if="so.is_subscription_order">
-                                                                <span class="moyee-order-type-tag moyee-type-abo">Subscription</span>
-                                                            </t>
-                                                            <t t-else="">
-                                                                <span class="moyee-order-type-tag moyee-type-losse">One-time order</span>
-                                                            </t>
-                                                            <t t-esc="so.name"/>
-                                                        </div>
-                                                        <div class="moyee-order-meta">
-                                                            <t t-if="so.date_order">
-                                                                <t t-esc="so.date_order.strftime('%d %B %Y')"/>
-                                                            </t>
-                                                            ·
-                                                            <t t-esc="len(so.order_line.filtered(lambda l: not l.display_type and not l.x_moyee_is_removed))"/> items
-                                                            <!-- Monta Delivery Date -->
-                                                            <t t-set="m_date" t-value="so._moyee_get_monta_delivery_date()"/>
-                                                            · <span style="color: var(--moyee-pink); font-weight: 600;">
-                                                                Delivery: 
-                                                                <t t-if="m_date">
-                                                                    <t t-esc="m_date.strftime('%d %B %Y')"/>
-                                                                </t>
-                                                                <t t-else="">
-                                                                    Not available yet
-                                                                </t>
-                                                            </span>
-                                                            <!-- Track & Trace info -->
-                                                            <t t-set="t_ref" t-value="so._moyee_get_tracking_ref()"/>
-                                                            <t t-set="t_url" t-value="so._moyee_get_tracking_url()"/>
-                                                            · <span class="text-muted">
-                                                                T&amp;T: 
-                                                                <t t-if="t_url">
-                                                                    <span class="moyee-track-link" t-att-data-url="t_url" style="color: var(--moyee-pink); text-decoration: underline; font-weight: 700; cursor: pointer;">
-                                                                        Track shipment <t t-if="t_ref">(<t t-esc="t_ref"/>)</t>
-                                                                    </span>
-                                                                </t>
-                                                                <t t-elif="t_ref">
-                                                                    <span style="font-weight: 700; color: #111;"><t t-esc="t_ref"/></span>
-                                                                </t>
-                                                                <t t-else="">
-                                                                    <span style="color: #999;">Not available yet</span>
-                                                                </t>
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    <t t-set="so_state" t-value="so.state or ''"/>
-                                                    <t t-if="so_state == 'sale'">
-                                                        <span class="moyee-order-status moyee-status-processing">Confirmed</span>
-                                                    </t>
-                                                    <t t-elif="so_state == 'done'">
-                                                        <span class="moyee-order-status moyee-status-delivered">Completed</span>
-                                                    </t>
-                                                    <t t-elif="so_state == 'cancel'">
-                                                        <span class="moyee-order-status moyee-status-cancelled">Cancelled</span>
-                                                    </t>
-                                                    <t t-else="">
-                                                        <span class="moyee-order-status moyee-status-upcoming">
-                                                            <t t-esc="so_state"/>
-                                                        </span>
-                                                    </t>
-                                                    <div class="moyee-order-price">
-                                                        € <t t-esc="'%.2f' % so.amount_total"/>
-                                                    </div>
-                                                </a>
-                                            </t>
-                                        </div>
-                                    </t>
                                 </div>
                                 <t t-if="len(recent_orders) &gt; 5">
-                                    <div style="text-align:center;margin-top:12px;">
+                                    <div style="text-align:center;margin-top:12px;" class="js-orders-toggle-wrap">
                                         <button class="moyee-toggle-btn moyee-orders-toggle">View all orders ↓</button>
+                                    </div>
+                                    <div class="js-orders-pagination d-none justify-content-center align-items-center gap-2 mt-3" style="font-size: 13px;">
+                                        <button class="btn btn-sm btn-outline-primary js-prev-orders-page" style="border-radius: 6px;" type="button">Previous</button>
+                                        <span class="js-orders-page-info text-muted mx-2">Page 1 of 1</span>
+                                        <button class="btn btn-sm btn-outline-primary js-next-orders-page" style="border-radius: 6px;" type="button">Next</button>
+                                        <button class="btn btn-sm btn-link text-muted ms-2 js-orders-show-less" style="font-size: 11px;" type="button">Show less ↑</button>
                                     </div>
                                 </t>
                             </t>
@@ -535,9 +488,10 @@
                             <div id="moyee-section-invoices">
                             <div class="moyee-section-title">My invoices</div>
                             <t t-if="recent_invoices">
-                                <div class="moyee-invoice-list">
-                                    <t t-foreach="recent_invoices[:3]" t-as="inv">
-                                        <div class="moyee-invoice-row">
+                                <div class="moyee-invoice-list js-moyee-paginated-invoices">
+                                    <t t-foreach="recent_invoices" t-as="inv">
+                                        <div class="moyee-invoice-row js-invoice-item"
+                                             t-att-style="'display: none;' if inv_index &gt;= 3 else ''">
                                             <div class="moyee-invoice-info">
                                                 <div class="moyee-invoice-name">
                                                     <t t-esc="inv.name or 'Draft'"/>
@@ -567,47 +521,16 @@
                                             </a>
                                         </div>
                                     </t>
-
-                                    <!-- Extra invoices (hidden by default) -->
-                                    <t t-if="len(recent_invoices) &gt; 3">
-                                        <div class="moyee-invoices-extra" style="display:none;flex-direction:column;gap:10px;">
-                                            <t t-foreach="recent_invoices[3:]" t-as="inv">
-                                                <div class="moyee-invoice-row">
-                                                    <div class="moyee-invoice-info">
-                                                        <div class="moyee-invoice-name">
-                                                            <t t-esc="inv.name or 'Draft'"/>
-                                                        </div>
-                                                        <div class="moyee-invoice-meta">
-                                                            <t t-if="inv.invoice_date">
-                                                                <t t-esc="inv.invoice_date.strftime('%d %B %Y')"/>
-                                                            </t>
-                                                            · € <t t-esc="'%.2f' % inv.amount_total"/>
-                                                            <t t-if="inv.invoice_origin">
-                                                                · <span style="color: var(--moyee-pink); font-weight: 600;">Order: <t t-esc="inv.invoice_origin"/></span>
-                                                            </t>
-                                                        </div>
-                                                    </div>
-                                                    <t t-set="inv_state" t-value="inv.payment_state or ''"/>
-                                                    <t t-if="inv_state == 'paid'">
-                                                        <span class="moyee-invoice-status moyee-invoice-paid">Paid</span>
-                                                    </t>
-                                                    <t t-elif="inv_state == 'in_payment'">
-                                                        <span class="moyee-invoice-status moyee-invoice-paid">In payment</span>
-                                                    </t>
-                                                    <t t-else="">
-                                                        <span class="moyee-invoice-status moyee-invoice-open">Open</span>
-                                                    </t>
-                                                    <a t-att-href="inv.get_portal_url(report_type='pdf', download=True)" class="moyee-invoice-download">
-                                                        ⬇ PDF
-                                                    </a>
-                                                </div>
-                                            </t>
-                                        </div>
-                                    </t>
                                 </div>
                                 <t t-if="len(recent_invoices) &gt; 3">
-                                    <div style="text-align:center;margin-top:12px;">
+                                    <div style="text-align:center;margin-top:12px;" class="js-invoices-toggle-wrap">
                                         <button class="moyee-toggle-btn moyee-invoices-toggle">View all invoices ↓</button>
+                                    </div>
+                                    <div class="js-invoices-pagination d-none justify-content-center align-items-center gap-2 mt-3" style="font-size: 13px;">
+                                        <button class="btn btn-sm btn-outline-primary js-prev-invoices-page" style="border-radius: 6px;" type="button">Previous</button>
+                                        <span class="js-invoices-page-info text-muted mx-2">Page 1 of 1</span>
+                                        <button class="btn btn-sm btn-outline-primary js-next-invoices-page" style="border-radius: 6px;" type="button">Next</button>
+                                        <button class="btn btn-sm btn-link text-muted ms-2 js-invoices-show-less" style="font-size: 11px;" type="button">Show less ↑</button>
                                     </div>
                                 </t>
                             </t>
@@ -1143,6 +1066,50 @@
                                     <div class="d-flex gap-3 mt-4" style="width: 100%;">
                                         <button class="moyee-modal-cancel btn" type="button" style="flex: 1; background: #F5F6F8; border: none; border-radius: 12px; font-weight: 700; height: 48px; color: #444; font-size: 15px; padding: 0;">Cancel</button>
                                         <button class="moyee-modal-save btn" type="submit" style="flex: 2.5; background: #555555; border: none; border-radius: 12px; font-weight: 700; height: 48px; color: white; font-size: 15px; padding: 0;">Pause</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2.6) CANCEL SUBSCRIPTION SURVEY MODAL -->
+                    <div class="moyee-modal-overlay" id="moyee-modal-cancel-subscription">
+                        <div class="moyee-modal" style="max-width: 480px; border-radius: 16px;">
+                            <div class="moyee-modal-header" style="border-bottom: none; padding: 24px 24px 0;">
+                                <div class="moyee-modal-title" style="font-size: 22px; font-weight: 800; color: #111; display: flex; align-items: center; gap: 6px;">
+                                    <span>Close Subscription</span>
+                                    <span style="color: var(--moyee-pink);" t-esc="active_subscription.name"/>
+                                </div>
+                                <button class="moyee-modal-close" type="button" style="font-size: 24px;">×</button>
+                            </div>
+                            <div class="moyee-modal-body" style="padding: 16px 24px 24px;">
+                                <t t-if="next_date_value">
+                                    <div class="alert alert-warning" style="background-color: #FFFDF5; border: 1px solid #FFE0B2; border-radius: 8px; padding: 12px 16px; font-size: 14px; color: #795548; font-style: italic; margin-bottom: 20px;">
+                                        You are about to permanently close a subscription that is valid until <strong t-esc="next_date_value.strftime('%d/%m/%Y')"/>.
+                                    </div>
+                                </t>
+                                
+                                <h3 style="font-size: 24px; font-weight: 800; margin-bottom: 8px; color: #111; font-family: sans-serif;">We are sorry to see you go.</h3>
+                                <p style="font-size: 14px; color: #555; margin-bottom: 20px;">Tell us, why are you leaving?</p>
+                                
+                                <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/cancel" method="post" class="d-flex flex-column gap-3 mb-0">
+                                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                    
+                                    <div>
+                                        <select name="reason" class="form-select moyee-modal-select" required="required"
+                                                style="border-radius: 12px; border: 1.5px solid #E2E8F0; padding: 12px 16px; font-size: 15px; font-weight: 700; height: 50px; color: #111; background-color: white;">
+                                            <option value="" disabled="disabled" selected="selected">Choose a reason...</option>
+                                            <option value="I have wayy to much coffee">I have wayy to much coffee</option>
+                                            <option value="My budget says no">My budget says no</option>
+                                            <option value="Too much admin for coffee">Too much admin for coffee</option>
+                                            <option value="Not my cup (anymore)">Not my cup (anymore)</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="d-flex gap-3 mt-4" style="width: 100%;">
+                                        <button class="moyee-modal-cancel btn" type="button" style="flex: 1; background: #F5F6F8; border: none; border-radius: 12px; font-weight: 700; height: 48px; color: #444; font-size: 15px; padding: 0;">Cancel</button>
+                                        <button class="moyee-modal-save btn btn-danger" type="submit" style="flex: 2.5; background: #DC2626; border: none; border-radius: 12px; font-weight: 700; height: 48px; color: white; font-size: 15px; padding: 0;">Close Subscription</button>
                                     </div>
                                 </form>
                             </div>

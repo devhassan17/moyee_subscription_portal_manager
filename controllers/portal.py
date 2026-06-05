@@ -57,9 +57,20 @@ class MoyeePortalHome(CustomerPortal):
         elif "is_subscription" in SaleOrder._fields:
             sub_domain.append(("is_subscription", "=", True))
 
-        subscriptions = SaleOrder.search(sub_domain, order="id desc", limit=5)
+        subscriptions = SaleOrder.search(sub_domain, order="id desc")
         if subscriptions:
-            active_subscription = subscriptions[0]
+            sub_id = kw.get("sub_id")
+            if sub_id:
+                try:
+                    requested_sub = subscriptions.filtered(lambda s: s.id == int(sub_id))
+                    if requested_sub:
+                        active_subscription = requested_sub[0]
+                    else:
+                        active_subscription = subscriptions[0]
+                except Exception:
+                    active_subscription = subscriptions[0]
+            else:
+                active_subscription = subscriptions[0]
             has_subscription = True
 
             # Visible lines (include active lines with quantity > 0)
@@ -138,7 +149,7 @@ class MoyeePortalHome(CustomerPortal):
         ]
         if current_company_id:
             order_domain.append(("company_id", "=", current_company_id))
-        recent_orders = SaleOrder.search(order_domain, order="date_order desc, id desc", limit=15)
+        recent_orders = SaleOrder.search(order_domain, order="date_order desc, id desc")
 
         # ── Recent invoices ──
         AccountMove = request.env["account.move"].sudo()
@@ -149,7 +160,7 @@ class MoyeePortalHome(CustomerPortal):
         ]
         if current_company_id:
             inv_domain.append(("company_id", "=", current_company_id))
-        recent_invoices = AccountMove.search(inv_domain, order="invoice_date desc, id desc", limit=10)
+        recent_invoices = AccountMove.search(inv_domain, order="invoice_date desc, id desc")
 
         # ── Portal FAQs ──
         PortalFaq = request.env["moyee.portal.faq"].sudo()
@@ -250,6 +261,7 @@ class MoyeePortalHome(CustomerPortal):
             "max_price": max_price,
             "recent_orders": recent_orders,
             "recent_invoices": recent_invoices,
+            "subscriptions": subscriptions,
             "faqs": faqs,
             "brew_guides": brew_guides,
             "moyee_home_message": moyee_home_message,
@@ -698,7 +710,8 @@ class MoyeeSubscriptionPortal(http.Controller):
     def moyee_cancel_subscription(self, order_id, access_token=None, **post):
         order = self._moyee_get_order_sudo(order_id, access_token=access_token, require_subscription=True)
         try:
-            order.moyee_portal_close(portal_user_id=request.env.user.id)
+            reason = post.get("reason")
+            order.moyee_portal_close(portal_user_id=request.env.user.id, reason=reason)
         except (AccessError, UserError, ValidationError) as e:
             return self._moyee_redirect_back(order, error=str(e), access_token=access_token)
         return self._moyee_redirect_back(order, message=_("Subscription cancelled successfully."), access_token=access_token)
@@ -726,6 +739,6 @@ class MoyeeSubscriptionPortal(http.Controller):
                     product_id=line.product_id.id,
                     add_qty=line.product_uom_qty,
                 )
-            return request.redirect("/shop/cart")
+            return request.redirect("/shop/checkout")
         
         return request.redirect("/my/home")

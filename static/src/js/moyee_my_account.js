@@ -7,14 +7,21 @@ import publicWidget from "@web/legacy/js/public/public_widget";
  * Handles FAQ accordion, order/invoice expand, modals, smooth scroll, and TAF.
  */
 publicWidget.registry.MoyeeMyAccountPage = publicWidget.Widget.extend({
-    selector: ".moyee-account-page",
+    selector: "#wrapwrap",
     events: {
         /* FAQ accordion */
         "click .moyee-faq-q": "_onFaqToggle",
 
-        /* Expand / collapse orders & invoices */
+        /* Expand / collapse/paginate orders & invoices */
         "click .moyee-orders-toggle": "_onToggleOrders",
         "click .moyee-invoices-toggle": "_onToggleInvoices",
+        "click .js-prev-orders-page": "_onPrevOrdersPage",
+        "click .js-next-orders-page": "_onNextOrdersPage",
+        "click .js-orders-show-less": "_onOrdersShowLess",
+        "click .js-prev-invoices-page": "_onPrevInvoicesPage",
+        "click .js-next-invoices-page": "_onNextInvoicesPage",
+        "click .js-invoices-show-less": "_onInvoicesShowLess",
+        "click .moyee-reorder-btn": "_onReorderClick",
 
         /* Modals */
         "click [data-moyee-modal]": "_onOpenModal",
@@ -46,6 +53,9 @@ publicWidget.registry.MoyeeMyAccountPage = publicWidget.Widget.extend({
     start: function () {
         this._ordersExpanded = false;
         this._invoicesExpanded = false;
+        this._ordersPage = 1;
+        this._invoicesPage = 1;
+        this._pageSize = 10;
         return this._super.apply(this, arguments);
     },
 
@@ -59,35 +69,157 @@ publicWidget.registry.MoyeeMyAccountPage = publicWidget.Widget.extend({
     },
 
     // ──────────────────────────────────────────
-    // Orders / Invoices toggle
+    // Orders / Invoices client-side pagination
     // ──────────────────────────────────────────
 
     _onToggleOrders: function (ev) {
         ev.preventDefault();
-        var $extra = this.$(".moyee-orders-extra");
-        var $btn = $(ev.currentTarget);
-        this._ordersExpanded = !this._ordersExpanded;
-        if (this._ordersExpanded) {
-            $extra.css("display", "flex");
-            $btn.text("Show less ↑");
+        this._ordersExpanded = true;
+        this._ordersPage = 1;
+        this._updateOrdersView();
+    },
+
+    _onPrevOrdersPage: function (ev) {
+        ev.preventDefault();
+        if (this._ordersPage > 1) {
+            this._ordersPage--;
+            this._updateOrdersView();
+            var $target = this.$("#moyee-section-orders");
+            if ($target.length) {
+                $target[0].scrollIntoView({ behavior: "smooth" });
+            }
+        }
+    },
+
+    _onNextOrdersPage: function (ev) {
+        ev.preventDefault();
+        var total = this.$(".js-order-item").length;
+        var totalPages = Math.ceil(total / this._pageSize) || 1;
+        if (this._ordersPage < totalPages) {
+            this._ordersPage++;
+            this._updateOrdersView();
+            var $target = this.$("#moyee-section-orders");
+            if ($target.length) {
+                $target[0].scrollIntoView({ behavior: "smooth" });
+            }
+        }
+    },
+
+    _onOrdersShowLess: function (ev) {
+        ev.preventDefault();
+        this._ordersExpanded = false;
+        this._updateOrdersView();
+        var $target = this.$("#moyee-section-orders");
+        if ($target.length) {
+            $target[0].scrollIntoView({ behavior: "smooth" });
+        }
+    },
+
+    _updateOrdersView: function () {
+        var $items = this.$(".js-order-item");
+        var total = $items.length;
+        if (!this._ordersExpanded) {
+            $items.each(function (idx) {
+                $(this).toggle(idx < 5);
+            });
+            this.$(".js-orders-toggle-wrap").removeClass("d-none");
+            this.$(".js-orders-pagination").removeClass("d-flex").addClass("d-none");
         } else {
-            $extra.css("display", "none");
-            $btn.text("View all orders ↓");
+            this.$(".js-orders-toggle-wrap").addClass("d-none");
+            this.$(".js-orders-pagination").removeClass("d-none").addClass("d-flex");
+
+            var totalPages = Math.ceil(total / this._pageSize) || 1;
+            if (this._ordersPage < 1) this._ordersPage = 1;
+            if (this._ordersPage > totalPages) this._ordersPage = totalPages;
+
+            var startIdx = (this._ordersPage - 1) * this._pageSize;
+            var endIdx = startIdx + this._pageSize;
+
+            $items.each(function (idx) {
+                $(this).toggle(idx >= startIdx && idx < endIdx);
+            });
+
+            this.$(".js-orders-page-info").text("Page " + this._ordersPage + " of " + totalPages);
+            this.$(".js-prev-orders-page").prop("disabled", this._ordersPage === 1);
+            this.$(".js-next-orders-page").prop("disabled", this._ordersPage === totalPages);
         }
     },
 
     _onToggleInvoices: function (ev) {
         ev.preventDefault();
-        var $extra = this.$(".moyee-invoices-extra");
-        var $btn = $(ev.currentTarget);
-        this._invoicesExpanded = !this._invoicesExpanded;
-        if (this._invoicesExpanded) {
-            $extra.css("display", "flex");
-            $btn.text("Show less ↑");
-        } else {
-            $extra.css("display", "none");
-            $btn.text("View all invoices ↓");
+        this._invoicesExpanded = true;
+        this._invoicesPage = 1;
+        this._updateInvoicesView();
+    },
+
+    _onPrevInvoicesPage: function (ev) {
+        ev.preventDefault();
+        if (this._invoicesPage > 1) {
+            this._invoicesPage--;
+            this._updateInvoicesView();
+            var $target = this.$("#moyee-section-invoices");
+            if ($target.length) {
+                $target[0].scrollIntoView({ behavior: "smooth" });
+            }
         }
+    },
+
+    _onNextInvoicesPage: function (ev) {
+        ev.preventDefault();
+        var total = this.$(".js-invoice-item").length;
+        var totalPages = Math.ceil(total / this._pageSize) || 1;
+        if (this._invoicesPage < totalPages) {
+            this._invoicesPage++;
+            this._updateInvoicesView();
+            var $target = this.$("#moyee-section-invoices");
+            if ($target.length) {
+                $target[0].scrollIntoView({ behavior: "smooth" });
+            }
+        }
+    },
+
+    _onInvoicesShowLess: function (ev) {
+        ev.preventDefault();
+        this._invoicesExpanded = false;
+        this._updateInvoicesView();
+        var $target = this.$("#moyee-section-invoices");
+        if ($target.length) {
+            $target[0].scrollIntoView({ behavior: "smooth" });
+        }
+    },
+
+    _updateInvoicesView: function () {
+        var $items = this.$(".js-invoice-item");
+        var total = $items.length;
+        if (!this._invoicesExpanded) {
+            $items.each(function (idx) {
+                $(this).toggle(idx < 3);
+            });
+            this.$(".js-invoices-toggle-wrap").removeClass("d-none");
+            this.$(".js-invoices-pagination").removeClass("d-flex").addClass("d-none");
+        } else {
+            this.$(".js-invoices-toggle-wrap").addClass("d-none");
+            this.$(".js-invoices-pagination").removeClass("d-none").addClass("d-flex");
+
+            var totalPages = Math.ceil(total / this._pageSize) || 1;
+            if (this._invoicesPage < 1) this._invoicesPage = 1;
+            if (this._invoicesPage > totalPages) this._invoicesPage = totalPages;
+
+            var startIdx = (this._invoicesPage - 1) * this._pageSize;
+            var endIdx = startIdx + this._pageSize;
+
+            $items.each(function (idx) {
+                $(this).toggle(idx >= startIdx && idx < endIdx);
+            });
+
+            this.$(".js-invoices-page-info").text("Page " + this._invoicesPage + " of " + totalPages);
+            this.$(".js-prev-invoices-page").prop("disabled", this._invoicesPage === 1);
+            this.$(".js-next-invoices-page").prop("disabled", this._invoicesPage === totalPages);
+        }
+    },
+
+    _onReorderClick: function (ev) {
+        ev.stopPropagation();
     },
 
     // ──────────────────────────────────────────

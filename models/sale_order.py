@@ -662,7 +662,7 @@ class SaleOrder(models.Model):
 
         raise UserError(_("Close/cancel is not available for this subscription implementation."))
 
-    def moyee_portal_close(self, *, portal_user_id):
+    def moyee_portal_close(self, *, portal_user_id, reason=None):
         self.ensure_one()
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
         if not portal_user:
@@ -671,8 +671,12 @@ class SaleOrder(models.Model):
         self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
         self._moyee_set_subscription_closed_state()
 
+        body_msg = _("Moyee: customer cancelled/closed the subscription via portal.")
+        if reason:
+            body_msg += _("<br/>Reason: %s") % reason
+
         self.with_user(1).message_post(
-            body=_("Moyee: customer cancelled/closed the subscription via portal."),
+            body=body_msg,
             subtype_xmlid="mail.mt_note",
             author_id=portal_user.partner_id.id,
         )
