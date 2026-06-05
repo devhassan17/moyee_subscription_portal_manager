@@ -589,19 +589,34 @@ class SaleOrder(models.Model):
     # ============================================================
     # ✅ Cancel / Close (robust)
     # ============================================================
-    def _moyee_set_subscription_closed_state(self):
+    def _moyee_set_subscription_closed_state(self, reason=None):
         self.ensure_one()
 
-        # 1) Try standard methods first
-        for m in ("action_close", "action_cancel", "action_subscription_close", "action_set_to_close"):
-            if hasattr(self, m):
+        # Odoo 18 close reason handling
+        if "close_reason_id" in self._fields:
+            close_reason = False
+            CloseReasonModel = self.env["sale.subscription.close.reason"].sudo()
+            if reason:
+                # 1. Search for existing close reason matching the selected reason
+                close_reason = CloseReasonModel.search([("name", "ilike", reason)], limit=1)
+                if not close_reason:
+                    # 2. If not found, try to create a new close reason
+                    try:
+                        close_reason = CloseReasonModel.create({"name": reason})
+                    except Exception:
+                        pass
+            
+            # If still no close_reason and we have the field, let's grab the first one as fallback
+            if not close_reason:
+                close_reason = CloseReasonModel.search([], limit=1)
+            
+            if close_reason:
                 try:
-                    getattr(self.sudo(), m)()
-                    return True
+                    self.sudo().write({"close_reason_id": close_reason.id})
                 except Exception:
                     pass
 
-        # 2) Generic selection field fallback for subscription_state
+        # 1) Try native field writes for subscription_state first (to bypass dummy action_close)
         if "subscription_state" in self._fields:
             selection = self._fields["subscription_state"].selection or []
             keys = [k for k, _lbl in selection]
@@ -615,25 +630,26 @@ class SaleOrder(models.Model):
                         if cand in str(k).lower():
                             return k
                 return None
-            key = _pick(("5_churn", "6_churn", "4_closed", "closed", "cancel", "churned", "churn", "close"))
+            key = _pick(("6_churn", "5_churn", "4_closed", "closed", "cancel", "churned", "churn", "close"))
             if key:
-                self.sudo().write({"subscription_state": key})
-                return True
-
-        # 3) stage-based fallback
-        for stage_field in ("subscription_stage_id", "stage_id"):
-            if stage_field in self._fields:
-                Stage = self.env[self._fields[stage_field].comodel_name].sudo()
-                target = (
-                    Stage.search([("name", "ilike", "closed")], limit=1)
-                    or Stage.search([("name", "ilike", "cancel")], limit=1)
-                    or Stage.search([("name", "ilike", "churn")], limit=1)
-                )
-                if target:
-                    self.sudo().write({stage_field: target.id})
+                try:
+                    self.sudo().write({"subscription_state": key})
                     return True
+                except Exception:
+                    pass
 
-        # 4) generic selection field fallback for subscription_status
+        # 2) Try standard methods, but verify they don't just return a wizard action dict
+        for m in ("action_close", "action_cancel", "action_subscription_close", "action_set_to_close"):
+            if hasattr(self, m):
+                try:
+                    res = getattr(self.sudo(), m)()
+                    if res and isinstance(res, dict):
+                        continue
+                    return True
+                except Exception:
+                    pass
+
+        # 3) Generic selection field fallback for subscription_status
         if "subscription_status" in self._fields:
             selection = self._fields["subscription_status"].selection or []
             keys = [k for k, _lbl in selection]
@@ -649,8 +665,27 @@ class SaleOrder(models.Model):
                 return None
             key = _pick(("closed", "cancel", "churned", "churn", "close"))
             if key:
-                self.sudo().write({"subscription_status": key})
-                return True
+                try:
+                    self.sudo().write({"subscription_status": key})
+                    return True
+                except Exception:
+                    pass
+
+        # 4) stage-based fallback
+        for stage_field in ("subscription_stage_id", "stage_id"):
+            if stage_field in self._fields:
+                Stage = self.env[self._fields[stage_field].comodel_name].sudo()
+                target = (
+                    Stage.search([("name", "ilike", "closed")], limit=1)
+                    or Stage.search([("name", "ilike", "cancel")], limit=1)
+                    or Stage.search([("name", "ilike", "churn")], limit=1)
+                )
+                if target:
+                    try:
+                        self.sudo().write({stage_field: target.id})
+                        return True
+                    except Exception:
+                        pass
 
         # 5) standard sale.order cancel if nothing else worked
         if hasattr(self, "action_cancel"):
@@ -669,7 +704,7 @@ class SaleOrder(models.Model):
             raise AccessError(_("Invalid user."))
 
         self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
-        self._moyee_set_subscription_closed_state()
+        self._moyee_set_subscription_closed_state(reason=reason)
 
         body_msg = _("Moyee: customer cancelled/closed the subscription via portal.")
         if reason:
