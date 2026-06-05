@@ -595,7 +595,8 @@ class SaleOrder(models.Model):
         # Odoo 18 close reason handling
         if "close_reason_id" in self._fields:
             close_reason = False
-            CloseReasonModel = self.env["sale.subscription.close.reason"].sudo()
+            comodel_name = self._fields["close_reason_id"].comodel_name
+            CloseReasonModel = self.env[comodel_name].sudo()
             if reason:
                 # 1. Search for existing close reason matching the selected reason
                 close_reason = CloseReasonModel.search([("name", "ilike", reason)], limit=1)
