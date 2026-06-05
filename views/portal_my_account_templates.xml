@@ -76,16 +76,16 @@
                                 <!-- Subscription Switching Tabs -->
                                 <t t-if="subscriptions and len(subscriptions) &gt; 1">
                                     <ul class="moyee-sub-tabs mb-3">
-                                        <t t-foreach="subscriptions" t-as="sub">
+                                        <t t-foreach="subscriptions" t-as="abo">
                                             <li class="nav-item">
-                                                <a t-attf-href="/my/home?sub_id={{ sub.id }}#moyee-section-subscription"
-                                                   t-attf-class="nav-link #{'active' if active_subscription.id == sub.id else ''}">
-                                                    <span t-esc="sub.name"/>
-                                                    <t t-if="sub.subscription_state == '4_paused' or 'paused' in (sub.subscription_state or '')">
-                                                        <span class="badge bg-warning ms-1 text-dark" style="font-size: 10px; font-weight:700;">Paused</span>
+                                                <a t-attf-href="/my/home?sub_id={{ abo.id }}#moyee-section-subscription"
+                                                   t-attf-class="nav-link #{'active' if active_subscription.id == abo.id else ''}">
+                                                    <span style="margin-right: 6px;">Subscription <t t-esc="abo.name"/></span>
+                                                    <t t-if="abo.subscription_state == '4_paused' or 'paused' in (abo.subscription_state or '')">
+                                                        <span class="badge bg-warning text-dark" style="font-size: 10px; font-weight:700;">Paused</span>
                                                     </t>
                                                     <t t-else="">
-                                                        <span class="badge bg-success ms-1 text-white" style="font-size: 10px; font-weight:700;">Active</span>
+                                                        <span class="badge bg-success text-white" style="font-size: 10px; font-weight:700;">Active</span>
                                                     </t>
                                                 </a>
                                             </li>
