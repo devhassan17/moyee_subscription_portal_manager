@@ -218,10 +218,14 @@ class MoyeePortalHome(CustomerPortal):
                 all_possible_products = available_products | existing_products
                 for p in all_possible_products:
                     grind, weight = active_subscription._moyee_extract_product_metadata(p)
+                    tmpl_name = p.product_tmpl_id.name or ''
+                    tmpl_name = tmpl_name.replace('(Subscription)', '').replace('(subscription)', '').replace('(SUBSCRIPTION)', '')
+                    import re
+                    tmpl_name = re.sub(r'(?i)\b(1\s*kg|250\s*g(ram)?|25\s*caps(ules)?)\b', '', tmpl_name).strip()
                     variant_map.append({
                         "id": p.id,
                         "tmpl_id": p.product_tmpl_id.id,
-                        "tmpl_name": (p.product_tmpl_id.name or '').replace('(Subscription)', '').replace('(subscription)', '').replace('(SUBSCRIPTION)', '').strip(),
+                        "tmpl_name": tmpl_name,
                         "grind": grind,
                         "weight": weight,
                     })

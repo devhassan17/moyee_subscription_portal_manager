@@ -98,8 +98,8 @@
                                     <div class="moyee-levering-banner">
                                         <span class="moyee-levering-banner-icon">📦</span>
                                         <span class="moyee-levering-banner-text">
-                                            Your next delivery is scheduled for
-                                            <strong><t t-esc="next_date_value.strftime('%d %B %Y') if next_date_value else ''"/></strong>.
+                                            Your next delivery will be sent on 
+                                            <strong><t t-esc="next_date_value.strftime('%d %B %Y') if next_date_value else ''"/></strong>, expect the coffee within 2 days.
                                         </span>
                                         <a href="#" data-moyee-modal="moyee-modal-shipment-date">Change →</a>
                                     </div>
@@ -813,39 +813,38 @@
                         <!-- Upsell card (only for non-subscribers) -->
                         <t t-if="not has_subscription and (not moyee_config or moyee_config.get('show_sidebar_upsell', True))">
                             <div class="moyee-upsell-card">
-                                <div class="moyee-upsell-title">Start a subscription</div>
+                                <div class="moyee-upsell-title">MOYEE COFFEE SUBSCRIPTION</div>
                                 <div class="moyee-upsell-subtitle">
-                                    Never run out of coffee again. Save time, enjoy fair pricing,
-                                    and get your favorite blend delivered on schedule.
+                                    Never an empty kitchen cabinet and 10,000 karma points. Welcome to the revolution!
+                                </div>
+                                <div class="moyee-upsell-benefit">
+                                    <div class="moyee-upsell-benefit-icon">📦</div>
+                                    <div>
+                                        <div class="moyee-upsell-benefit-label">CONVENIENCE</div>
+                                        <div class="moyee-upsell-benefit-text">
+                                            Specialty Coffee automatically delivered to your door. Never run out again!
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="moyee-upsell-benefit">
                                     <div class="moyee-upsell-benefit-icon">🔄</div>
                                     <div>
-                                        <div class="moyee-upsell-benefit-label">Flexible</div>
+                                        <div class="moyee-upsell-benefit-label">FLEXIBILITY</div>
                                         <div class="moyee-upsell-benefit-text">
-                                            Change, pause or cancel your subscription at any time. No commitment.
+                                            Adjust your products, how often we deliver, or pause your subscription in a heartbeat.
                                         </div>
                                     </div>
                                 </div>
                                 <div class="moyee-upsell-benefit">
                                     <div class="moyee-upsell-benefit-icon">☕</div>
                                     <div>
-                                        <div class="moyee-upsell-benefit-label">Fair coffee</div>
+                                        <div class="moyee-upsell-benefit-label">BENEFIT</div>
                                         <div class="moyee-upsell-benefit-text">
-                                            Directly from Ethiopia, roasted at origin. FairChain, not just Fairtrade.
+                                            Consistent orders mean consistent and good prices for our farmers and roasters.
                                         </div>
                                     </div>
                                 </div>
-                                <div class="moyee-upsell-benefit">
-                                    <div class="moyee-upsell-benefit-icon">📦</div>
-                                    <div>
-                                        <div class="moyee-upsell-benefit-label">Convenient</div>
-                                        <div class="moyee-upsell-benefit-text">
-                                            Automatic delivery every month, 2 months, or 3 months.
-                                        </div>
-                                    </div>
-                                </div>
-                                <a href="/shop" class="moyee-upsell-cta">Explore subscriptions →</a>
+                                <a href="/shop/category/subscription-3" class="moyee-upsell-cta">GET A SUBSCRIPTION</a>
                             </div>
                         </t>
 
@@ -891,11 +890,10 @@
                     </style>
 
                     <!-- 1) NEXT SHIPMENT DATE MODAL -->
-                    <!-- 1) NEXT SHIPMENT DATE MODAL -->
                     <div class="moyee-modal-overlay" id="moyee-modal-shipment-date">
                         <div class="moyee-modal">
                             <div class="moyee-modal-header" style="padding: 24px 24px 0;">
-                                <div class="moyee-modal-title" style="font-size: 22px; font-weight: 800; color: #111;">Change delivery</div>
+                                <div class="moyee-modal-title" style="font-size: 22px; font-weight: 800; color: #111;">Change order send date</div>
                                 <button class="moyee-modal-close" type="button" style="font-size: 24px;">×</button>
                             </div>
                             <div class="moyee-modal-body" style="padding: 16px 24px 24px;">
@@ -906,7 +904,7 @@
                                 </t>
                                 <t t-else="">
                                     <p style="font-size: 15px; color: #555; line-height: 1.5; margin-bottom: 20px;">
-                                        Your next delivery is scheduled for <strong><t t-esc="next_date_value and ('%s %s %s' % (next_date_value.day, next_date_value.strftime('%B'), next_date_value.year)) or ''"/></strong>. Choose a new delivery date or skip a delivery.
+                                        Your next delivery will be sent on <strong><t t-esc="next_date_value and ('%s %s %s' % (next_date_value.day, next_date_value.strftime('%B'), next_date_value.year)) or ''"/></strong>, expect the coffee within 2 days. Choose a new delivery date or skip a delivery.
                                     </p>
                                     
                                     <!-- Main Date Update Form -->
@@ -914,7 +912,7 @@
                                           method="post" id="moyee-delivery-date-form" class="mb-0">
                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                         <div style="margin-bottom: 16px;">
-                                            <label class="moyee-modal-label" style="font-size: 11px; font-weight: 800; color: #555; letter-spacing: 0.5px; margin-bottom: 8px; display: block; text-transform: uppercase;">New delivery date</label>
+                                            <label class="moyee-modal-label" style="font-size: 11px; font-weight: 800; color: #555; letter-spacing: 0.5px; margin-bottom: 8px; display: block; text-transform: uppercase;">New order send date</label>
                                             <input class="form-control moyee-modal-input" type="date" name="next_date"
                                                    t-att-value="next_date_value and next_date_value.strftime('%Y-%m-%d') or ''"
                                                    style="border-radius: 12px; border: 1.5px solid #E2E8F0; padding: 12px 16px; font-size: 15px; font-weight: 700; height: 50px; color: #111;"/>
@@ -1573,8 +1571,16 @@
                                                     <label class="moyee-modal-label">COFFEE TYPE</label>
                                                     <select class="form-select moyee-modal-input" name="coffee_type" required="required">
                                                         <t t-foreach="all_templates" t-as="tmpl">
+                                                            <t t-set="clean_tmpl_name" t-value="tmpl.name"/>
+                                                            <t t-if="clean_tmpl_name">
+                                                                <t t-set="clean_tmpl_name" t-value="clean_tmpl_name.replace('(Subscription)', '').replace('(subscription)', '').replace('(SUBSCRIPTION)', '')"/>
+                                                                <t t-set="clean_tmpl_name" t-value="clean_tmpl_name.replace(' 1 KG', '').replace(' 1 kg', '').replace(' 1KG', '').replace(' 1kg', '')"/>
+                                                                <t t-set="clean_tmpl_name" t-value="clean_tmpl_name.replace(' 250G', '').replace(' 250g', '').replace(' 250 G', '').replace(' 250 g', '').replace(' 250 gram', '')"/>
+                                                                <t t-set="clean_tmpl_name" t-value="clean_tmpl_name.replace(' 25 CAPSULES', '').replace(' 25 capsules', '').replace(' 25 Capsules', '').replace(' 25 CAPS', '').replace(' 25 caps', '')"/>
+                                                                <t t-set="clean_tmpl_name" t-value="clean_tmpl_name.strip()"/>
+                                                            </t>
                                                             <option t-att-value="tmpl.id" t-att-selected="line.product_id.product_tmpl_id.id == tmpl.id">
-                                                                <t t-esc="tmpl.name"/>
+                                                                <t t-esc="clean_tmpl_name"/>
                                                             </option>
                                                         </t>
                                                     </select>
