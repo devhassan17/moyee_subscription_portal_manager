@@ -175,7 +175,7 @@
                                             <t t-if="not is_paused">
                                                 <form t-attf-action="/my/subscriptions/{{ order.id }}/pause" method="post" class="d-inline mb-0">
                                                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                                    <button class="btn btn-warning" type="submit">Pause</button>
+                                                    <button class="btn btn-warning" type="submit" style="background-color: #FFD900 !important; border-color: #FFD900 !important; color: #111 !important; font-weight: 700;">Pause</button>
                                                 </form>
                                             </t>
 

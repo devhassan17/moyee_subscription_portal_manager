@@ -11,6 +11,40 @@ from werkzeug.exceptions import NotFound
 _logger = logging.getLogger(__name__)
 
 
+def _moyee_sort_plans(plans):
+    if not plans:
+        return plans
+
+    def get_plan_rank(plan):
+        name = (plan.display_name or plan.name or "").lower().strip()
+        if name == "monthly" or name == "every month":
+            return 1
+        if "1 month" in name or "one month" in name or "1 monthly" in name:
+            return 2
+        if "2 month" in name or "two month" in name or "2 monthly" in name:
+            return 3
+        if "3 month" in name or "three month" in name or "3 monthly" in name:
+            return 4
+
+        import re
+        match = re.search(r'(\d+)\s*month', name)
+        if match:
+            try:
+                val = int(match.group(1))
+                return val + 1
+            except ValueError:
+                pass
+
+        if "week" in name:
+            return 10
+
+        seq = getattr(plan, "sequence", 999)
+        pid = getattr(plan, "id", 0)
+        return 100 + seq * 1000 + pid
+
+    return plans.sorted(key=get_plan_rank)
+
+
 # ============================================================
 # My Account page (/my/home) data provider
 # ============================================================
@@ -114,6 +148,9 @@ class MoyeePortalHome(CustomerPortal):
                     available_plans = Plan.search(domain, order=order_by)
                 except Exception:
                     pass
+
+            if available_plans:
+                available_plans = _moyee_sort_plans(available_plans)
 
             # Paused state
             if "subscription_state" in active_subscription._fields and active_subscription.subscription_state == "4_paused":
@@ -392,6 +429,9 @@ class MoyeeSubscriptionPortal(http.Controller):
         # Hard fallback
         if not available_plans:
             available_plans = self._moyee_get_all_plans_portal_safe(order)
+
+        if available_plans:
+            available_plans = _moyee_sort_plans(available_plans)
 
         # template-friendly plan info
         plan_field_name = False

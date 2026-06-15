@@ -436,14 +436,19 @@
 
 /* Frequency row */
 .moyee-abo-freq-label {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .5px;
-  color: var(--moyee-text-sm);
+  color: var(--moyee-text);
   min-width: 90px;
 }
-.moyee-abo-freq-val { font-size: 15px; font-weight: 800; flex: 1; }
+.moyee-abo-freq-val {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--moyee-text);
+  flex: 1;
+}
 
 /* Bottom action bar */
 .moyee-abo-actions {

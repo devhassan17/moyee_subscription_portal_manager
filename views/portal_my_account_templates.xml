@@ -288,10 +288,6 @@
                                                 <span style="margin-left:auto;font-weight:600;">-€ <t t-esc="'%.2f' % abs(sub_discount_cost)"/></span>
                                             </div>
                                         </t>
-                                        <div style="display:flex;align-items:center;font-size:12px;color:#777;margin-top:2px;">
-                                            <span>VAT (included)</span>
-                                            <span style="margin-left:auto;">€ <t t-esc="'%.2f' % sum(sub_active_lines.mapped('price_tax'))"/></span>
-                                        </div>
                                     </div>
 
                                     <!-- Totals -->
@@ -309,8 +305,13 @@
                                             <t t-if="current_plan_display" t-esc="current_plan_display"/>
                                             <t t-else="">—</t>
                                         </span>
-                                        <div style="margin-left:auto;">
-                                            <a href="#" class="moyee-abo-icon-btn" data-moyee-modal="moyee-modal-plan" title="Change frequency">✏️</a>
+                                        <div class="d-flex align-items-center gap-1" style="margin-left:auto; padding-right: 12px;">
+                                            <a href="#"
+                                               class="moyee-abo-icon-btn"
+                                               data-moyee-modal="moyee-modal-plan"
+                                               title="Change frequency"
+                                               style="border: 1px solid var(--moyee-gray-2); border-radius: 6px; width: 32px; height: 32px; display: inline-flex; justify-content: center; align-items: center; text-decoration: none; font-size: 13px; background: #fff;">✏️</a>
+                                            <div style="width: 32px; height: 32px; flex-shrink: 0; pointer-events: none;"></div>
                                         </div>
                                     </div>
 
@@ -1005,7 +1006,9 @@
                                                                 <span class="moyee-frequency-current-badge">CURRENT</span>
                                                             </t>
                                                         </div>
-                                                        <div style="font-size: 13px; color: #666; margin-top: 2px;" t-esc="deliveries_text"/>
+                                                        <t t-if="deliveries_text and deliveries_text not in ('Deliveries on custom schedule', 'Deliveries on customer schedule', '12 deliveries per year')">
+                                                            <div style="font-size: 13px; color: #666; margin-top: 2px;" t-esc="deliveries_text"/>
+                                                        </t>
                                                     </div>
                                                 </div>
                                             </label>
@@ -1022,7 +1025,7 @@
                                     <div class="d-flex flex-column gap-2">
                                         <div class="fw-bold small text-muted text-uppercase mb-2" style="font-size: 11px; letter-spacing: .5px;">Status management</div>
                                         <t t-if="not is_paused">
-                                            <button class="btn btn-warning w-100 fw-bold" style="border-radius: 12px; padding: 12px; font-size: 14px;" type="button" data-moyee-modal="moyee-modal-pause-subscription">Pause subscription</button>
+                                            <button class="btn btn-warning w-100 fw-bold" style="border-radius: 12px; padding: 12px; font-size: 14px; background-color: #FFD900 !important; border-color: #FFD900 !important; color: #111 !important;" type="button" data-moyee-modal="moyee-modal-pause-subscription">Pause subscription</button>
                                         </t>
                                         <t t-if="is_paused">
                                             <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/resume" method="post" class="w-100 mb-0">
