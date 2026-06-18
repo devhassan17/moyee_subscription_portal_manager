@@ -171,7 +171,11 @@ class MoyeePortalHome(CustomerPortal):
                 pass
 
             # Countries (for "Change address" popup)
-            countries = request.env["res.country"].sudo().search([], order="name, id")
+            company = current_website and current_website.company_id or request.env.company
+            if company and "moyee_checkout_country_ids" in company._fields and company.moyee_checkout_country_ids:
+                countries = company.moyee_checkout_country_ids
+            else:
+                countries = request.env["res.country"].sudo().search([], order="name, id")
 
             # Price filters
             if available_products:
@@ -454,7 +458,11 @@ class MoyeeSubscriptionPortal(http.Controller):
             lambda l: l.display_type or (not l.x_moyee_is_removed and float(l.product_uom_qty or 0.0) > 0.0)
         )
 
-        countries = request.env["res.country"].sudo().search([], order="name, id")
+        company = order.company_id or request.env.company
+        if company and "moyee_checkout_country_ids" in company._fields and company.moyee_checkout_country_ids:
+            countries = company.moyee_checkout_country_ids
+        else:
+            countries = request.env["res.country"].sudo().search([], order="name, id")
 
         # Detect paused state — Odoo 18 uses subscription_state = '4_paused'
         is_paused = False

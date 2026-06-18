@@ -111,6 +111,14 @@
                                     <div class="text-muted">Toggle the Moyee premium account portal redesign for the selected company. If turned off, Odoo's default portal layout and styling will be restored for this company.</div>
                                 </div>
                             </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_checkout_country_ids"/>
+                                    <div class="text-muted">Restrict checkout to only these countries for the active company. Leave empty for all countries.</div>
+                                    <field name="moyee_checkout_country_ids" widget="many2many_tags" placeholder="Select countries..."/>
+                                </div>
+                            </div>
                         </div>
                     </block>
 
@@ -410,5 +418,60 @@
               parent="menu_moyee_portal_root"
               action="action_moyee_portal_brew_guide"
               sequence="30"/>
+
+    <!-- Company Checkout Filters Page Views & Window Action -->
+    <record id="moyee_res_company_checkout_filter_view_list" model="ir.ui.view">
+        <field name="name">res.company.checkout.filter.view.list</field>
+        <field name="model">res.company</field>
+        <field name="priority">100</field>
+        <field name="arch" type="xml">
+            <list string="Company Checkout Filters" create="false" delete="false">
+                <field name="name"/>
+                <field name="moyee_checkout_country_ids" widget="many2many_tags"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="moyee_res_company_checkout_filter_view_form" model="ir.ui.view">
+        <field name="name">res.company.checkout.filter.view.form</field>
+        <field name="model">res.company</field>
+        <field name="priority">100</field>
+        <field name="arch" type="xml">
+            <form string="Company Checkout Filter" create="false" delete="false">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="moyee_checkout_country_ids" widget="many2many_tags" placeholder="Select allowed countries..."/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_moyee_company_checkout_filter" model="ir.actions.act_window">
+        <field name="name">Company Checkout Filters</field>
+        <field name="res_model">res.company</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('moyee_res_company_checkout_filter_view_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('moyee_res_company_checkout_filter_view_form')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Configure country filters for checkout per company.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_moyee_company_checkout_filter"
+              name="Company Checkout Filters"
+              parent="menu_moyee_portal_root"
+              action="action_moyee_company_checkout_filter"
+              sequence="40"/>
 
 </odoo>

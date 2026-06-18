@@ -9,6 +9,11 @@ class ResCompany(models.Model):
         string="Enable Moyee Custom Portal Redesign",
         default=True,
     )
+    moyee_checkout_country_ids = fields.Many2many(
+        "res.country",
+        string="Allowed Checkout Countries",
+        help="Restricts checkout to only these countries for this company. Leave empty for all countries.",
+    )
 
 
 class ResConfigSettings(models.TransientModel):
@@ -19,6 +24,12 @@ class ResConfigSettings(models.TransientModel):
         related="company_id.moyee_enable_portal_redesign",
         readonly=False,
         string="Enable Moyee Custom Portal Redesign",
+    )
+    moyee_checkout_country_ids = fields.Many2many(
+        related="company_id.moyee_checkout_country_ids",
+        readonly=False,
+        string="Allowed Checkout Countries",
+        help="Restricts checkout to only these countries for this company. Leave empty for all countries.",
     )
 
     # Styling Overrides
