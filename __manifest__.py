@@ -21,7 +21,6 @@ Portal + backend build:
         "account",
         "portal",
         "website",
-        "website_sale",
     ],
     "data": [
         "security/security.xml",
