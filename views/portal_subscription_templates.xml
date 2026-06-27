@@ -117,6 +117,7 @@
                                     <form t-attf-action="/my/subscriptions/{{ order.id }}/push_delivery_date"
                                           method="post" class="row g-3 align-items-end">
                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <input type="hidden" name="access_token" t-att-value="access_token" t-if="access_token"/>
 
                                         <div class="col-12 col-md-8">
                                             <label class="form-label moyee-label">Next order send date</label>
@@ -153,6 +154,7 @@
                                         <div class="col-12 col-md-5">
                                             <form t-attf-id="form_interval_{{order.id}}" t-attf-action="/my/subscriptions/{{ order.id }}/change_interval" method="post" class="mb-0">
                                                 <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                <input type="hidden" name="access_token" t-att-value="access_token" t-if="access_token"/>
                                                 <label class="form-label moyee-label">Current plan</label>
                                                 <select class="form-select moyee-input" name="plan_id" required="required">
                                                     <t t-foreach="available_plans" t-as="pl">
@@ -169,13 +171,14 @@
                                         <div class="col-12 col-md-7 d-flex align-items-end gap-2">
                                             <button class="btn btn-primary" type="submit" t-attf-form="form_interval_{{order.id}}">Update plan</button>
 
-                                            <div class="vr mx-1 align-self-center" style="height:2em;opacity:.25;"></div>
+                                            <div class="vr mx-1 align-self-center moyee-vr-divider"></div>
 
                                             <!-- Show Pause only when subscription is active -->
                                             <t t-if="not is_paused">
                                                 <form t-attf-action="/my/subscriptions/{{ order.id }}/pause" method="post" class="d-inline mb-0">
                                                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                                    <button class="btn btn-warning" type="submit" style="background-color: #FFD900 !important; border-color: #FFD900 !important; color: #111 !important; font-weight: 700;">Pause</button>
+                                                    <input type="hidden" name="access_token" t-att-value="access_token" t-if="access_token"/>
+                                                    <button class="btn btn-warning moyee-btn-pause" type="submit">Pause</button>
                                                 </form>
                                             </t>
 
@@ -183,6 +186,7 @@
                                             <t t-if="is_paused">
                                                 <form t-attf-action="/my/subscriptions/{{ order.id }}/resume" method="post" class="d-inline mb-0">
                                                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                    <input type="hidden" name="access_token" t-att-value="access_token" t-if="access_token"/>
                                                     <button class="btn btn-success" type="submit">Resume</button>
                                                 </form>
                                             </t>
@@ -244,15 +248,14 @@
                                                     <form t-attf-action="/my/subscriptions/{{ order.id }}/line/{{ line.id }}/update_qty"
                                                           method="post" class="d-flex flex-column">
                                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                        <input type="hidden" name="access_token" t-att-value="access_token" t-if="access_token"/>
                                                         <label class="form-label moyee-label">Quantity</label>
                                                         <div class="d-flex align-items-center gap-1">
-                                                            <input class="form-control moyee-input text-center"
+                                                            <input class="form-control moyee-input text-center moyee-qty-inline-input"
                                                                    name="qty" type="number" step="1" min="1"
-                                                                   t-att-value="int(line.product_uom_qty)"
-                                                                   style="width: 70px;"/>
-                                                            <button class="btn btn-sm btn-outline-primary" type="submit"
-                                                                    title="Update quantity"
-                                                                    style="border-radius: 8px; padding: 4px 8px;">
+                                                                   t-att-value="int(line.product_uom_qty)"/>
+                                                            <button class="btn btn-sm btn-outline-primary moyee-small-badge" type="submit"
+                                                                    title="Update quantity">
                                                                 ✓
                                                             </button>
                                                         </div>
@@ -265,6 +268,7 @@
                                                     <form t-attf-action="/my/subscriptions/{{ order.id }}/line/{{ line.id }}/remove"
                                                           method="post" class="d-inline">
                                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                        <input type="hidden" name="access_token" t-att-value="access_token" t-if="access_token"/>
                                                         <input type="hidden" name="reason" value="Removed by customer"/>
                                                         <button class="btn btn-outline-danger moyee-btn-remove"
                                                                 type="submit"
@@ -327,7 +331,7 @@
                                             </div>
                                         </div>
 
-                                        <hr class="my-2" style="opacity: 0.1;"/>
+                                        <hr class="my-2 moyee-hr-divider"/>
 
                                         <!-- Weight/Size Filter -->
                                         <div class="moyee-filter-group">
@@ -353,7 +357,7 @@
                                             </div>
                                         </div>
 
-                                        <hr class="my-2" style="opacity: 0.1;"/>
+                                        <hr class="my-2 moyee-hr-divider"/>
 
 
                                     </div>
@@ -393,12 +397,12 @@
                                                     <form t-attf-action="/my/subscriptions/{{ order.id }}/add_product"
                                                           method="post" class="moyee-slider-form">
                                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                        <input type="hidden" name="access_token" t-att-value="access_token" t-if="access_token"/>
                                                         <input type="hidden" name="product_id" t-att-value="p.id"/>
                                                         <div class="d-flex align-items-center gap-1 mb-2">
-                                                            <label class="moyee-label mb-0" style="white-space:nowrap;">Qty</label>
-                                                            <input class="form-control form-control-sm moyee-input text-center"
-                                                                   name="qty" type="number" step="1" min="1" value="1"
-                                                                   style="width:60px;"/>
+                                                            <label class="moyee-label mb-0 moyee-qty-lbl">Qty</label>
+                                                            <input class="form-control form-control-sm moyee-input text-center moyee-qty-edit-input"
+                                                                   name="qty" type="number" step="1" min="1" value="1"/>
                                                         </div>
                                                         <button class="btn btn-primary btn-sm w-100" type="submit">Add</button>
                                                     </form>
@@ -427,6 +431,7 @@
                         <form t-attf-action="/my/subscriptions/{{ order.id }}/change_address"
                               method="post" class="row g-3">
                             <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                            <input type="hidden" name="access_token" t-att-value="access_token" t-if="access_token"/>
 
                             <!-- Shipping — auto-expanded -->
                             <div class="col-12">
@@ -589,42 +594,49 @@
 
                     <!-- CANCEL SUBSCRIPTION SURVEY MODAL -->
                     <div class="moyee-modal-overlay" id="moyee-modal-cancel-subscription">
-                        <div class="moyee-modal" style="max-width: 480px; border-radius: 16px;">
-                            <div class="moyee-modal-header" style="border-bottom: none; padding: 24px 24px 0;">
-                                <div class="moyee-modal-title" style="font-size: 22px; font-weight: 800; color: #111; display: flex; align-items: center; gap: 6px;">
+                        <div class="moyee-modal moyee-modal-cancel-container">
+                            <div class="moyee-modal-header moyee-modal-cancel-header">
+                                <div class="moyee-modal-title moyee-modal-cancel-title">
                                     <span>Close Subscription</span>
                                     <span style="color: var(--moyee-pink);" t-esc="order.name"/>
                                 </div>
-                                <button class="moyee-modal-close" type="button" style="font-size: 24px;">×</button>
+                                <button class="moyee-modal-close moyee-modal-cancel-close" type="button">×</button>
                             </div>
-                            <div class="moyee-modal-body" style="padding: 16px 24px 24px; text-align: left;">
+                            <div class="moyee-modal-body moyee-modal-cancel-body">
                                 <t t-if="next_date_value">
-                                    <div class="alert alert-warning" style="background-color: #FFFDF5; border: 1px solid #FFE0B2; border-radius: 8px; padding: 12px 16px; font-size: 14px; color: #795548; font-style: italic; margin-bottom: 20px;">
+                                    <div class="alert alert-warning moyee-modal-cancel-alert">
                                         You are about to permanently close a subscription that is valid until <strong t-esc="next_date_value.strftime('%d/%m/%Y')"/>.
                                     </div>
                                 </t>
                                 
-                                <h3 style="font-size: 24px; font-weight: 800; margin-bottom: 8px; color: #111; font-family: sans-serif;">We are sorry to see you go.</h3>
-                                <p style="font-size: 14px; color: #555; margin-bottom: 20px;">Tell us, why are you leaving?</p>
+                                <h3 class="moyee-modal-cancel-heading" style="font-family: sans-serif;">We are sorry to see you go.</h3>
+                                <p class="moyee-modal-cancel-text">Tell us, why are you leaving?</p>
                                 
                                 <form t-attf-action="/my/subscriptions/{{ order.id }}/cancel" method="post" class="d-flex flex-column gap-3 mb-0">
                                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                    <input type="hidden" name="access_token" t-att-value="access_token" t-if="access_token"/>
                                     
                                     <div>
-                                        <select name="reason" class="form-select moyee-modal-select" required="required"
-                                                style="border-radius: 12px; border: 1.5px solid #E2E8F0; padding: 12px 16px; font-size: 15px; font-weight: 700; height: 50px; color: #111; background-color: white;">
+                                        <select name="reason" class="form-select moyee-modal-select" required="required">
                                             <option value="" disabled="disabled" selected="selected">Choose a reason...</option>
-                                            <option value="I have wayy to much coffee">I have wayy to much coffee</option>
-                                            <option value="My budget says no">My budget says no</option>
-                                            <option value="Too much admin for coffee">Too much admin for coffee</option>
-                                            <option value="Not my cup (anymore)">Not my cup (anymore)</option>
+                                            <t t-if="close_reasons">
+                                                <t t-foreach="close_reasons" t-as="reason">
+                                                    <option t-att-value="reason.id" t-esc="reason.name"/>
+                                                </t>
+                                            </t>
+                                            <t t-else="">
+                                                <option value="I have wayy to much coffee">I have wayy to much coffee</option>
+                                                <option value="My budget says no">My budget says no</option>
+                                                <option value="Too much admin for coffee">Too much admin for coffee</option>
+                                                <option value="Not my cup (anymore)">Not my cup (anymore)</option>
+                                            </t>
                                             <option value="Other">Other</option>
                                         </select>
                                     </div>
                                     
-                                    <div class="d-flex gap-3 mt-4" style="width: 100%;">
-                                        <button class="moyee-modal-cancel btn" type="button" style="flex: 1; background: #F5F6F8; border: none; border-radius: 12px; font-weight: 700; height: 48px; color: #444; font-size: 15px; padding: 0;">Cancel</button>
-                                        <button class="moyee-modal-save btn btn-danger" type="submit" style="flex: 2.5; background: #DC2626; border: none; border-radius: 12px; font-weight: 700; height: 48px; color: white; font-size: 15px; padding: 0;">Close Subscription</button>
+                                    <div class="moyee-modal-cancel-btn-group">
+                                        <button class="moyee-modal-cancel btn moyee-modal-cancel-btn-back" type="button">Cancel</button>
+                                        <button class="moyee-modal-save btn btn-danger moyee-modal-cancel-btn-confirm" type="submit">Close Subscription</button>
                                     </div>
                                 </form>
                             </div>

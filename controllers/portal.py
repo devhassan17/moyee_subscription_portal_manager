@@ -1,5 +1,8 @@
 # File: moyee_subscription_portal_manager/controllers/portal.py
 import logging
+import re
+import json
+from dateutil.relativedelta import relativedelta
 from urllib.parse import urlencode
 
 from odoo import _, http, fields
@@ -26,7 +29,6 @@ def _moyee_sort_plans(plans):
         if "3 month" in name or "three month" in name or "3 monthly" in name:
             return 4
 
-        import re
         match = re.search(r'(\d+)\s*month', name)
         if match:
             try:
@@ -39,8 +41,7 @@ def _moyee_sort_plans(plans):
             return 10
 
         seq = getattr(plan, "sequence", 999)
-        pid = getattr(plan, "id", 0)
-        return 100 + seq * 1000 + pid
+        return seq
 
     return plans.sorted(key=get_plan_rank)
 
@@ -132,6 +133,7 @@ class MoyeePortalHome(CustomerPortal):
             try:
                 available_plans = active_subscription._moyee_get_portal_changeable_plans()
             except Exception:
+                _logger.exception("Moyee: Failed to get portal changeable plans.")
                 available_plans = SaleOrder.browse()
 
             # Hard fallback for plans
@@ -147,7 +149,7 @@ class MoyeePortalHome(CustomerPortal):
                     order_by = "sequence, name, id" if "sequence" in Plan._fields else "name, id"
                     available_plans = Plan.search(domain, order=order_by)
                 except Exception:
-                    pass
+                    _logger.exception("Moyee: Failed to fetch fallback plans.")
 
             if available_plans:
                 available_plans = _moyee_sort_plans(available_plans)
@@ -168,7 +170,7 @@ class MoyeePortalHome(CustomerPortal):
             try:
                 available_products = active_subscription._moyee_get_portal_addable_products()
             except Exception:
-                pass
+                _logger.exception("Moyee: Failed to get portal addable products.")
 
             # Countries (for "Change address" popup)
             countries = request.env["res.country"].sudo().search([], order="name, id")
@@ -206,6 +208,12 @@ class MoyeePortalHome(CustomerPortal):
         # ── Portal Brew Guides ──
         PortalBrewGuide = request.env["moyee.portal.brew.guide"].sudo()
         brew_guides = PortalBrewGuide.search([("is_active", "=", True)])
+
+        # ── Close Reasons ──
+        close_reasons = []
+        if "close_reason_id" in request.env["sale.order"]._fields:
+            close_reason_model = request.env["sale.order"]._fields["close_reason_id"].comodel_name
+            close_reasons = request.env[close_reason_model].sudo().search([])
 
         # ── Flash messages from redirect ──
         moyee_home_message = kw.get("moyee_message", "")
@@ -246,7 +254,6 @@ class MoyeePortalHome(CustomerPortal):
         }
 
         # Variant map for front-end cascading selections
-        import json
         variant_map = []
         if active_subscription:
             try:
@@ -254,10 +261,9 @@ class MoyeePortalHome(CustomerPortal):
                 existing_products = active_subscription.order_line.filtered(lambda l: not l.x_moyee_is_removed).mapped("product_id")
                 all_possible_products = available_products | existing_products
                 for p in all_possible_products:
-                    grind, weight = active_subscription._moyee_extract_product_metadata(p)
+                    grind, weight = active_subscription.moyee_extract_product_metadata(p)
                     tmpl_name = p.product_tmpl_id.name or ''
                     tmpl_name = tmpl_name.replace('(Subscription)', '').replace('(subscription)', '').replace('(SUBSCRIPTION)', '')
-                    import re
                     tmpl_name = re.sub(r'(?i)\b(1\s*kg|250\s*g(ram)?|25\s*caps(ules)?)\b', '', tmpl_name).strip()
                     variant_map.append({
                         "id": p.id,
@@ -267,13 +273,12 @@ class MoyeePortalHome(CustomerPortal):
                         "weight": weight,
                     })
             except Exception:
-                pass
+                _logger.exception("Moyee: Failed to build variant map.")
         variant_map_json = json.dumps(variant_map)
         # Precompute pause options resume dates
         pause_options = []
         base_date = next_date_value or fields.Date.today()
         if base_date:
-            from dateutil.relativedelta import relativedelta
             for months in [1, 2, 3, 6]:
                 resume_date = base_date + relativedelta(months=months)
                 day = resume_date.day
@@ -310,6 +315,7 @@ class MoyeePortalHome(CustomerPortal):
             "moyee_config": moyee_config,
             "variant_map_json": variant_map_json,
             "pause_options": pause_options,
+            "close_reasons": close_reasons,
         })
         return values
 
@@ -474,6 +480,12 @@ class MoyeeSubscriptionPortal(http.Controller):
         min_price = min(prices)
         max_price = max(prices)
 
+        # ── Close Reasons ──
+        close_reasons = []
+        if "close_reason_id" in request.env["sale.order"]._fields:
+            close_reason_model = request.env["sale.order"]._fields["close_reason_id"].comodel_name
+            close_reasons = request.env[close_reason_model].sudo().search([])
+
         values = {
             "sale_order": order,
             "order": order,
@@ -490,6 +502,8 @@ class MoyeeSubscriptionPortal(http.Controller):
             "max_price": max_price,
             "moyee_message": kw.get("moyee_message"),
             "moyee_error": kw.get("moyee_error"),
+            "close_reasons": close_reasons,
+            "access_token": access_token,
         }
         return request.render("moyee_subscription_portal_manager.portal_subscription_manage", values)
 
@@ -511,7 +525,7 @@ class MoyeeSubscriptionPortal(http.Controller):
         order = self._moyee_get_order_sudo(order_id, access_token=access_token, require_subscription=True)
         try:
             plan_id = int(post.get("plan_id") or 0)
-            order.moyee_portal_change_interval(portal_user_id=request.env.user.id, plan_id=plan_id)
+            order.moyee_portal_change_interval(portal_user_id=request.env.user.id, plan_id=plan_id, access_token=access_token)
         except (AccessError, UserError, ValidationError, ValueError) as e:
             return self._moyee_redirect_back(order, error=str(e), access_token=access_token)
         return self._moyee_redirect_back(order, message=_("Subscription interval updated successfully."), access_token=access_token)
@@ -559,6 +573,7 @@ class MoyeeSubscriptionPortal(http.Controller):
                 portal_user_id=request.env.user.id,
                 shipping_vals=shipping_vals,
                 invoice_vals=invoice_vals,
+                access_token=access_token,
             )
         except (AccessError, UserError, ValidationError, ValueError) as e:
             return self._moyee_redirect_back(order, error=str(e), access_token=access_token)
@@ -579,7 +594,7 @@ class MoyeeSubscriptionPortal(http.Controller):
         order = self._moyee_get_order_sudo(order_id, access_token=access_token, require_subscription=True)
         try:
             new_date = (post.get("next_date") or "").strip()
-            order.moyee_portal_push_next_date(portal_user_id=request.env.user.id, next_date=new_date)
+            order.moyee_portal_push_next_date(portal_user_id=request.env.user.id, next_date=new_date, access_token=access_token)
         except (AccessError, UserError, ValidationError, ValueError) as e:
             return self._moyee_redirect_back(order, error=str(e), access_token=access_token)
         return self._moyee_redirect_back(order, message=_("Next date updated successfully."), access_token=access_token)
@@ -604,6 +619,7 @@ class MoyeeSubscriptionPortal(http.Controller):
                 portal_user_id=request.env.user.id,
                 product_id=product_id,
                 qty=qty,
+                access_token=access_token,
             )
         except (AccessError, UserError, ValidationError, ValueError) as e:
             return self._moyee_redirect_back(order, error=str(e), access_token=access_token)
@@ -625,7 +641,7 @@ class MoyeeSubscriptionPortal(http.Controller):
         line = self._moyee_get_line_sudo(order, line_id)
         try:
             reason = (post.get("reason") or "").strip() or None
-            line.action_moyee_soft_remove_portal(portal_user_id=request.env.user.id, reason=reason)
+            line.action_moyee_soft_remove_portal(portal_user_id=request.env.user.id, reason=reason, access_token=access_token)
         except (AccessError, UserError, ValidationError) as e:
             return self._moyee_redirect_back(order, error=str(e), access_token=access_token)
         return self._moyee_redirect_back(order, message=_("Product removed from subscription."), access_token=access_token)
@@ -653,6 +669,7 @@ class MoyeeSubscriptionPortal(http.Controller):
                 template_id=template_id,
                 grind=grind,
                 weight=weight,
+                access_token=access_token,
             )
         except (AccessError, UserError, ValidationError, ValueError) as e:
             return self._moyee_redirect_back(order, error=str(e), access_token=access_token)
@@ -677,6 +694,7 @@ class MoyeeSubscriptionPortal(http.Controller):
                 portal_user_id=request.env.user.id,
                 line_id=line_id,
                 qty=qty,
+                access_token=access_token,
             )
         except (AccessError, UserError, ValidationError, ValueError) as e:
             return self._moyee_redirect_back(order, error=str(e), access_token=access_token)
@@ -697,7 +715,7 @@ class MoyeeSubscriptionPortal(http.Controller):
         order = self._moyee_get_order_sudo(order_id, access_token=access_token, require_subscription=True)
         try:
             pause_until_date = post.get("pause_until_date")
-            order.moyee_portal_pause(portal_user_id=request.env.user.id, pause_until_date=pause_until_date)
+            order.moyee_portal_pause(portal_user_id=request.env.user.id, pause_until_date=pause_until_date, access_token=access_token)
         except (AccessError, UserError, ValidationError) as e:
             return self._moyee_redirect_back(order, error=str(e), access_token=access_token)
         return self._moyee_redirect_back(order, message=_("Subscription paused successfully."), access_token=access_token)
@@ -716,7 +734,7 @@ class MoyeeSubscriptionPortal(http.Controller):
     def moyee_skip_delivery(self, order_id, access_token=None, **post):
         order = self._moyee_get_order_sudo(order_id, access_token=access_token, require_subscription=True)
         try:
-            order.moyee_portal_skip_delivery(portal_user_id=request.env.user.id)
+            order.moyee_portal_skip_delivery(portal_user_id=request.env.user.id, access_token=access_token)
         except (AccessError, UserError, ValidationError) as e:
             return self._moyee_redirect_back(order, error=str(e), access_token=access_token)
         return self._moyee_redirect_back(order, message=_("Subscription delivery skipped successfully."), access_token=access_token)
@@ -735,7 +753,7 @@ class MoyeeSubscriptionPortal(http.Controller):
     def moyee_resume_subscription(self, order_id, access_token=None, **post):
         order = self._moyee_get_order_sudo(order_id, access_token=access_token, require_subscription=True)
         try:
-            order.moyee_portal_resume(portal_user_id=request.env.user.id)
+            order.moyee_portal_resume(portal_user_id=request.env.user.id, access_token=access_token)
         except (AccessError, UserError, ValidationError) as e:
             return self._moyee_redirect_back(order, error=str(e), access_token=access_token)
         return self._moyee_redirect_back(order, message=_("Subscription resumed successfully."), access_token=access_token)
@@ -755,7 +773,7 @@ class MoyeeSubscriptionPortal(http.Controller):
         order = self._moyee_get_order_sudo(order_id, access_token=access_token, require_subscription=True)
         try:
             reason = post.get("reason")
-            order.moyee_portal_close(portal_user_id=request.env.user.id, reason=reason)
+            order.moyee_portal_close(portal_user_id=request.env.user.id, reason=reason, access_token=access_token)
         except (AccessError, UserError, ValidationError) as e:
             return self._moyee_redirect_back(order, error=str(e), access_token=access_token)
         return self._moyee_redirect_back(order, message=_("Subscription cancelled successfully."), access_token=access_token)
@@ -786,3 +804,39 @@ class MoyeeSubscriptionPortal(http.Controller):
             return request.redirect("/shop/checkout")
         
         return request.redirect("/my/home")
+
+    @http.route("/my/home/tell_friend", type="json", auth="user", methods=["POST"])
+    def tell_friend(self, email, **post):
+        if not email or "@" not in email:
+            return {"error": _("Invalid email address")}
+        
+        user = request.env.user
+        partner = user.partner_id
+        
+        # Build invitation email body
+        base_url = request.env['ir.config_parameter'].sudo().get_param('web.base.url')
+        body_html = _(
+            "<div style='font-family: Arial, sans-serif; font-size: 14px; color: #333333;'>"
+            "<p>Hello,</p>"
+            "<p>Your friend <strong>%s</strong> (%s) thought you would love Moyee Coffee!</p>"
+            "<p>Moyee Coffee is radical impact coffee. Join us in making a difference, one cup at a time.</p>"
+            "<p><a href='%s' style='background-color: #E91E8C; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;'>Visit Moyee Coffee</a></p>"
+            "<p>Cheers,<br/>The Moyee Coffee Team</p>"
+            "</div>"
+        ) % (partner.name, user.login, base_url)
+        
+        mail_values = {
+            'subject': _("%s invites you to try Moyee Coffee!") % partner.name,
+            'email_to': email.strip(),
+            'email_from': request.env.company.email or user.email,
+            'body_html': body_html,
+            'state': 'outgoing',
+        }
+        
+        try:
+            mail = request.env['mail.mail'].sudo().create(mail_values)
+            mail.send()
+            return {"success": True}
+        except Exception as e:
+            _logger.exception("Failed to send invitation email to %s", email)
+            return {"error": str(e)}

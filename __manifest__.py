@@ -27,6 +27,7 @@ Portal + backend build:
         "security/ir.model.access.csv",
         "views/sale_order_views.xml",
         "views/portal_subscription_templates.xml",
+        "views/portal_my_account_sub_templates.xml",
         "views/portal_my_account_templates.xml",
         "views/res_config_settings_views.xml",
         "reports/report_invoice.xml",

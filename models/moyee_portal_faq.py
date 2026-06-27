@@ -5,6 +5,7 @@ from odoo import fields, models
 class MoyeePortalFaq(models.Model):
     _name = "moyee.portal.faq"
     _description = "Moyee Portal FAQ"
+    _rec_name = "question"
     _order = "sequence, id"
 
     sequence = fields.Integer(string="Sequence", default=10)

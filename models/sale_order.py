@@ -1,6 +1,12 @@
 # File: moyee_subscription_portal_manager/models/sale_order.py
+import logging
+import re
+import json
+from dateutil.relativedelta import relativedelta
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
+
+_logger = logging.getLogger(__name__)
 
 
 class SaleOrder(models.Model):
@@ -83,6 +89,7 @@ class SaleOrder(models.Model):
                         order.amount_tax = totals.get(order.currency_id, {}).get('amount_tax', 0.0)
                         order.amount_total = order.amount_untaxed + order.amount_tax
                     except Exception:
+                        _logger.exception("Moyee: Failed to compute taxes round globally on order %s, falling back to sums.", order.name)
                         order.amount_untaxed = sum(order_lines.mapped('price_subtotal'))
                         order.amount_tax = sum(order_lines.mapped('price_tax'))
                         order.amount_total = sum(order_lines.mapped('price_total'))
@@ -128,21 +135,7 @@ class SaleOrder(models.Model):
                         order.currency_id or order.company_id.currency_id,
                     )
                 except Exception:
-                    pass
-
-    def read(self, fields=None, load='_record_write'):
-        # Force a recompute if the stored totals on a subscription do not match the active lines
-        for order in self:
-            try:
-                if order._moyee_is_subscription_order():
-                    active_lines = order.order_line.filtered(lambda x: not x.display_type and not x.x_moyee_is_removed)
-                    active_total = sum(active_lines.mapped('price_total'))
-                    if abs(order.amount_total - active_total) > 0.01:
-                        order._compute_amounts()
-                        order._compute_tax_totals()
-            except Exception:
-                pass
-        return super().read(fields=fields, load=load)
+                    _logger.exception("Moyee: Failed to compute tax totals on order %s.", order.name)
 
     # ============================================================
     # Portal security helpers
@@ -216,12 +209,11 @@ class SaleOrder(models.Model):
         if "tag_ids" in Template._fields:
             domain.append(("product_tmpl_id.tag_ids.name", "ilike", "Subscription"))
 
-        # Exclude internal/delivery/non-coffee products
-        domain.append(("name", "not ilike", "delivery"))
-        domain.append(("name", "not ilike", "rent"))
-        domain.append(("name", "not ilike", "onderhoud"))
-        domain.append(("name", "not ilike", "service"))
-        domain.append(("name", "not ilike", "lease"))
+        # Exclude internal/delivery/non-coffee products (only allow physical products: storable/consumable)
+        if "detailed_type" in Product._fields:
+            domain.append(("detailed_type", "in", ["consu", "product"]))
+        elif "type" in Product._fields:
+            domain.append(("type", "in", ["consu", "product"]))
 
         products = Product.search(domain, order="name, id", limit=200)
 
@@ -231,7 +223,7 @@ class SaleOrder(models.Model):
         # or just pre-process them here.
         return products
 
-    def _moyee_extract_product_metadata(self, product):
+    def moyee_extract_product_metadata(self, product):
         """
         Extract Grind and Weight from product attributes or name.
         Returns (grind, weight)
@@ -246,33 +238,56 @@ class SaleOrder(models.Model):
             val_name = (av.name or "").lower()
 
             if "grind" in attr_name or "maling" in attr_name:
-                if "whole" in val_name: grind = "whole"
-                elif "filter" in val_name: grind = "filter"
-                elif "espresso" in val_name: grind = "espresso"
-                elif "capsule" in val_name: grind = "capsules"
+                if "whole" in val_name or "boon" in val_name or "bonen" in val_name:
+                    grind = "whole"
+                    break
+                elif "filter" in val_name:
+                    grind = "filter"
+                    break
+                elif "espresso" in val_name:
+                    grind = "espresso"
+                    break
+                elif "capsule" in val_name or "cup" in val_name:
+                    grind = "capsules"
+                    break
             
-            if "weight" in attr_name or "size" in attr_name:
-                if "1kg" in val_name.replace(" ", "") or "1 kg" in val_name: weight = "1kg"
-                elif "250" in val_name: weight = "250g"
-                elif "25" in val_name and "capsule" in val_name: weight = "25caps"
+        for av in attr_values:
+            attr_name = (av.attribute_id.name or "").lower()
+            val_name = (av.name or "").lower()
+            if "weight" in attr_name or "size" in attr_name or "gewicht" in attr_name:
+                v_clean = val_name.replace(" ", "")
+                if "1kg" in v_clean or "1.0kg" in v_clean or "1000g" in v_clean or "1000 g" in val_name:
+                    weight = "1kg"
+                    break
+                elif "250g" in v_clean or "250" in v_clean or "0.25kg" in v_clean or "0.25 kg" in val_name:
+                    weight = "250g"
+                    break
+                elif "25caps" in v_clean or "25" in v_clean or "capsule" in v_clean:
+                    weight = "25caps"
+                    break
 
         # 2. Fallback to name scanning if still 'other'
         name = (product.display_name or "").lower()
         if grind == "other":
-            if "whole bean" in name: grind = "whole"
-            elif "filter grind" in name: grind = "filter"
-            elif "espresso grind" in name: grind = "espresso"
-            elif "capsule" in name: grind = "capsules"
+            if "whole" in name or "boon" in name or "bonen" in name:
+                grind = "whole"
+            elif "filter grind" in name or "filtergrind" in name:
+                grind = "filter"
+            elif "espresso grind" in name or "espressogrind" in name:
+                grind = "espresso"
+            elif "capsule" in name or "cup" in name:
+                grind = "capsules"
 
         if weight == "other":
-            if "1kg" in name.replace(" ", "") or "1 kg" in name: weight = "1kg"
-            elif "250g" in name or "250 g" in name: weight = "250g"
-            elif "25 capsule" in name: weight = "25caps"
+            name_clean = name.replace(" ", "")
+            if "1kg" in name_clean or "1000g" in name_clean or "1.0kg" in name_clean:
+                weight = "1kg"
+            elif "250g" in name_clean or "0.25kg" in name_clean:
+                weight = "250g"
+            elif "25caps" in name_clean or "25capsule" in name_clean or "25 capsule" in name or "25 cups" in name or "25cups" in name_clean:
+                weight = "25caps"
 
         return grind, weight
-
-    def moyee_extract_product_metadata(self, product):
-        return self._moyee_extract_product_metadata(product)
 
     # ============================================================
     # ✅ UNIVERSAL: Plan field + plan model resolver (FIXED)
@@ -358,13 +373,15 @@ class SaleOrder(models.Model):
     # ============================================================
     # ✅ Change interval (write to correct field)
     # ============================================================
-    def moyee_portal_change_interval(self, *, portal_user_id, plan_id):
+    def moyee_portal_change_interval(self, *, portal_user_id, plan_id, access_token=None):
         self.ensure_one()
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
         if not portal_user:
             raise AccessError(_("Invalid user."))
+        if not self.env.user.has_group("base.group_user") and portal_user.id != self.env.user.id:
+            raise AccessError(_("You cannot perform actions on behalf of another user."))
 
-        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
+        self._moyee_portal_check_access(portal_user=portal_user, access_token=access_token, require_subscription=True)
 
         plan_field = self._moyee_get_recurring_plan_field_name()
         if not plan_field:
@@ -477,13 +494,15 @@ class SaleOrder(models.Model):
 
         raise UserError(_("Pause/resume is not available for this subscription implementation."))
 
-    def moyee_portal_pause(self, *, portal_user_id, pause_until_date=None):
+    def moyee_portal_pause(self, *, portal_user_id, pause_until_date=None, access_token=None):
         self.ensure_one()
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
         if not portal_user:
             raise AccessError(_("Invalid user."))
+        if not self.env.user.has_group("base.group_user") and portal_user.id != self.env.user.id:
+            raise AccessError(_("You cannot perform actions on behalf of another user."))
 
-        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
+        self._moyee_portal_check_access(portal_user=portal_user, access_token=access_token, require_subscription=True)
         self._moyee_set_subscription_paused_state(paused=True)
 
         if pause_until_date:
@@ -492,9 +511,13 @@ class SaleOrder(models.Model):
                 try:
                     parsed_date = fields.Date.from_string(pause_until_date)
                     if parsed_date:
+                        if parsed_date < fields.Date.today():
+                            raise ValidationError(_("The pause date cannot be in the past."))
                         self.sudo().write({field_name: parsed_date})
-                except Exception:
-                    pass
+                except Exception as e:
+                    if isinstance(e, ValidationError):
+                        raise
+                    _logger.exception("Moyee: Failed to pause subscription next date update.")
 
         self.with_user(1).message_post(
             body=_("Moyee: customer paused the subscription via portal. Next resume date: %s") % (pause_until_date or 'No change'),
@@ -506,13 +529,15 @@ class SaleOrder(models.Model):
     # ============================================================
     # ✅ Skip delivery (portal)
     # ============================================================
-    def moyee_portal_skip_delivery(self, *, portal_user_id):
+    def moyee_portal_skip_delivery(self, *, portal_user_id, access_token=None):
         self.ensure_one()
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
         if not portal_user:
             raise AccessError(_("Invalid user."))
+        if not self.env.user.has_group("base.group_user") and portal_user.id != self.env.user.id:
+            raise AccessError(_("You cannot perform actions on behalf of another user."))
 
-        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
+        self._moyee_portal_check_access(portal_user=portal_user, access_token=access_token, require_subscription=True)
 
         field_name = self._moyee_get_subscription_next_date_field_name()
         if not field_name:
@@ -559,7 +584,6 @@ class SaleOrder(models.Model):
                 elif "year" in pname:
                     months = 12
 
-        from dateutil.relativedelta import relativedelta
         new_date = current_date + relativedelta(months=months, weeks=weeks, days=days)
 
         self.sudo().write({field_name: new_date})
@@ -570,13 +594,15 @@ class SaleOrder(models.Model):
         )
         return True
 
-    def moyee_portal_resume(self, *, portal_user_id):
+    def moyee_portal_resume(self, *, portal_user_id, access_token=None):
         self.ensure_one()
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
         if not portal_user:
             raise AccessError(_("Invalid user."))
+        if not self.env.user.has_group("base.group_user") and portal_user.id != self.env.user.id:
+            raise AccessError(_("You cannot perform actions on behalf of another user."))
 
-        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
+        self._moyee_portal_check_access(portal_user=portal_user, access_token=access_token, require_subscription=True)
         self._moyee_set_subscription_paused_state(paused=False)
 
         self.with_user(1).message_post(
@@ -598,10 +624,14 @@ class SaleOrder(models.Model):
             comodel_name = self._fields["close_reason_id"].comodel_name
             CloseReasonModel = self.env[comodel_name].sudo()
             if reason:
-                # 1. Search for existing close reason matching the selected reason
-                close_reason = CloseReasonModel.search([("name", "ilike", reason)], limit=1)
+                # Try ID lookup first if numeric
+                if isinstance(reason, int) or (isinstance(reason, str) and reason.isdigit()):
+                    close_reason = CloseReasonModel.browse(int(reason)).exists()
                 if not close_reason:
-                    # 2. If not found, try to create a new close reason
+                    # 1. Search for existing close reason matching the selected reason
+                    close_reason = CloseReasonModel.search([("name", "ilike", reason)], limit=1)
+                if not close_reason and isinstance(reason, str) and not reason.isdigit():
+                    # 2. If not found, try to create a new close reason (only if it is a text label, not an ID)
                     try:
                         close_reason = CloseReasonModel.create({"name": reason})
                     except Exception:
@@ -698,13 +728,15 @@ class SaleOrder(models.Model):
 
         raise UserError(_("Close/cancel is not available for this subscription implementation."))
 
-    def moyee_portal_close(self, *, portal_user_id, reason=None):
+    def moyee_portal_close(self, *, portal_user_id, reason=None, access_token=None):
         self.ensure_one()
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
         if not portal_user:
             raise AccessError(_("Invalid user."))
+        if not self.env.user.has_group("base.group_user") and portal_user.id != self.env.user.id:
+            raise AccessError(_("You cannot perform actions on behalf of another user."))
 
-        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
+        self._moyee_portal_check_access(portal_user=portal_user, access_token=access_token, require_subscription=True)
         self._moyee_set_subscription_closed_state(reason=reason)
 
         body_msg = _("Moyee: customer cancelled/closed the subscription via portal.")
@@ -722,13 +754,15 @@ class SaleOrder(models.Model):
     # ============================================================
     # Push next date (portal)
     # ============================================================
-    def moyee_portal_push_next_date(self, *, portal_user_id, next_date):
+    def moyee_portal_push_next_date(self, *, portal_user_id, next_date, access_token=None):
         self.ensure_one()
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
         if not portal_user:
             raise AccessError(_("Invalid user."))
+        if not self.env.user.has_group("base.group_user") and portal_user.id != self.env.user.id:
+            raise AccessError(_("You cannot perform actions on behalf of another user."))
 
-        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
+        self._moyee_portal_check_access(portal_user=portal_user, access_token=access_token, require_subscription=True)
 
         field_name = self._moyee_get_subscription_next_date_field_name()
         if not field_name:
@@ -741,6 +775,9 @@ class SaleOrder(models.Model):
 
         if not value:
             raise ValidationError(_("Please select a date."))
+
+        if value < fields.Date.today():
+            raise ValidationError(_("The next delivery date cannot be in the past."))
 
         self.sudo().write({field_name: value})
         self.with_user(1).message_post(
@@ -813,19 +850,23 @@ class SaleOrder(models.Model):
             except Exception:
                 pass
 
-        if price:
-            line.write({"price_unit": price})
+        if not price or float(price) <= 0.0:
+            raise ValidationError(_("The product '%s' does not have a valid price configured. Action aborted.") % line.product_id.display_name)
+
+        line.write({"price_unit": price})
 
     # ============================================================
     # Add product (portal)
     # ============================================================
-    def moyee_portal_add_product(self, *, portal_user_id, product_id, qty=1.0):
+    def moyee_portal_add_product(self, *, portal_user_id, product_id, qty=1.0, access_token=None):
         self.ensure_one()
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
         if not portal_user:
             raise AccessError(_("Invalid user."))
+        if not self.env.user.has_group("base.group_user") and portal_user.id != self.env.user.id:
+            raise AccessError(_("You cannot perform actions on behalf of another user."))
 
-        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
+        self._moyee_portal_check_access(portal_user=portal_user, access_token=access_token, require_subscription=True)
 
         product = self.env["product.product"].sudo().browse(int(product_id)).exists()
         if not product:
@@ -851,7 +892,8 @@ class SaleOrder(models.Model):
                     "order_id": self.id,
                     "product_id": product.id,
                     "product_uom_qty": qty,
-                    "name": product.display_name,
+                    "name": product.with_context(display_default_code=False).display_name or product.display_name,
+                    "product_uom": product.uom_id.id,
                 }
             )
             self._moyee_recompute_line_price(new_line)
@@ -863,9 +905,6 @@ class SaleOrder(models.Model):
         )
         return True
 
-    # ============================================================
-    # FULL ADDRESS (create/update child contact safely)
-    # ============================================================
     def _moyee_portal_upsert_child_address(self, portal_user, vals, addr_type):
         self.ensure_one()
         commercial = portal_user.partner_id.commercial_partner_id
@@ -877,19 +916,28 @@ class SaleOrder(models.Model):
         clean.update({"parent_id": commercial.id, "type": addr_type})
 
         current = self.partner_shipping_id if addr_type == "delivery" else self.partner_invoice_id
-        if current and current.parent_id == commercial:
+        if not (current and current.parent_id == commercial):
+            existing_children = commercial.child_ids.filtered(lambda p: p.type == addr_type)
+            if existing_children:
+                current = existing_children[0]
+            else:
+                current = False
+
+        if current:
             current.sudo().write(clean)
             return current
 
         return self.env["res.partner"].sudo().create(clean)
 
-    def moyee_portal_change_address_full(self, *, portal_user_id, shipping_vals=None, invoice_vals=None):
+    def moyee_portal_change_address_full(self, *, portal_user_id, shipping_vals=None, invoice_vals=None, access_token=None):
         self.ensure_one()
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
         if not portal_user:
             raise AccessError(_("Invalid user."))
+        if not self.env.user.has_group("base.group_user") and portal_user.id != self.env.user.id:
+            raise AccessError(_("You cannot perform actions on behalf of another user."))
 
-        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
+        self._moyee_portal_check_access(portal_user=portal_user, access_token=access_token, require_subscription=True)
 
         ship_partner = self._moyee_portal_upsert_child_address(portal_user, shipping_vals, "delivery")
         inv_partner = self._moyee_portal_upsert_child_address(portal_user, invoice_vals, "invoice")
@@ -914,13 +962,15 @@ class SaleOrder(models.Model):
     # ============================================================
     # Update line quantity (portal)
     # ============================================================
-    def moyee_portal_update_line_qty(self, *, portal_user_id, line_id, qty):
+    def moyee_portal_update_line_qty(self, *, portal_user_id, line_id, qty, access_token=None):
         self.ensure_one()
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
         if not portal_user:
             raise AccessError(_("Invalid user."))
+        if not self.env.user.has_group("base.group_user") and portal_user.id != self.env.user.id:
+            raise AccessError(_("You cannot perform actions on behalf of another user."))
 
-        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
+        self._moyee_portal_check_access(portal_user=portal_user, access_token=access_token, require_subscription=True)
 
         line = self.env["sale.order.line"].sudo().browse(int(line_id)).exists()
         if not line or line.order_id.id != self.id:
@@ -961,13 +1011,15 @@ class SaleOrder(models.Model):
     # ============================================================
     # Edit line product (portal)
     # ============================================================
-    def moyee_portal_edit_line_product(self, *, portal_user_id, line_id, template_id, grind, weight):
+    def moyee_portal_edit_line_product(self, *, portal_user_id, line_id, template_id, grind, weight, access_token=None):
         self.ensure_one()
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
         if not portal_user:
             raise AccessError(_("Invalid user."))
+        if not self.env.user.has_group("base.group_user") and portal_user.id != self.env.user.id:
+            raise AccessError(_("You cannot perform actions on behalf of another user."))
 
-        self._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
+        self._moyee_portal_check_access(portal_user=portal_user, access_token=access_token, require_subscription=True)
 
         line = self.env["sale.order.line"].sudo().browse(int(line_id)).exists()
         if not line or line.order_id.id != self.id:
@@ -987,7 +1039,7 @@ class SaleOrder(models.Model):
 
         target_product = False
         for var in variants:
-            v_grind, v_weight = self._moyee_extract_product_metadata(var)
+            v_grind, v_weight = self.moyee_extract_product_metadata(var)
             if v_grind == grind and v_weight == weight:
                 target_product = var
                 break

@@ -1,4 +1,5 @@
 # File: moyee_subscription_portal_manager/models/sale_order_line.py
+import re
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
 
@@ -21,7 +22,6 @@ class SaleOrderLine(models.Model):
     def _clean_subscription_name(self, name):
         if not name:
             return name
-        import re
         # Case-insensitive replacement of (subscription) or [subscription] with optional surrounding spaces
         name = re.sub(r'\s*\(\s*subscription\s*\)', '', name, flags=re.IGNORECASE)
         name = re.sub(r'\s*\[\s*subscription\s*\]', '', name, flags=re.IGNORECASE)
@@ -76,7 +76,7 @@ class SaleOrderLine(models.Model):
 
     def _moyee_get_portal_grind_value(self):
         self.ensure_one()
-        grind, _ = self.order_id._moyee_extract_product_metadata(self.product_id)
+        grind, _ = self.order_id.moyee_extract_product_metadata(self.product_id)
         return grind
 
     def _moyee_get_portal_grind_display(self):
@@ -103,27 +103,7 @@ class SaleOrderLine(models.Model):
     def _moyee_is_subscription_line(self):
         """Robust check: treat line as subscription if its order says it is."""
         self.ensure_one()
-        order = self.order_id
-        if not order:
-            return False
-
-        # Prefer your computed helper if present
-        if "is_subscription_order" in order._fields:
-            return bool(order.is_subscription_order)
-
-        # Fallback checks (different Odoo builds)
-        for fname in (
-            "is_subscription",
-            "recurring_plan_id",
-            "subscription_pricing_id",
-            "subscription_plan_id",
-            "recurring_pricing_id",
-            "subscription_state",
-            "subscription_status",
-        ):
-            if fname in order._fields and getattr(order, fname, False):
-                return True
-        return False
+        return self.order_id._moyee_is_subscription_order() if self.order_id else False
 
     def _moyee_block_delivery_product(self):
         """Server-side protection: never allow 'delivery' product removal."""
@@ -198,19 +178,21 @@ class SaleOrderLine(models.Model):
     # -----------------------
     # Portal action (customers)
     # -----------------------
-    def action_moyee_soft_remove_portal(self, portal_user_id, reason=None):
+    def action_moyee_soft_remove_portal(self, portal_user_id, reason=None, access_token=None):
         """Portal-safe soft remove (called by portal controllers in sudo)."""
         self._moyee_block_delivery_product()
 
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
         if not portal_user:
             raise AccessError(_("Invalid user."))
+        if not self.env.user.has_group("base.group_user") and portal_user.id != self.env.user.id:
+            raise AccessError(_("You cannot perform actions on behalf of another user."))
 
         # Ownership / access check (uses your sale.order helper)
         for line in self:
             if not line.order_id:
                 raise UserError(_("Invalid subscription line."))
-            line.order_id._moyee_portal_check_access(portal_user=portal_user, require_subscription=True)
+            line.order_id._moyee_portal_check_access(portal_user=portal_user, access_token=access_token, require_subscription=True)
 
         now = fields.Datetime.now()
         for line in self:

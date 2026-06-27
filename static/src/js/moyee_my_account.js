@@ -1,6 +1,7 @@
 /** @odoo-module **/
 
 import publicWidget from "@web/legacy/js/public/public_widget";
+import { jsonrpc } from "@web/core/network/rpc_service";
 
 /**
  * Moyee My Account Page — interactivity widget.
@@ -278,13 +279,41 @@ publicWidget.registry.MoyeeMyAccountPage = publicWidget.Widget.extend({
         ev.preventDefault();
         var $input = this.$(".moyee-taf-input");
         var $success = this.$(".moyee-taf-success");
+        var $error = this.$(".moyee-taf-error");
         var email = ($input.val() || "").trim();
         if (email && email.indexOf("@") > 0) {
-            $success.fadeIn(200);
-            $input.val("");
-            setTimeout(function () {
-                $success.fadeOut(300);
-            }, 4000);
+            $input.prop("disabled", true);
+            jsonrpc("/my/home/tell_friend", { email: email }).then(function (result) {
+                $input.prop("disabled", false);
+                if (result && result.success) {
+                    $success.fadeIn(200);
+                    $input.val("");
+                    if ($error.length) {
+                        $error.hide();
+                    }
+                    setTimeout(function () {
+                        $success.fadeOut(300);
+                    }, 4000);
+                } else {
+                    var errorMsg = (result && result.error) || "An error occurred.";
+                    $input.css("border-color", "#cc0000");
+                    if ($error.length) {
+                        $error.text(errorMsg).fadeIn(200);
+                        setTimeout(function () {
+                            $error.fadeOut(300);
+                            $input.css("border-color", "");
+                        }, 4000);
+                    } else {
+                        $input.css("border-color", "");
+                    }
+                }
+            }).catch(function (err) {
+                $input.prop("disabled", false);
+                $input.css("border-color", "#cc0000");
+                setTimeout(function () {
+                    $input.css("border-color", "");
+                }, 2000);
+            });
         } else {
             $input.css("border-color", "#cc0000");
             setTimeout(function () {

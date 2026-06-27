@@ -5,6 +5,7 @@ from odoo import fields, models
 class MoyeePortalBrewGuide(models.Model):
     _name = "moyee.portal.brew.guide"
     _description = "Moyee Portal Brew Guide Block"
+    _rec_name = "name"
     _order = "sequence, id"
 
     sequence = fields.Integer(string="Sequence", default=10)

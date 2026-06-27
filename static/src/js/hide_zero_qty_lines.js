@@ -1,7 +1,5 @@
 /** @odoo-module **/
 
-console.log("✅ Moyee hide_zero_qty_lines loaded");
-
 const HIDE_CLASS = "moyee_hide_line";
 
 function parseQty(td) {
@@ -51,13 +49,22 @@ function hideRemovedRows(root = document) {
     }
 }
 
+function debounce(func, wait) {
+    let timeout;
+    return function (...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+}
+
 function start() {
     // initial
     hideRemovedRows(document);
 
-    // keep applying on list rerenders
-    const obs = new MutationObserver(() => hideRemovedRows(document));
-    obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+    // keep applying on list rerenders (debounced for performance)
+    const debouncedHide = debounce(() => hideRemovedRows(document), 100);
+    const obs = new MutationObserver(debouncedHide);
+    obs.observe(document.body, { childList: true, subtree: true });
 }
 
 if (document.readyState === "loading") {

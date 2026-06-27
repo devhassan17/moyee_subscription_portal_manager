@@ -295,3 +295,142 @@
 input[type="date"] {
     cursor: pointer;
 }
+
+/* Pause button styling */
+.moyee-btn-pause {
+    background-color: #FFD900 !important;
+    border-color: #FFD900 !important;
+    color: #2d1020 !important;
+    font-weight: 700;
+    border-radius: 10px;
+    border: none;
+    transition: background-color 0.2s, transform 0.1s;
+}
+.moyee-btn-pause:hover {
+    background-color: #e6c400 !important;
+    border-color: #e6c400 !important;
+}
+.moyee-btn-pause:active {
+    transform: scale(0.98);
+}
+
+/* Cancel Modal Specific Styling */
+.moyee-modal-cancel-container {
+    max-width: 480px !important;
+    border-radius: 16px !important;
+}
+.moyee-modal-cancel-header {
+    border-bottom: none !important;
+    padding: 24px 24px 0 !important;
+}
+.moyee-modal-cancel-title {
+    font-size: 22px !important;
+    font-weight: 800 !important;
+    color: #111 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+.moyee-modal-cancel-close {
+    font-size: 24px !important;
+    background: none !important;
+    border: none !important;
+    color: #999 !important;
+}
+.moyee-modal-cancel-close:hover {
+    color: #333 !important;
+}
+.moyee-modal-cancel-body {
+    padding: 16px 24px 24px !important;
+    text-align: left !important;
+}
+.moyee-modal-cancel-alert {
+    background-color: #FFFDF5 !important;
+    border: 1px solid #FFE0B2 !important;
+    border-radius: 8px !important;
+    padding: 12px 16px !important;
+    font-size: 14px !important;
+    color: #795548 !important;
+    font-style: italic !important;
+    margin-bottom: 20px !important;
+}
+.moyee-modal-cancel-heading {
+    font-size: 24px !important;
+    font-weight: 800 !important;
+    margin-bottom: 8px !important;
+    color: #111 !important;
+}
+.moyee-modal-cancel-text {
+    font-size: 14px !important;
+    color: #555 !important;
+    margin-bottom: 20px !important;
+}
+.moyee-modal-cancel-select {
+    border-radius: 12px !important;
+    border: 1.5px solid #E2E8F0 !important;
+    padding: 12px 16px !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    height: 50px !important;
+    color: #111 !important;
+    background-color: white !important;
+    width: 100% !important;
+}
+.moyee-modal-cancel-btn-group {
+    display: flex !important;
+    gap: 16px !important;
+    margin-top: 24px !important;
+    width: 100% !important;
+}
+.moyee-modal-cancel-btn-back {
+    flex: 1 !important;
+    background: #F5F6F8 !important;
+    border: none !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+    height: 48px !important;
+    color: #444 !important;
+    font-size: 15px !important;
+    padding: 0 !important;
+    transition: background 0.2s !important;
+}
+.moyee-modal-cancel-btn-back:hover {
+    background: #E8EAED !important;
+}
+.moyee-modal-cancel-btn-confirm {
+    flex: 2.5 !important;
+    background: #DC2626 !important;
+    border: none !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+    height: 48px !important;
+    color: white !important;
+    font-size: 15px !important;
+    padding: 0 !important;
+    transition: background 0.2s !important;
+}
+.moyee-modal-cancel-btn-confirm:hover {
+    background: #B91C1C !important;
+}
+
+/* Small utility layout classes */
+.moyee-vr-divider {
+    height: 2em !important;
+    opacity: 0.25 !important;
+}
+.moyee-qty-inline-input {
+    width: 70px !important;
+}
+.moyee-small-badge {
+    border-radius: 8px !important;
+    padding: 4px 8px !important;
+}
+.moyee-hr-divider {
+    opacity: 0.1 !important;
+}
+.moyee-qty-lbl {
+    white-space: nowrap !important;
+}
+.moyee-qty-edit-input {
+    width: 60px !important;
+}
