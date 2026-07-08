@@ -1000,7 +1000,7 @@
                             <div class="d-flex flex-column gap-2">
                                 <div class="fw-bold small text-muted text-uppercase mb-2" style="font-size: 11px; letter-spacing: .5px;">Status management</div>
                                 <t t-if="not is_paused">
-                                    <button class="btn btn-warning w-100 fw-bold" style="border-radius: 12px; padding: 12px; font-size: 14px; background-color: #FFD900 !important; border-color: #FFD900 !important; color: #111 !important;" type="button" data-moyee-modal="moyee-modal-pause-subscription">Pause subscription</button>
+                                    <button class="btn w-100 fw-bold" style="border-radius: 12px; padding: 12px; font-size: 14px; background-color: var(--moyee-pink) !important; border: none; color: white !important;" type="button" data-moyee-modal="moyee-modal-pause-subscription">Pause subscription</button>
                                 </t>
                                 <t t-if="is_paused">
                                     <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/resume" method="post" class="w-100 mb-0">

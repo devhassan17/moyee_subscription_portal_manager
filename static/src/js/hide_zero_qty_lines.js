@@ -11,6 +11,9 @@ function parseQty(td) {
 }
 
 function hideRemovedRows(root = document) {
+    if (!root.querySelector('td[name="x_moyee_is_removed"]')) {
+        return;
+    }
     const rows = root.querySelectorAll("tr.o_data_row");
     for (const tr of rows) {
         const hasQty = tr.querySelector('td[name="product_uom_qty"]');

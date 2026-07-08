@@ -149,8 +149,11 @@ class SaleOrder(models.Model):
             return True
 
         # Employees are allowed
-        if portal_user.has_group("base.group_user"):
+        if self.env.user.has_group("base.group_user"):
             return True
+
+        if portal_user.id != self.env.user.id:
+            raise AccessError(_("You cannot perform actions on behalf of another user."))
 
         if portal_user._is_public():
             # If public and token failed/missing, they must login
@@ -234,46 +237,43 @@ class SaleOrder(models.Model):
         # 1. Check attributes
         attr_values = product.product_template_attribute_value_ids
         for av in attr_values:
+            if grind != "other":
+                break
             attr_name = (av.attribute_id.name or "").lower()
             val_name = (av.name or "").lower()
 
             if "grind" in attr_name or "maling" in attr_name:
                 if "whole" in val_name or "boon" in val_name or "bonen" in val_name:
                     grind = "whole"
-                    break
                 elif "filter" in val_name:
                     grind = "filter"
-                    break
                 elif "espresso" in val_name:
                     grind = "espresso"
-                    break
                 elif "capsule" in val_name or "cup" in val_name:
                     grind = "capsules"
-                    break
-            
+
         for av in attr_values:
+            if weight != "other":
+                break
             attr_name = (av.attribute_id.name or "").lower()
             val_name = (av.name or "").lower()
             if "weight" in attr_name or "size" in attr_name or "gewicht" in attr_name:
                 v_clean = val_name.replace(" ", "")
                 if "1kg" in v_clean or "1.0kg" in v_clean or "1000g" in v_clean or "1000 g" in val_name:
                     weight = "1kg"
-                    break
                 elif "250g" in v_clean or "250" in v_clean or "0.25kg" in v_clean or "0.25 kg" in val_name:
                     weight = "250g"
-                    break
-                elif "25caps" in v_clean or "25" in v_clean or "capsule" in v_clean:
+                elif "25caps" in v_clean or v_clean == "25" or "capsules" in v_clean or "capsule" in v_clean or "cups" in v_clean:
                     weight = "25caps"
-                    break
 
         # 2. Fallback to name scanning if still 'other'
         name = (product.display_name or "").lower()
         if grind == "other":
             if "whole" in name or "boon" in name or "bonen" in name:
                 grind = "whole"
-            elif "filter grind" in name or "filtergrind" in name:
+            elif "filter grind" in name or "filtergrind" in name or "filter" in name:
                 grind = "filter"
-            elif "espresso grind" in name or "espressogrind" in name:
+            elif "espresso grind" in name or "espressogrind" in name or "espresso" in name:
                 grind = "espresso"
             elif "capsule" in name or "cup" in name:
                 grind = "capsules"
@@ -282,9 +282,9 @@ class SaleOrder(models.Model):
             name_clean = name.replace(" ", "")
             if "1kg" in name_clean or "1000g" in name_clean or "1.0kg" in name_clean:
                 weight = "1kg"
-            elif "250g" in name_clean or "0.25kg" in name_clean:
+            elif "250g" in name_clean or "0.25kg" in name_clean or "250" in name_clean:
                 weight = "250g"
-            elif "25caps" in name_clean or "25capsule" in name_clean or "25 capsule" in name or "25 cups" in name or "25cups" in name_clean:
+            elif any(x in name_clean for x in ("25caps", "25capsule", "25cups")) or "25 capsule" in name or "25 cups" in name or re.search(r'\b25\b', name):
                 weight = "25caps"
 
         return grind, weight
@@ -630,12 +630,6 @@ class SaleOrder(models.Model):
                 if not close_reason:
                     # 1. Search for existing close reason matching the selected reason
                     close_reason = CloseReasonModel.search([("name", "ilike", reason)], limit=1)
-                if not close_reason and isinstance(reason, str) and not reason.isdigit():
-                    # 2. If not found, try to create a new close reason (only if it is a text label, not an ID)
-                    try:
-                        close_reason = CloseReasonModel.create({"name": reason})
-                    except Exception:
-                        pass
             
             # If still no close_reason and we have the field, let's grab the first one as fallback
             if not close_reason:
@@ -644,8 +638,8 @@ class SaleOrder(models.Model):
             if close_reason:
                 try:
                     self.sudo().write({"close_reason_id": close_reason.id})
-                except Exception:
-                    pass
+                except Exception as e:
+                    _logger.debug("Moyee: Failed to write close_reason_id: %s", str(e))
 
         # 1) Try native field writes for subscription_state first (to bypass dummy action_close)
         if "subscription_state" in self._fields:
@@ -666,8 +660,8 @@ class SaleOrder(models.Model):
                 try:
                     self.sudo().write({"subscription_state": key})
                     return True
-                except Exception:
-                    pass
+                except Exception as e:
+                    _logger.debug("Moyee: Failed to write subscription_state: %s", str(e))
 
         # 2) Try standard methods, but verify they don't just return a wizard action dict
         for m in ("action_close", "action_cancel", "action_subscription_close", "action_set_to_close"):
@@ -677,8 +671,8 @@ class SaleOrder(models.Model):
                     if res and isinstance(res, dict):
                         continue
                     return True
-                except Exception:
-                    pass
+                except Exception as e:
+                    _logger.debug("Moyee: Failed calling %s: %s", m, str(e))
 
         # 3) Generic selection field fallback for subscription_status
         if "subscription_status" in self._fields:
@@ -699,8 +693,8 @@ class SaleOrder(models.Model):
                 try:
                     self.sudo().write({"subscription_status": key})
                     return True
-                except Exception:
-                    pass
+                except Exception as e:
+                    _logger.debug("Moyee: Failed writing subscription_status: %s", str(e))
 
         # 4) stage-based fallback
         for stage_field in ("subscription_stage_id", "stage_id"):
@@ -715,16 +709,16 @@ class SaleOrder(models.Model):
                     try:
                         self.sudo().write({stage_field: target.id})
                         return True
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        _logger.debug("Moyee: Failed writing stage_field %s: %s", stage_field, str(e))
 
         # 5) standard sale.order cancel if nothing else worked
         if hasattr(self, "action_cancel"):
             try:
                 self.sudo().action_cancel()
                 return True
-            except Exception:
-                pass
+            except Exception as e:
+                _logger.debug("Moyee: Failed action_cancel call: %s", str(e))
 
         raise UserError(_("Close/cancel is not available for this subscription implementation."))
 
@@ -800,13 +794,13 @@ class SaleOrder(models.Model):
         if hasattr(line, "_compute_pricelist_item_id"):
             try:
                 line._compute_pricelist_item_id()
-            except Exception:
-                pass
+            except Exception as e:
+                _logger.debug("Moyee: _compute_pricelist_item_id failed: %s", str(e))
         if hasattr(line, "_compute_price_unit"):
             try:
                 line._compute_price_unit()
-            except Exception:
-                pass
+            except Exception as e:
+                _logger.debug("Moyee: _compute_price_unit failed: %s", str(e))
 
         # 2. Try fetching the display price (either with or without product arg)
         price = 0.0
@@ -816,10 +810,10 @@ class SaleOrder(models.Model):
             except TypeError:
                 try:
                     price = line._get_display_price(line.product_id)
-                except Exception:
-                    pass
-            except Exception:
-                pass
+                except Exception as e:
+                    _logger.debug("Moyee: _get_display_price(product) failed: %s", str(e))
+            except Exception as e:
+                _logger.debug("Moyee: _get_display_price() failed: %s", str(e))
 
         # 3. Fallback to manual pricelist lookup
         if not price and line.order_id.pricelist_id:
@@ -834,8 +828,8 @@ class SaleOrder(models.Model):
                     price = pricelist._get_product_price(product, qty, partner, uom_id=uom_id)
                 elif hasattr(pricelist, "get_product_price"):
                     price = pricelist.get_product_price(product, qty, partner, uom_id=uom_id)
-            except Exception:
-                pass
+            except Exception as e:
+                _logger.debug("Moyee: Pricelist lookup failed: %s", str(e))
 
         # 4. Fallback to product's list price
         if not price and line.product_id:
@@ -847,8 +841,8 @@ class SaleOrder(models.Model):
                 price = self.env["account.tax"]._fix_tax_included_price_company(
                     price, line.product_id.taxes_id, line.tax_id, line.company_id
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                _logger.debug("Moyee: Tax inclusion fix failed: %s", str(e))
 
         if not price or float(price) <= 0.0:
             raise ValidationError(_("The product '%s' does not have a valid price configured. Action aborted.") % line.product_id.display_name)
@@ -887,15 +881,21 @@ class SaleOrder(models.Model):
             line_to_update.write({"product_uom_qty": float(line_to_update.product_uom_qty or 0.0) + qty})
             self._moyee_recompute_line_price(line_to_update)
         else:
-            new_line = self.env["sale.order.line"].sudo().create(
-                {
-                    "order_id": self.id,
-                    "product_id": product.id,
-                    "product_uom_qty": qty,
-                    "name": product.with_context(display_default_code=False).display_name or product.display_name,
-                    "product_uom": product.uom_id.id,
-                }
-            )
+            sibling = self.order_line.filtered(lambda l: not l.display_type and not l.x_moyee_is_removed)
+            vals = {
+                "order_id": self.id,
+                "product_id": product.id,
+                "product_uom_qty": qty,
+                "name": product.with_context(display_default_code=False).display_name or product.display_name,
+                "product_uom": product.uom_id.id,
+            }
+            if sibling:
+                sibling_line = sibling[0]
+                for fname in ("temporal_type", "pricing_id", "pricing_template_id", "billing_cycle"):
+                    if fname in sibling_line._fields:
+                        val = sibling_line[fname]
+                        vals[fname] = val.id if hasattr(val, "id") else val
+            new_line = self.env["sale.order.line"].sudo().create(vals)
             self._moyee_recompute_line_price(new_line)
 
         self.with_user(1).message_post(
@@ -913,9 +913,13 @@ class SaleOrder(models.Model):
         if not clean:
             return False
 
+        current = self.partner_shipping_id if addr_type == "delivery" else self.partner_invoice_id
+        if addr_type == "invoice" and current == commercial:
+            commercial.sudo().write(clean)
+            return commercial
+
         clean.update({"parent_id": commercial.id, "type": addr_type})
 
-        current = self.partner_shipping_id if addr_type == "delivery" else self.partner_invoice_id
         if not (current and current.parent_id == commercial):
             existing_children = commercial.child_ids.filtered(lambda p: p.type == addr_type)
             if existing_children:

@@ -102,7 +102,8 @@ class MoyeePortalHome(CustomerPortal):
                         active_subscription = requested_sub[0]
                     else:
                         active_subscription = subscriptions[0]
-                except Exception:
+                except Exception as e:
+                    _logger.warning("Moyee: Failed to resolve requested subscription ID %s: %s", sub_id, str(e))
                     active_subscription = subscriptions[0]
             else:
                 active_subscription = subscriptions[0]
