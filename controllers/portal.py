@@ -804,39 +804,3 @@ class MoyeeSubscriptionPortal(http.Controller):
             return request.redirect("/shop/checkout")
         
         return request.redirect("/my/home")
-
-    @http.route("/my/home/tell_friend", type="json", auth="user", methods=["POST"])
-    def tell_friend(self, email, **post):
-        if not email or "@" not in email:
-            return {"error": _("Invalid email address")}
-        
-        user = request.env.user
-        partner = user.partner_id
-        
-        # Build invitation email body
-        base_url = request.env['ir.config_parameter'].sudo().get_param('web.base.url')
-        body_html = _(
-            "<div style='font-family: Arial, sans-serif; font-size: 14px; color: #333333;'>"
-            "<p>Hello,</p>"
-            "<p>Your friend <strong>%s</strong> (%s) thought you would love Moyee Coffee!</p>"
-            "<p>Moyee Coffee is radical impact coffee. Join us in making a difference, one cup at a time.</p>"
-            "<p><a href='%s' style='background-color: #E91E8C; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;'>Visit Moyee Coffee</a></p>"
-            "<p>Cheers,<br/>The Moyee Coffee Team</p>"
-            "</div>"
-        ) % (partner.name, user.login, base_url)
-        
-        mail_values = {
-            'subject': _("%s invites you to try Moyee Coffee!") % partner.name,
-            'email_to': email.strip(),
-            'email_from': request.env.company.email or user.email,
-            'body_html': body_html,
-            'state': 'outgoing',
-        }
-        
-        try:
-            mail = request.env['mail.mail'].sudo().create(mail_values)
-            mail.send()
-            return {"success": True}
-        except Exception as e:
-            _logger.exception("Failed to send invitation email to %s", email)
-            return {"error": str(e)}
