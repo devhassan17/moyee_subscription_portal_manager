@@ -4,9 +4,4 @@
         <field name="category_id" ref="base.module_category_sales"/>
         <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
     </record>
-
-    <!-- Make system administrators automatically inherit the manager role -->
-    <record id="base.group_system" model="res.groups">
-        <field name="implied_ids" eval="[(4, ref('group_moyee_subscription_manager'))]"/>
-    </record>
 </odoo>
