@@ -391,6 +391,7 @@
 
     <menuitem id="menu_moyee_portal_root"
               name="Moyee Portal"
+              web_icon="moyee_subscription_portal_manager,static/description/icon.png"
               sequence="10"/>
 
     <menuitem id="menu_moyee_portal_settings"
