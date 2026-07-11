@@ -7,4 +7,6 @@ access_moyee_portal_faq_portal,moyee.portal.faq.portal,model_moyee_portal_faq,ba
 access_moyee_portal_brew_guide_manager,moyee.portal.brew.guide.manager,model_moyee_portal_brew_guide,moyee_subscription_portal_manager.group_moyee_subscription_manager,1,1,1,1
 access_moyee_portal_brew_guide_user,moyee.portal.brew.guide.user,model_moyee_portal_brew_guide,base.group_user,1,0,0,0
 access_moyee_portal_brew_guide_portal,moyee.portal.brew.guide.portal,model_moyee_portal_brew_guide,base.group_portal,1,0,0,0
+access_moyee_portal_faq_system,moyee.portal.faq.system,model_moyee_portal_faq,base.group_system,1,1,1,1
+access_moyee_portal_brew_guide_system,moyee.portal.brew.guide.system,model_moyee_portal_brew_guide,base.group_system,1,1,1,1
 
