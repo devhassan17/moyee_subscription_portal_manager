@@ -50,59 +50,48 @@ class ResConfigSettings(models.TransientModel):
     moyee_show_subscription = fields.Boolean(
         string="Show Subscription Section",
         config_parameter="moyee_subscription_portal_manager.show_subscription",
-        default=True,
     )
     moyee_show_overview = fields.Boolean(
         string="Show Overview Section",
         config_parameter="moyee_subscription_portal_manager.show_overview",
-        default=True,
     )
     moyee_show_orders = fields.Boolean(
         string="Show Orders Section",
         config_parameter="moyee_subscription_portal_manager.show_orders",
-        default=True,
     )
     moyee_show_invoices = fields.Boolean(
         string="Show Invoices Section",
         config_parameter="moyee_subscription_portal_manager.show_invoices",
-        default=True,
     )
     moyee_show_faq = fields.Boolean(
         string="Show FAQ Section",
         config_parameter="moyee_subscription_portal_manager.show_faq",
-        default=True,
     )
     moyee_show_inspire = fields.Boolean(
         string="Show Inspire Section",
         config_parameter="moyee_subscription_portal_manager.show_inspire",
-        default=True,
     )
     moyee_show_taf = fields.Boolean(
         string="Show Tell a Friend Card",
         config_parameter="moyee_subscription_portal_manager.show_taf",
-        default=True,
     )
     moyee_show_brew_guides = fields.Boolean(
         string="Show Brew Guides Section",
         config_parameter="moyee_subscription_portal_manager.show_brew_guides",
-        default=True,
     )
 
     # Sidebar Visibility Controls
     moyee_show_sidebar_profile = fields.Boolean(
         string="Show Profile Card",
         config_parameter="moyee_subscription_portal_manager.show_sidebar_profile",
-        default=True,
     )
     moyee_show_sidebar_upsell = fields.Boolean(
         string="Show Upsell Card (Non-Subscribers)",
         config_parameter="moyee_subscription_portal_manager.show_sidebar_upsell",
-        default=True,
     )
     moyee_show_sidebar_support = fields.Boolean(
         string="Show Support Card",
         config_parameter="moyee_subscription_portal_manager.show_sidebar_support",
-        default=True,
     )
 
     # Content Overrides
@@ -158,3 +147,36 @@ class ResConfigSettings(models.TransientModel):
         config_parameter="moyee_subscription_portal_manager.inspire_btn2_url",
         default="/shop",
     )
+
+    def get_values(self):
+        res = super(ResConfigSettings, self).get_values()
+        ICP = self.env["ir.config_parameter"].sudo()
+        res.update(
+            moyee_show_subscription=ICP.get_param("moyee_subscription_portal_manager.show_subscription", "True").lower() in ("true", "1", "yes"),
+            moyee_show_overview=ICP.get_param("moyee_subscription_portal_manager.show_overview", "True").lower() in ("true", "1", "yes"),
+            moyee_show_orders=ICP.get_param("moyee_subscription_portal_manager.show_orders", "True").lower() in ("true", "1", "yes"),
+            moyee_show_invoices=ICP.get_param("moyee_subscription_portal_manager.show_invoices", "True").lower() in ("true", "1", "yes"),
+            moyee_show_faq=ICP.get_param("moyee_subscription_portal_manager.show_faq", "True").lower() in ("true", "1", "yes"),
+            moyee_show_inspire=ICP.get_param("moyee_subscription_portal_manager.show_inspire", "True").lower() in ("true", "1", "yes"),
+            moyee_show_taf=ICP.get_param("moyee_subscription_portal_manager.show_taf", "True").lower() in ("true", "1", "yes"),
+            moyee_show_brew_guides=ICP.get_param("moyee_subscription_portal_manager.show_brew_guides", "True").lower() in ("true", "1", "yes"),
+            moyee_show_sidebar_profile=ICP.get_param("moyee_subscription_portal_manager.show_sidebar_profile", "True").lower() in ("true", "1", "yes"),
+            moyee_show_sidebar_upsell=ICP.get_param("moyee_subscription_portal_manager.show_sidebar_upsell", "True").lower() in ("true", "1", "yes"),
+            moyee_show_sidebar_support=ICP.get_param("moyee_subscription_portal_manager.show_sidebar_support", "True").lower() in ("true", "1", "yes"),
+        )
+        return res
+
+    def set_values(self):
+        super(ResConfigSettings, self).set_values()
+        ICP = self.env["ir.config_parameter"].sudo()
+        ICP.set_param("moyee_subscription_portal_manager.show_subscription", str(self.moyee_show_subscription))
+        ICP.set_param("moyee_subscription_portal_manager.show_overview", str(self.moyee_show_overview))
+        ICP.set_param("moyee_subscription_portal_manager.show_orders", str(self.moyee_show_orders))
+        ICP.set_param("moyee_subscription_portal_manager.show_invoices", str(self.moyee_show_invoices))
+        ICP.set_param("moyee_subscription_portal_manager.show_faq", str(self.moyee_show_faq))
+        ICP.set_param("moyee_subscription_portal_manager.show_inspire", str(self.moyee_show_inspire))
+        ICP.set_param("moyee_subscription_portal_manager.show_taf", str(self.moyee_show_taf))
+        ICP.set_param("moyee_subscription_portal_manager.show_brew_guides", str(self.moyee_show_brew_guides))
+        ICP.set_param("moyee_subscription_portal_manager.show_sidebar_profile", str(self.moyee_show_sidebar_profile))
+        ICP.set_param("moyee_subscription_portal_manager.show_sidebar_upsell", str(self.moyee_show_sidebar_upsell))
+        ICP.set_param("moyee_subscription_portal_manager.show_sidebar_support", str(self.moyee_show_sidebar_support))
