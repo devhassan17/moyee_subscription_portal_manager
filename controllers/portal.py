@@ -265,7 +265,7 @@ class MoyeePortalHome(CustomerPortal):
                     grind, weight = active_subscription.moyee_extract_product_metadata(p)
                     tmpl_name = p.product_tmpl_id.name or ''
                     tmpl_name = tmpl_name.replace('(Subscription)', '').replace('(subscription)', '').replace('(SUBSCRIPTION)', '')
-                    tmpl_name = re.sub(r'(?i)\b(1\s*kg|250\s*g(ram)?|25\s*caps(ules)?)\b', '', tmpl_name).strip()
+                    tmpl_name = tmpl_name.strip()
                     variant_map.append({
                         "id": p.id,
                         "tmpl_id": p.product_tmpl_id.id,
@@ -332,6 +332,85 @@ class MoyeePortalHome(CustomerPortal):
         home_values = self._prepare_home_portal_values(counters=set(), **kw)
         values.update(home_values)
         return request.render("moyee_subscription_portal_manager.portal_my_home_moyee", values)
+
+    @http.route(["/my/account"], type="http", auth="user", website=True)
+    def account(self, redirect=None, **post):
+        response = super().account(redirect=redirect, **post)
+        if request.httprequest.method == "POST":
+            # Check if Odoo portal successfully validated and saved the partner values
+            is_redirect = getattr(response, "status_code", 200) in (301, 302, 303)
+            if is_redirect:
+                partner = request.env.user.partner_id
+                commercial = partner.commercial_partner_id
+
+                SaleOrder = request.env["sale.order"].sudo()
+                sub_domain = [
+                    ("partner_id.commercial_partner_id", "=", commercial.id),
+                    ("state", "in", ("sale", "done")),
+                ]
+                if "subscription_state" in SaleOrder._fields:
+                    sub_domain.append(("subscription_state", "in", ("3_progress", "4_paused", "2_renewal")))
+                elif "is_subscription" in SaleOrder._fields:
+                    sub_domain.append(("is_subscription", "=", True))
+
+                subscriptions = SaleOrder.search(sub_domain)
+                for sub in subscriptions:
+                    if sub.partner_shipping_id and sub.partner_shipping_id != partner and sub.partner_shipping_id != commercial:
+                        sub.partner_shipping_id.sudo().write({
+                            "name": partner.name,
+                            "phone": partner.phone or partner.mobile or False,
+                            "street": partner.street or False,
+                            "street2": partner.street2 or False,
+                            "city": partner.city or False,
+                            "zip": partner.zip or False,
+                            "country_id": partner.country_id.id if partner.country_id else False,
+                        })
+                    if sub.partner_invoice_id and sub.partner_invoice_id != partner and sub.partner_invoice_id != commercial:
+                        sub.partner_invoice_id.sudo().write({
+                            "name": partner.name,
+                            "phone": partner.phone or partner.mobile or False,
+                            "street": partner.street or False,
+                            "street2": partner.street2 or False,
+                            "city": partner.city or False,
+                            "zip": partner.zip or False,
+                            "country_id": partner.country_id.id if partner.country_id else False,
+                        })
+        return response
+
+    @http.route(["/my/orders", "/my/orders/page/<int:page>"], type="http", auth="user", website=True)
+    def portal_my_orders(self, **kw):
+        return request.redirect("/my/home")
+
+    @http.route(["/my/invoices", "/my/invoices/page/<int:page>"], type="http", auth="user", website=True)
+    def portal_my_invoices(self, **kw):
+        return request.redirect("/my/home")
+
+    def details_form_validate(self, data, partner_creation=False):
+        error, error_message = super().details_form_validate(data, partner_creation)
+
+        # Define English and Dutch substrings to filter out name/company_name restriction errors
+        name_keywords = [
+            "changing your name is not allowed",
+            "het wijzigen van uw naam",
+        ]
+        company_keywords = [
+            "changing your company name is not allowed",
+            "het wijzigen van uw bedrijfsnaam",
+        ]
+
+        filtered_message = []
+        for msg in error_message:
+            msg_lower = (msg or "").lower()
+            if any(kw in msg_lower for kw in name_keywords):
+                error.pop('name', None)
+                continue
+            if any(kw in msg_lower for kw in company_keywords):
+                error.pop('company_name', None)
+                continue
+            filtered_message.append(msg)
+
+        return error, filtered_message
+
 
 
 class MoyeeSubscriptionPortal(http.Controller):

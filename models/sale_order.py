@@ -220,11 +220,17 @@ class SaleOrder(models.Model):
 
         products = Product.search(domain, order="name, id", limit=200)
 
-        # Enhance products with filter metadata (Grind, Weight)
-        # We store this in a list of dicts for the portal template if needed,
-        # but Odoo templates prefer objects. We'll add a helper method to products
-        # or just pre-process them here.
-        return products
+        # Exclude service/maintenance/accessory products
+        exclude_keywords = {"onderhoud", "service", "maintenance", "installatie", "repair", "reparatie", "schoonmaak", "cleaning", "reiniging", "optie", "support"}
+        filtered_products = Product.browse()
+        for p in products:
+            p_name = (p.name or "").lower()
+            p_code = (p.default_code or "").lower()
+            if any(kw in p_name or kw in p_code for kw in exclude_keywords):
+                continue
+            filtered_products += p
+
+        return filtered_products
 
     def moyee_extract_product_metadata(self, product):
         """
@@ -243,14 +249,14 @@ class SaleOrder(models.Model):
             val_name = (av.name or "").lower()
 
             if "grind" in attr_name or "maling" in attr_name:
-                if "whole" in val_name or "boon" in val_name or "bonen" in val_name:
+                if "capsule" in val_name or "cup" in val_name:
+                    grind = "capsules"
+                elif "whole" in val_name or "boon" in val_name or "bonen" in val_name:
                     grind = "whole"
                 elif "filter" in val_name:
                     grind = "filter"
                 elif "espresso" in val_name:
                     grind = "espresso"
-                elif "capsule" in val_name or "cup" in val_name:
-                    grind = "capsules"
 
         for av in attr_values:
             if weight != "other":
@@ -259,33 +265,37 @@ class SaleOrder(models.Model):
             val_name = (av.name or "").lower()
             if "weight" in attr_name or "size" in attr_name or "gewicht" in attr_name:
                 v_clean = val_name.replace(" ", "")
-                if "1kg" in v_clean or "1.0kg" in v_clean or "1000g" in v_clean or "1000 g" in val_name:
+                if "capsules" in v_clean or "capsule" in v_clean or "cups" in v_clean or "25caps" in v_clean:
+                    weight = "25caps"
+                elif "1kg" in v_clean or "1.0kg" in v_clean or "1000g" in v_clean or "1000 g" in val_name:
                     weight = "1kg"
                 elif "250g" in v_clean or "250" in v_clean or "0.25kg" in v_clean or "0.25 kg" in val_name:
                     weight = "250g"
-                elif "25caps" in v_clean or v_clean == "25" or "capsules" in v_clean or "capsule" in v_clean or "cups" in v_clean:
-                    weight = "25caps"
 
         # 2. Fallback to name scanning if still 'other'
         name = (product.display_name or "").lower()
         if grind == "other":
-            if "whole" in name or "boon" in name or "bonen" in name:
+            if "capsule" in name or "cup" in name:
+                grind = "capsules"
+            elif "whole" in name or "boon" in name or "bonen" in name:
                 grind = "whole"
             elif "filter grind" in name or "filtergrind" in name or "filter" in name:
                 grind = "filter"
             elif "espresso grind" in name or "espressogrind" in name or "espresso" in name:
                 grind = "espresso"
-            elif "capsule" in name or "cup" in name:
-                grind = "capsules"
+            else:
+                grind = "whole" # Default fallback for coffee products
 
         if weight == "other":
             name_clean = name.replace(" ", "")
-            if "1kg" in name_clean or "1000g" in name_clean or "1.0kg" in name_clean:
+            if "capsule" in name_clean or "cups" in name_clean or any(x in name_clean for x in ("25caps", "25capsule", "25cups")):
+                weight = "25caps"
+            elif "1kg" in name_clean or "1000g" in name_clean or "1.0kg" in name_clean:
                 weight = "1kg"
             elif "250g" in name_clean or "0.25kg" in name_clean or "250" in name_clean:
                 weight = "250g"
-            elif any(x in name_clean for x in ("25caps", "25capsule", "25cups")) or "25 capsule" in name or "25 cups" in name or re.search(r'\b25\b', name):
-                weight = "25caps"
+            else:
+                weight = "1kg" # Default fallback
 
         return grind, weight
 
@@ -1040,6 +1050,10 @@ class SaleOrder(models.Model):
             ("product_tmpl_id", "=", template.id),
             ("sale_ok", "=", True),
         ])
+
+        if not weight and variants:
+            _, t_weight = self.moyee_extract_product_metadata(variants[0])
+            weight = t_weight
 
         target_product = False
         for var in variants:

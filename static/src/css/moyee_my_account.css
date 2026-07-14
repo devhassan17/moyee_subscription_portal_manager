@@ -720,14 +720,113 @@
 }
 @media (max-width: 600px) {
   .moyee-page-title { font-size: 26px; }
-  .moyee-order-row { flex-wrap: wrap; }
   .moyee-taf-input-row { flex-direction: column; }
   .moyee-inspire-actions { flex-direction: column; }
   .moyee-gegevens-block { grid-template-columns: 1fr; }
   .moyee-card-grid { grid-template-columns: 1fr; }
-  .moyee-abo-table { font-size: 12px; }
-  .moyee-abo-table-head th { font-size: 10px; }
-  .moyee-abo-prod-row td { padding: 8px 6px 8px 0; }
+
+  /* Responsive order row */
+  .moyee-order-row {
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+  }
+  .moyee-order-info {
+    flex: 0 0 100% !important;
+    width: 100% !important;
+    margin-bottom: 8px;
+  }
+  .moyee-order-status {
+    order: 2 !important;
+  }
+  .moyee-order-row > .d-flex {
+    order: 3 !important;
+    margin-left: auto !important;
+  }
+
+  /* Responsive invoice row */
+  .moyee-invoice-row {
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+  }
+  .moyee-invoice-info {
+    flex: 0 0 100% !important;
+    width: 100% !important;
+    margin-bottom: 8px;
+  }
+  .moyee-invoice-status {
+    margin-right: auto !important;
+  }
+
+  /* Turn subscription table into stacked card list on mobile */
+  .moyee-abo-table,
+  .moyee-abo-table tbody,
+  .moyee-abo-table tr {
+    display: block !important;
+    width: 100% !important;
+  }
+  .moyee-abo-table-head {
+    display: none !important;
+  }
+  .moyee-abo-prod-row {
+    display: grid !important;
+    grid-template-columns: 52px 1fr !important;
+    gap: 8px !important;
+    padding: 16px 0 !important;
+    border-top: 1px solid var(--moyee-gray-2) !important;
+  }
+  .moyee-abo-prod-row:first-child {
+    border-top: none !important;
+  }
+  .moyee-abo-prod-row td {
+    display: block !important;
+    width: 100% !important;
+    padding: 0 !important;
+    border-top: none !important;
+    text-align: left !important;
+  }
+  .moyee-td-photo {
+    grid-column: 1 !important;
+    grid-row: 1 / span 4 !important;
+  }
+  .moyee-td-name {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+  }
+  
+  /* Details inline wrapper styling */
+  .moyee-td-qty,
+  .moyee-td-grind,
+  .moyee-td-weight {
+    grid-column: 2 !important;
+    display: inline-block !important;
+    width: auto !important;
+    margin-right: 12px !important;
+    font-size: 13px !important;
+    color: var(--moyee-text-sm) !important;
+    margin-top: 4px !important;
+  }
+  .moyee-td-qty::before { content: "Qty: "; font-weight: 700; }
+  .moyee-td-grind::before { content: "Grind: "; font-weight: 700; }
+  .moyee-td-weight::before { content: "Weight: "; font-weight: 700; }
+
+  /* Hide empty cells cleanly */
+  .moyee-td-qty-empty,
+  .moyee-td-grind-empty,
+  .moyee-td-weight-empty {
+    display: none !important;
+  }
+
+  .moyee-td-price {
+    grid-column: 2 !important;
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    color: var(--moyee-pink) !important;
+    margin-top: 6px !important;
+  }
+  .moyee-abo-td-actions {
+    grid-column: 2 !important;
+    margin-top: 8px !important;
+  }
 }
 
 /* ── Override Odoo portal defaults when on /my/home ── */

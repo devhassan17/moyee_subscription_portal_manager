@@ -412,6 +412,22 @@ input[type="date"] {
 .moyee-modal-cancel-btn-confirm:hover {
     background: #B91C1C !important;
 }
+.moyee-modal-cancel-btn-pause {
+    flex: 1.5 !important;
+    background: #FFD900 !important;
+    border: none !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+    height: 48px !important;
+    color: #2d1020 !important;
+    font-size: 15px !important;
+    padding: 0 !important;
+    transition: background 0.2s !important;
+}
+.moyee-modal-cancel-btn-pause:hover {
+    background: #E6C400 !important;
+}
+
 
 /* Small utility layout classes */
 .moyee-vr-divider {

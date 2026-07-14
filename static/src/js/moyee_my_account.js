@@ -56,6 +56,10 @@ publicWidget.registry.MoyeeMyAccountPage = publicWidget.Widget.extend({
         this._ordersPage = 1;
         this._invoicesPage = 1;
         this._pageSize = 10;
+
+        // Remove "by Post" option from Receive Invoices dropdown
+        this.$('select[name="invoice_sending_method"] option[value="post"]').remove();
+
         return this._super.apply(this, arguments);
     },
 
@@ -231,6 +235,9 @@ publicWidget.registry.MoyeeMyAccountPage = publicWidget.Widget.extend({
         ev.stopPropagation();
         var modalId = $(ev.currentTarget).data("moyee-modal");
         if (modalId) {
+            // Close any currently open modals first
+            this.$(".moyee-modal-overlay.open").removeClass("open");
+
             var $modal = this.$("#" + modalId);
             $modal.addClass("open");
             $("body").css("overflow", "hidden");
@@ -312,6 +319,15 @@ publicWidget.registry.MoyeeMyAccountPage = publicWidget.Widget.extend({
         
         try {
             var variants = JSON.parse(variantsStr);
+            // Normalize any 'other' or unknown grinds/weights to defaults on the frontend
+            variants.forEach(function (v) {
+                if (v.grind !== "whole" && v.grind !== "filter" && v.grind !== "espresso" && v.grind !== "capsules") {
+                    v.grind = "whole";
+                }
+                if (v.weight !== "1kg" && v.weight !== "250g" && v.weight !== "25caps") {
+                    v.weight = "1kg";
+                }
+            });
             $form.data("variants-list", variants);
 
             // Store the initial selected values so we don't overwrite them on first load

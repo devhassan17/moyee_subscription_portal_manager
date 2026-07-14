@@ -81,46 +81,24 @@
 
                                     <!-- Case 1: Delivery Line -->
                                     <t t-if="is_delivery_line">
-                                        <tr class="moyee-abo-prod-row" style="opacity: 0.85;">
-                                            <td>
-                                                <div class="moyee-abo-prod-photo" style="font-size: 20px; background: transparent; border: none; display: flex; align-items: center; justify-content: center;">🚚</div>
-                                            </td>
-                                            <td>
-                                                <div class="moyee-abo-prod-name">
-                                                    <div style="font-weight:700;">Delivery</div>
-                                                </div>
-                                            </td>
-                                            <td style="text-align: center;">—</td>
-                                            <td>—</td>
-                                            <td>—</td>
-                                            <td style="font-weight:700">
-                                                <t t-if="line.price_total &gt; 0">
-                                                    € <t t-esc="'%.2f' % line.price_total"/>
-                                                </t>
-                                                <t t-else="">
-                                                    <span style="color: #2E7D32; font-weight: 700;">Free</span>
-                                                </t>
-                                            </td>
-                                            <td class="moyee-abo-td-actions">
-                                            </td>
-                                        </tr>
+                                        <!-- Hidden in the main table list, only displayed in the card summary below -->
                                     </t>
 
                                     <!-- Case 2: Discount Line -->
                                     <t t-elif="is_discount_line">
                                         <tr class="moyee-abo-prod-row" style="background-color: #F4FBF7;">
-                                            <td>
+                                            <td class="moyee-td-photo">
                                                 <div class="moyee-abo-prod-photo" style="font-size: 20px; background: transparent; border: none; display: flex; align-items: center; justify-content: center;">🏷️</div>
                                             </td>
-                                            <td>
+                                            <td class="moyee-td-name">
                                                 <div class="moyee-abo-prod-name">
                                                     <div style="font-weight:700; color: #2E7D32;" t-esc="clean_name"/>
                                                 </div>
                                             </td>
-                                            <td style="text-align: center;">—</td>
-                                            <td>—</td>
-                                            <td>—</td>
-                                            <td style="font-weight:700; color: #2E7D32;">
+                                            <td class="moyee-td-qty-empty" style="text-align: center;">—</td>
+                                            <td class="moyee-td-grind-empty">—</td>
+                                            <td class="moyee-td-weight-empty">—</td>
+                                            <td class="moyee-td-price" style="font-weight:700; color: #2E7D32;">
                                                 -€ <t t-esc="'%.2f' % abs(line.price_total)"/>
                                             </td>
                                             <td class="moyee-abo-td-actions">
@@ -133,14 +111,14 @@
                                         <t t-set="line_grind_val" t-value="line._moyee_get_portal_grind_display()"/>
                                         <t t-set="line_weight_val" t-value="line._moyee_get_portal_weight_display()"/>
                                         <tr class="moyee-abo-prod-row" t-att-style="'opacity: 0.75;' if line.x_moyee_is_removed else None">
-                                            <td>
+                                            <td class="moyee-td-photo">
                                                 <div class="moyee-abo-prod-photo">
                                                     <img t-att-src="'/web/image/product.product/%s/image_128' % line.product_id.id"
                                                          alt="Product"
                                                          loading="lazy"/>
                                                 </div>
                                             </td>
-                                            <td>
+                                            <td class="moyee-td-name">
                                                 <div class="moyee-abo-prod-name">
                                                     <div style="font-weight:700;" t-esc="clean_name"/>
                                                     <t t-if="line.x_moyee_is_removed">
@@ -150,16 +128,16 @@
                                                     </t>
                                                 </div>
                                             </td>
-                                            <td style="text-align: center; font-weight: 700;">
+                                            <td class="moyee-td-qty" style="text-align: center; font-weight: 700;">
                                                 <t t-esc="'%g' % line.product_uom_qty"/>
                                             </td>
-                                            <td>
+                                            <td class="moyee-td-grind">
                                                 <t t-esc="line_grind_val"/>
                                             </td>
-                                            <td>
+                                            <td class="moyee-td-weight">
                                                 <t t-esc="line_weight_val"/>
                                             </td>
-                                            <td style="font-weight:700">
+                                            <td class="moyee-td-price" style="font-weight:700">
                                                 <t t-if="line.discount &gt; 0">
                                                     <div style="text-decoration: line-through; color: #999; font-size: 12px; font-weight: 500;">
                                                         € <t t-esc="'%.2f' % (line.price_total / (1.0 - line.discount / 100.0))"/>
@@ -280,11 +258,7 @@
                         </t>
                         <!-- Cancel Subscription Button -->
                         <button type="button" class="moyee-btn-danger" data-moyee-modal="moyee-modal-cancel-subscription">Cancel subscription</button>
-                        <a href="#"
-                           class="moyee-btn moyee-btn-ghost"
-                           data-moyee-modal="moyee-modal-addresses">
-                            Update delivery address
-                        </a>
+
                     </div>
                 </div>
             </div>
@@ -1099,6 +1073,7 @@
                             
                             <div class="moyee-modal-cancel-btn-group">
                                 <button class="moyee-modal-cancel btn moyee-modal-cancel-btn-back" type="button">Cancel</button>
+                                <button class="btn moyee-modal-cancel-btn-pause" type="button" data-moyee-modal="moyee-modal-pause-subscription">Pause</button>
                                 <button class="moyee-modal-save btn btn-danger moyee-modal-cancel-btn-confirm" type="submit">Close Subscription</button>
                             </div>
                         </form>
@@ -1267,8 +1242,8 @@
                                         <div class="moyee-product-slider" id="moyeeProductSlider">
                                             <t t-foreach="available_products" t-as="p">
                                                 <t t-set="pname" t-value="(p.with_context(display_default_code=False).display_name or p.name or '').lower()"/>
-                                                <t t-set="p_grind" t-value="'whole' in pname and 'whole' or 'filter' in pname and 'filter' or 'espresso' in pname and 'espresso' or ('capsule' in pname or 'cups' in pname) and 'capsules' or 'whole'"/>
-                                                <t t-set="p_weight" t-value="('1kg' in pname.replace(' ', '') or '1 kg' in pname) and '1kg' or '250' in pname and '250g' or '25' in pname and '25caps' or '1kg'"/>
+                                                <t t-set="p_grind" t-value="('capsule' in pname or 'cups' in pname) and 'capsules' or 'whole' in pname and 'whole' or 'filter' in pname and 'filter' or 'espresso' in pname and 'espresso' or 'whole'"/>
+                                                <t t-set="p_weight" t-value="('capsule' in pname or 'cups' in pname) and '25caps' or ('1kg' in pname.replace(' ', '') or '1 kg' in pname) and '1kg' or '250' in pname and '250g' or '1kg'"/>
                                                 <div class="moyee-slider-card js_moyee_product_card" 
                                                      t-att-data-grind="p_grind"
                                                      t-att-data-weight="p_weight" 
@@ -1381,148 +1356,7 @@
                 </div>
             </div>
 
-            <!-- 5) ADDRESSES MODAL -->
-            <div class="moyee-modal-overlay" id="moyee-modal-addresses">
-                <div class="moyee-modal" style="max-width: 650px;">
-                    <div class="moyee-modal-header">
-                        <div class="moyee-modal-title">Manage subscription addresses</div>
-                        <button class="moyee-modal-close" type="button">×</button>
-                    </div>
-                    <div class="moyee-modal-body">
-                        <form t-attf-action="/my/subscriptions/{{ active_subscription.id }}/change_address"
-                              method="post" class="row g-3">
-                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                            <input type="hidden" name="access_token" t-att-value="active_subscription.access_token" t-if="active_subscription and active_subscription.access_token"/>
 
-                            <div class="col-12">
-                                <div class="fw-bold border-bottom pb-1 text-primary">Shipping address</div>
-                            </div>
-                            
-                            <div class="col-12 col-sm-6">
-                                <label class="form-label moyee-modal-label">Name</label>
-                                <input class="form-control moyee-modal-input" name="ship_name" type="text" required="required"
-                                       t-att-value="(active_subscription.partner_shipping_id and active_subscription.partner_shipping_id.name) or ''"/>
-                            </div>
-                            <div class="col-12 col-sm-6">
-                                <label class="form-label moyee-modal-label">Phone</label>
-                                <input class="form-control moyee-modal-input" name="ship_phone" type="text"
-                                       t-att-value="(active_subscription.partner_shipping_id and active_subscription.partner_shipping_id.phone) or ''"/>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label moyee-modal-label">Street</label>
-                                <input class="form-control moyee-modal-input" name="ship_street" type="text" required="required"
-                                       t-att-value="(active_subscription.partner_shipping_id and active_subscription.partner_shipping_id.street) or ''"/>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label moyee-modal-label">Street 2</label>
-                                <input class="form-control moyee-modal-input" name="ship_street2" type="text"
-                                       t-att-value="(active_subscription.partner_shipping_id and active_subscription.partner_shipping_id.street2) or ''"/>
-                            </div>
-                            <div class="col-12 col-sm-4">
-                                <label class="form-label moyee-modal-label">City</label>
-                                <input class="form-control moyee-modal-input" name="ship_city" type="text" required="required"
-                                       t-att-value="(active_subscription.partner_shipping_id and active_subscription.partner_shipping_id.city) or ''"/>
-                            </div>
-                            <div class="col-12 col-sm-4">
-                                <label class="form-label moyee-modal-label">ZIP</label>
-                                <input class="form-control moyee-modal-input" name="ship_zip" type="text" required="required"
-                                       t-att-value="(active_subscription.partner_shipping_id and active_subscription.partner_shipping_id.zip) or ''"/>
-                            </div>
-                            <div class="col-12 col-sm-4">
-                                <label class="form-label moyee-modal-label">Country</label>
-                                <select class="form-select moyee-modal-select" name="ship_country_id" required="required">
-                                    <option value="">--</option>
-                                    <t t-foreach="countries" t-as="c">
-                                        <option t-att-value="c.id"
-                                                t-att-selected="active_subscription.partner_shipping_id and active_subscription.partner_shipping_id.country_id and active_subscription.partner_shipping_id.country_id.id == c.id">
-                                            <t t-esc="c.name"/>
-                                        </option>
-                                    </t>
-                                </select>
-                            </div>
-
-                            <div class="col-12 my-3">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox"
-                                           name="same_as_shipping" value="1"
-                                           id="moyeeSameAsShipping"/>
-                                    <label class="form-check-label fw-bold" for="moyeeSameAsShipping">
-                                        Use same address for invoicing
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div class="col-12">
-                                <div class="d-flex align-items-center justify-content-between border-bottom pb-1">
-                                    <div class="fw-bold text-primary">Invoice address</div>
-                                    <button class="btn btn-sm btn-light"
-                                            type="button"
-                                            data-bs-toggle="collapse"
-                                            data-bs-target="#moyeeInvAddress"
-                                            aria-expanded="false"
-                                            aria-controls="moyeeInvAddress"
-                                            style="border-radius: 6px; font-size: 11px;">
-                                        Manage invoice address ▾
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div class="col-12">
-                                <div id="moyeeInvAddress" class="collapse">
-                                    <div class="row g-3 mt-1">
-                                        <div class="col-12 col-sm-6">
-                                            <label class="form-label moyee-modal-label">Name</label>
-                                            <input class="form-control moyee-modal-input" name="inv_name" type="text"
-                                                   t-att-value="(active_subscription.partner_invoice_id and active_subscription.partner_invoice_id.name) or ''"/>
-                                        </div>
-                                        <div class="col-12 col-sm-6">
-                                            <label class="form-label moyee-modal-label">Phone</label>
-                                            <input class="form-control moyee-modal-input" name="inv_phone" type="text"
-                                                   t-att-value="(active_subscription.partner_invoice_id and active_subscription.partner_invoice_id.phone) or ''"/>
-                                        </div>
-                                        <div class="col-12">
-                                            <label class="form-label moyee-modal-label">Street</label>
-                                            <input class="form-control moyee-modal-input" name="inv_street" type="text"
-                                                   t-att-value="(active_subscription.partner_invoice_id and active_subscription.partner_invoice_id.street) or ''"/>
-                                        </div>
-                                        <div class="col-12">
-                                            <label class="form-label moyee-modal-label">Street 2</label>
-                                            <input class="form-control moyee-modal-input" name="inv_street2" type="text"
-                                                   t-att-value="(active_subscription.partner_invoice_id and active_subscription.partner_invoice_id.street2) or ''"/>
-                                        </div>
-                                        <div class="col-12 col-sm-4">
-                                            <label class="form-label moyee-modal-label">City</label>
-                                            <input class="form-control moyee-modal-input" name="inv_city" type="text"
-                                                   t-att-value="(active_subscription.partner_invoice_id and active_subscription.partner_invoice_id.city) or ''"/>
-                                        </div>
-                                        <div class="col-12 col-sm-4">
-                                            <label class="form-label moyee-modal-label">ZIP</label>
-                                            <input class="form-control moyee-modal-input" name="inv_zip" type="text"
-                                                   t-att-value="(active_subscription.partner_invoice_id and active_subscription.partner_invoice_id.zip) or ''"/>
-                                        </div>
-                                        <div class="col-12 col-sm-4">
-                                            <label class="form-label moyee-modal-label">Country</label>
-                                            <select class="form-select moyee-modal-select" name="inv_country_id">
-                                                <option value="">--</option>
-                                                <t t-foreach="countries" t-as="c">
-                                                    <option t-att-value="c.id"
-                                                            t-att-selected="active_subscription.partner_invoice_id and active_subscription.partner_invoice_id.country_id and active_subscription.partner_invoice_id.country_id.id == c.id">
-                                                        <t t-esc="c.name"/>
-                                                    </option>
-                                                </t>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-12 d-flex gap-2 mt-4">
-                                <button class="moyee-modal-save w-100" type="submit">Update addresses</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
 
             <!-- 6) LINE EDIT MODALS (ONE FOR EACH PRODUCT LINE) -->
             <t t-foreach="visible_lines or []" t-as="line">
@@ -1552,7 +1386,7 @@
                                         <div>
                                             <label class="moyee-modal-label">TYPE / GRIND</label>
                                             <select class="form-select moyee-modal-input" name="grind" required="required">
-                                                <option value="whole" t-att-selected="line_grind == 'whole'">Whole beans</option>
+                                                <option value="whole" t-att-selected="line_grind == 'whole' or line_grind not in ['whole', 'filter', 'espresso', 'capsules']">Whole beans</option>
                                                 <option value="filter" t-att-selected="line_grind == 'filter'">Filter grind</option>
                                                 <option value="espresso" t-att-selected="line_grind == 'espresso'">Espresso grind</option>
                                                 <option value="capsules" t-att-selected="line_grind == 'capsules'">Capsules</option>
@@ -1567,9 +1401,6 @@
                                                     <t t-set="clean_tmpl_name" t-value="tmpl.name"/>
                                                     <t t-if="clean_tmpl_name">
                                                         <t t-set="clean_tmpl_name" t-value="clean_tmpl_name.replace('(Subscription)', '').replace('(subscription)', '').replace('(SUBSCRIPTION)', '')"/>
-                                                        <t t-set="clean_tmpl_name" t-value="clean_tmpl_name.replace(' 1 KG', '').replace(' 1 kg', '').replace(' 1KG', '').replace(' 1kg', '')"/>
-                                                        <t t-set="clean_tmpl_name" t-value="clean_tmpl_name.replace(' 250G', '').replace(' 250g', '').replace(' 250 G', '').replace(' 250 g', '').replace(' 250 gram', '')"/>
-                                                        <t t-set="clean_tmpl_name" t-value="clean_tmpl_name.replace(' 25 CAPSULES', '').replace(' 25 capsules', '').replace(' 25 Capsules', '').replace(' 25 CAPS', '').replace(' 25 caps', '')"/>
                                                         <t t-set="clean_tmpl_name" t-value="clean_tmpl_name.strip()"/>
                                                     </t>
                                                     <option t-att-value="tmpl.id" t-att-selected="line.product_id.product_tmpl_id.id == tmpl.id">
@@ -1580,10 +1411,10 @@
                                         </div>
 
                                         <!-- 3. AMOUNT -->
-                                        <div>
+                                        <div style="display: none !important;">
                                             <label class="moyee-modal-label">AMOUNT</label>
                                             <select class="form-select moyee-modal-input" name="weight" required="required">
-                                                <option value="1kg" t-att-selected="line_weight == '1kg'">1 kg</option>
+                                                <option value="1kg" t-att-selected="line_weight == '1kg' or line_weight not in ['1kg', '250g', '25caps']">1 kg</option>
                                                 <option value="250g" t-att-selected="line_weight == '250g'">250g</option>
                                                 <option value="25caps" t-att-selected="line_weight == '25caps'">25 Capsules</option>
                                             </select>
@@ -1660,10 +1491,7 @@
                                                         <t t-esc="line.product_id.product_tmpl_id.name or line.name"/>
                                                     </div>
                                                     <div class="text-muted" style="font-size: 13px; margin-top: 2px;">
-                                                        <t t-esc="l_grind"/> · <t t-esc="l_weight"/>
-                                                        <t t-if="line.product_uom_qty > 1">
-                                                            · × <t t-esc="'%g' % line.product_uom_qty"/>
-                                                        </t>
+                                                        <t t-esc="l_grind"/> · <t t-esc="l_weight"/> · × <t t-esc="'%g' % line.product_uom_qty"/>
                                                     </div>
                                                 </div>
                                                 <div style="font-weight: 700; color: #111; font-size: 15px;">
@@ -1688,10 +1516,6 @@
                             <t t-set="product_cost" t-value="sum(product_lines.mapped('price_subtotal'))"/>
 
                             <div class="d-flex flex-column gap-2 mb-3" style="font-size: 14px;">
-                                <div class="d-flex align-items-center justify-content-between" style="color: #666;">
-                                    <span>Product costs</span>
-                                    <span style="font-weight: 600; color: #111;">€ <t t-esc="'%.2f' % product_cost"/></span>
-                                </div>
                                 <div class="d-flex align-items-center justify-content-between" style="color: #666;">
                                     <span>Delivery costs</span>
                                     <t t-if="delivery_cost > 0">
@@ -1740,7 +1564,7 @@
                                 <!-- Monta Delivery Date -->
                                 <t t-set="m_date" t-value="so._moyee_get_monta_delivery_date()"/>
                                 <div class="d-flex align-items-center justify-content-between">
-                                    <span style="color: #666;">Monta Delivery Date</span>
+                                    <span style="color: #666;">Delivery date</span>
                                     <span style="font-weight: 700; color: #111;">
                                         <t t-if="m_date">
                                             <t t-esc="m_date.strftime('%d %B %Y')"/>
