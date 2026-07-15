@@ -16,7 +16,7 @@ msgstr ""
 "Content-Transfer-Encoding: \n"
 "Plural-Forms: \n"
 
-#. id: portal_my_home_moyee_subscription
+#. module: moyee_subscription_portal_manager
 #: views/portal_my_account_sub_templates.xml
 msgid "My subscription"
 msgstr "Mijn abonnement"
