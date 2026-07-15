@@ -17,354 +17,266 @@ msgstr ""
 "Plural-Forms: \n"
 
 #. module: moyee_subscription_portal_manager
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "My subscription"
 msgstr "Mijn abonnement"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Your next delivery will be sent on"
 msgstr "Je volgende levering wordt verzonden op"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "expect the coffee within 2 days"
 msgstr "verwacht de koffie binnen 2 dagen"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Change"
 msgstr "Aanpassen"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Your subscription is currently"
 msgstr "Je abonnement is momenteel"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "paused"
 msgstr "gepauzeerd"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Resume anytime to receive your next delivery"
 msgstr "Hervat op elk moment om je volgende levering te ontvangen"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Coffee"
 msgstr "Koffie"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Qty"
 msgstr "Aantal"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Grind"
 msgstr "Maling"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Amount"
 msgstr "Hoeveelheid"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Price"
 msgstr "Prijs"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Delivery"
 msgstr "Bezorging"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Free"
 msgstr "Gratis"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Discount"
 msgstr "Korting"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "One-time / Delivered"
 msgstr "Eenmalig / Geleverd"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Products (incl. VAT)"
 msgstr "Producten (incl. btw)"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Delivery (incl. VAT)"
 msgstr "Bezorging (incl. btw)"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Total payment"
 msgstr "Totale betaling"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Frequency"
 msgstr "Frequentie"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "+ Add Coffee"
 msgstr "+ Koffie toevoegen"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Pause"
 msgstr "Pauzeren"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Resume subscription"
 msgstr "Abonnement hervatten"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Cancel subscription"
 msgstr "Abonnement opzeggen"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "My overview"
 msgstr "Mijn overzicht"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "My orders"
 msgstr "Mijn bestellingen"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "View your order history or reorder"
 msgstr "Bekijk je bestelgeschiedenis of bestel opnieuw"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Invoices"
 msgstr "Facturen"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "View or download your invoices"
 msgstr "Bekijk of download je facturen"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Support"
 msgstr "Klantenservice"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Submit a question or view your messages"
 msgstr "Stel een vraag of bekijk je berichten"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Account settings"
 msgstr "Accountinstellingen"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Address, password and payment method"
 msgstr "Adres, wachtwoord en betaalmethode"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Track shipment"
 msgstr "Zending volgen"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Not available yet"
 msgstr "Nog niet beschikbaar"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Confirmed"
 msgstr "Bevestigd"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Completed"
 msgstr "Afgerond"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Cancelled"
 msgstr "Geannuleerd"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Reorder"
 msgstr "Opnieuw bestellen"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "items"
 msgstr "artikelen"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "My invoices"
 msgstr "Mijn facturen"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Paid"
 msgstr "Betaald"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "In payment"
 msgstr "In betaling"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Open"
 msgstr "Open"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "No invoices found."
 msgstr "Geen facturen gevonden."
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Personal details"
 msgstr "Persoonsgegevens"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Edit"
 msgstr "Bewerken"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Name"
 msgstr "Naam"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Company"
 msgstr "Bedrijf"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Address"
 msgstr "Adres"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Phone"
 msgstr "Telefoonnummer"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Email"
 msgstr "E-mailadres"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Password"
 msgstr "Wachtwoord"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Change password"
 msgstr "Wachtwoord wijzigen"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Frequently asked questions"
 msgstr "Veelgestelde vragen"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Brew like a pro"
 msgstr "Zet koffie als een pro"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Brew Guides"
 msgstr "Zetgidsen"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Now that's how you brew!"
 msgstr "Kijk, zó zet je koffie!"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Great beans deserve great brewing. Step-by-step cheat sheets — grind, ratio, time — for every setup in your kitchen."
 msgstr "Goede bonen verdienen een goede bereiding. Stap-voor-stap spiekbriefjes — maling, verhouding, tijd — voor elke machine in je keuken."
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Edit details"
 msgstr "Gegevens bewerken"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Need help?"
 msgstr "Hulp nodig?"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Ask a question"
 msgstr "Stel een vraag"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "View all FAQs"
 msgstr "Bekijk alle veelgestelde vragen"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Change order send date"
 msgstr "Verzenddatum bestelling wijzigen"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "New order send date"
 msgstr "Nieuwe verzenddatum bestelling"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Skip this delivery"
 msgstr "Sla deze levering over"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Save date"
 msgstr "Datum opslaan"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Change frequency"
 msgstr "Frequentie wijzigen"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "How often do you want to receive your coffee?"
 msgstr "Hoe vaak wil je je koffie ontvangen?"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "CURRENT"
 msgstr "HUIDIG"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Save"
 msgstr "Opslaan"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Status management"
 msgstr "Statusbeheer"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Pause subscription"
 msgstr "Abonnement pauzeren"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Subscription pauzeren"
 msgstr "Abonnement pauzeren"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "You can temporarily pause your subscription. You won't be charged during the pause and can resume at any time."
 msgstr "Je kunt je abonnement tijdelijk pauzeren. Je wordt tijdens de pauze niet gefactureerd en kunt op elk moment hervatten."
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Pause until"
 msgstr "Pauzeren tot"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Close Subscription"
 msgstr "Abonnement beëindigen"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "You are about to permanently close a subscription that is valid until"
 msgstr "Je staat op het punt een abonnement permanent te beëindigen dat geldig is tot"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "We are sorry to see you go."
 msgstr "We vinden het jammer dat je weggaat."
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Tell us, why are you leaving?"
 msgstr "Vertel ons, waarom ga je weg?"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Choose a reason..."
 msgstr "Kies een reden..."
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "I have wayy to much coffee"
 msgstr "Ik heb veel te veel koffie"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "My budget says no"
 msgstr "Mijn budget laat het niet toe"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Too much admin for coffee"
 msgstr "Te veel rompslomp voor koffie"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Not my cup (anymore)"
 msgstr "Niet mijn ding (meer)"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Other"
 msgstr "Anders"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Edit personal details"
 msgstr "Persoonsgegevens bewerken"
 
-#: addons/moyee_subscription_portal_manager/views/portal_my_account_sub_templates.xml
 msgid "Save changes"
 msgstr "Wijzigingen opslaan"
