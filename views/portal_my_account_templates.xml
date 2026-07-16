@@ -98,6 +98,13 @@
                 <!-- ══════════════════════════ MODALS ══════════════════════════ -->
                 <t t-call="moyee_subscription_portal_manager.portal_my_home_moyee_modals"/>
 
+                <!-- Dummy elements to satisfy site-wide custom scripts and prevent addEventListener crashes -->
+                <div style="display: none !important;">
+                    <div class="timeline"></div>
+                    <div class="arrow right"></div>
+                    <div class="arrow left"></div>
+                </div>
+
             </div><!-- /moyee-account-page -->
 
         </t>
