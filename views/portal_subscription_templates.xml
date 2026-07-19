@@ -359,6 +359,51 @@
 
                                         <hr class="my-2 moyee-hr-divider"/>
 
+                                        <!-- How Bold Filter -->
+                                        <div class="moyee-filter-group">
+                                            <div class="moyee-filter-title" data-bs-toggle="collapse" data-bs-target="#filterBold">
+                                                <span>HOW BOLD?</span>
+                                                <i class="fa fa-chevron-up"></i>
+                                            </div>
+                                            <div id="filterBold" class="collapse show">
+                                                <div class="moyee-filter-options">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input moyee-filter-check" type="checkbox" value="light" id="boldLight"/>
+                                                        <label class="form-check-label" for="boldLight">Light</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input moyee-filter-check" type="checkbox" value="medium" id="boldMedium"/>
+                                                        <label class="form-check-label" for="boldMedium">Medium</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input moyee-filter-check" type="checkbox" value="bold" id="boldBold"/>
+                                                        <label class="form-check-label" for="boldBold">Bold</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <hr class="my-2 moyee-hr-divider"/>
+
+                                        <!-- Full or Fruity Filter -->
+                                        <div class="moyee-filter-group">
+                                            <div class="moyee-filter-title" data-bs-toggle="collapse" data-bs-target="#filterFruity">
+                                                <span>FULL OR FRUITY?</span>
+                                                <i class="fa fa-chevron-up"></i>
+                                            </div>
+                                            <div id="filterFruity" class="collapse show">
+                                                <div class="moyee-filter-options">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input moyee-filter-check" type="checkbox" value="full" id="charFull"/>
+                                                        <label class="form-check-label" for="charFull">Full</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input moyee-filter-check" type="checkbox" value="fruity" id="charFruity"/>
+                                                        <label class="form-check-label" for="charFruity">Fruity</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
 
                                     </div>
                                 </div>
@@ -369,31 +414,81 @@
                                             Click "Add" on a product to add it to your subscription.
                                     </p>
                                     <div class="moyee-product-slider-wrap">
-                                        <div class="moyee-product-slider" id="moyeeProductSlider">
-                                            <t t-foreach="available_products" t-as="p">
-                                                <!-- Metadata for JS filtering -->
+                                        <t t-set="sub_product_ids" t-value="order.order_line.filtered(lambda l: not l.x_moyee_is_removed).mapped('product_id.id')"/>
+                                        <t t-set="in_sub_prods" t-value="available_products.filtered(lambda p: p.id in sub_product_ids)"/>
+                                        <t t-set="other_prods" t-value="available_products.filtered(lambda p: p.id not in sub_product_ids)"/>
+
+                                        <!-- Coffee in subscription section -->
+                                        <div class="js_moyee_sub_heading fw-bold mb-2 text-uppercase" style="font-size: 11px; color: var(--moyee-pink); letter-spacing: 0.5px; display: none;">Coffee in subscription</div>
+                                        <div class="moyee-product-slider mb-4 d-none" id="moyeeProductSliderSub" style="padding-top: 15px !important;">
+                                            <t t-foreach="in_sub_prods" t-as="p">
                                                 <t t-set="pname" t-value="(p.name or '').lower()"/>
                                                 <t t-set="p_grind" t-value="('capsule' in pname or 'cups' in pname) and 'capsules' or 'whole' in pname and 'whole' or 'filter' in pname and 'filter' or 'espresso' in pname and 'espresso' or 'whole'"/>
                                                 <t t-set="p_weight" t-value="('capsule' in pname or 'cups' in pname) and '25caps' or ('1kg' in pname.replace(' ', '') or '1 kg' in pname) and '1kg' or '250' in pname and '250g' or '1kg'"/>
+                                                <t t-set="p_char" t-value="order.moyee_extract_coffee_characteristics(p)"/>
                                                 <div class="moyee-slider-card js_moyee_product_card" 
                                                      t-att-data-grind="p_grind" 
                                                      t-att-data-weight="p_weight" 
-                                                     t-att-data-price="p.lst_price">
-                                                    <!-- Product image -->
+                                                     t-att-data-bold="p_char[0]"
+                                                     t-att-data-fruity="p_char[1]"
+                                                     t-att-data-price="p.lst_price"
+                                                     style="border: 2px solid var(--moyee-pink); box-shadow: 0 0 8px rgba(255,43,133,.15); position: relative; border-radius: 14px;">
+                                                    
+                                                    <!-- Badge -->
+                                                    <span class="badge" style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--moyee-pink); color: white; font-size: 9px; padding: 3px 6px; border-radius: 10px; font-weight: 700; white-space: nowrap; z-index: 10;">IN SUBSCRIPTION</span>
+                                                    
                                                     <div class="moyee-slider-img">
                                                         <img t-att-src="'/web/image/product.product/%s/image_256' % p.id"
                                                              t-att-alt="p.name"
                                                              loading="lazy"/>
                                                     </div>
-                                                    <!-- Name -->
                                                     <div class="moyee-slider-name">
                                                          <t t-esc="((p.name or '').replace('(Subscription)', '').replace('(subscription)', '').replace('(SUBSCRIPTION)', '').strip())"/>
                                                     </div>
-                                                    <!-- Price -->
                                                     <div class="moyee-slider-price">
                                                         <t t-esc="'€ %.2f' % (p.lst_price or 0.0)"/>
                                                     </div>
-                                                    <!-- Add form -->
+                                                    <form t-attf-action="/my/subscriptions/{{ order.id }}/add_product"
+                                                          method="post" class="moyee-slider-form">
+                                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                        <input type="hidden" name="access_token" t-att-value="access_token" t-if="access_token"/>
+                                                        <input type="hidden" name="product_id" t-att-value="p.id"/>
+                                                        <div class="d-flex align-items-center gap-1 mb-2">
+                                                            <label class="moyee-label mb-0 moyee-qty-lbl">Qty</label>
+                                                            <input class="form-control form-control-sm moyee-input text-center moyee-qty-edit-input"
+                                                                   name="qty" type="number" step="1" min="1" value="1"/>
+                                                        </div>
+                                                        <button class="btn btn-primary btn-sm w-100" type="submit">Add more</button>
+                                                    </form>
+                                                </div>
+                                            </t>
+                                        </div>
+
+                                        <!-- Other coffees section -->
+                                        <div class="js_moyee_other_heading fw-bold mb-2 text-uppercase" style="font-size: 11px; color: #555; letter-spacing: 0.5px; display: none;">Other coffees</div>
+                                        <div class="moyee-product-slider" id="moyeeProductSlider">
+                                            <t t-foreach="other_prods" t-as="p">
+                                                <t t-set="pname" t-value="(p.name or '').lower()"/>
+                                                <t t-set="p_grind" t-value="('capsule' in pname or 'cups' in pname) and 'capsules' or 'whole' in pname and 'whole' or 'filter' in pname and 'filter' or 'espresso' in pname and 'espresso' or 'whole'"/>
+                                                <t t-set="p_weight" t-value="('capsule' in pname or 'cups' in pname) and '25caps' or ('1kg' in pname.replace(' ', '') or '1 kg' in pname) and '1kg' or '250' in pname and '250g' or '1kg'"/>
+                                                <t t-set="p_char" t-value="order.moyee_extract_coffee_characteristics(p)"/>
+                                                <div class="moyee-slider-card js_moyee_product_card" 
+                                                     t-att-data-grind="p_grind" 
+                                                     t-att-data-weight="p_weight" 
+                                                     t-att-data-bold="p_char[0]"
+                                                     t-att-data-fruity="p_char[1]"
+                                                     t-att-data-price="p.lst_price">
+                                                    <div class="moyee-slider-img">
+                                                        <img t-att-src="'/web/image/product.product/%s/image_256' % p.id"
+                                                             t-att-alt="p.name"
+                                                             loading="lazy"/>
+                                                    </div>
+                                                    <div class="moyee-slider-name">
+                                                         <t t-esc="((p.name or '').replace('(Subscription)', '').replace('(subscription)', '').replace('(SUBSCRIPTION)', '').strip())"/>
+                                                    </div>
+                                                    <div class="moyee-slider-price">
+                                                        <t t-esc="'€ %.2f' % (p.lst_price or 0.0)"/>
+                                                    </div>
                                                     <form t-attf-action="/my/subscriptions/{{ order.id }}/add_product"
                                                           method="post" class="moyee-slider-form">
                                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
@@ -409,7 +504,6 @@
                                                 </div>
                                             </t>
                                         </div>
-                                        <!-- No results message -->
                                         <div id="moyeeNoResults" class="text-center py-4 d-none">
                                             <div class="text-muted">No products match your filters.</div>
                                             <button class="btn btn-link btn-sm mt-2" id="clearMoyeeFilters">Clear all filters</button>

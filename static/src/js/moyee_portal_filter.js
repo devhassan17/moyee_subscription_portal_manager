@@ -93,31 +93,63 @@ publicWidget.registry.MoyeeProductFilter = publicWidget.Widget.extend({
     _applyFilters: function () {
         const activeGrinds = this.$(".moyee-filter-check[id^='grind']:checked").map(function() { return $(this).val(); }).get();
         const activeWeights = this.$(".moyee-filter-check[id^='weight']:checked").map(function() { return $(this).val(); }).get();
+        const activeBolds = this.$(".moyee-filter-check[id^='bold']:checked").map(function() { return $(this).val(); }).get();
+        const activeFruities = this.$(".moyee-filter-check[id^='char']:checked").map(function() { return $(this).val(); }).get();
 
         let visibleCount = 0;
+        let visibleSubCount = 0;
+        let visibleOtherCount = 0;
 
         this.$cards.each(function () {
             const $card = $(this);
             const grind = $card.data("grind");
             const weight = $card.data("weight");
+            const bold = $card.data("bold");
+            const fruity = $card.data("fruity");
 
             const matchGrind = activeGrinds.length === 0 || activeGrinds.includes(grind);
             const matchWeight = activeWeights.length === 0 || activeWeights.includes(weight);
+            const matchBold = activeBolds.length === 0 || activeBolds.includes(bold);
+            const matchFruity = activeFruities.length === 0 || activeFruities.includes(fruity);
 
-            if (matchGrind && matchWeight) {
+            if (matchGrind && matchWeight && matchBold && matchFruity) {
                 $card.removeClass("d-none");
                 visibleCount++;
+                if ($card.closest("#moyeeProductSliderSub").length > 0) {
+                    visibleSubCount++;
+                } else {
+                    visibleOtherCount++;
+                }
             } else {
                 $card.addClass("d-none");
             }
         });
 
-        // Toggle visibility of slider and no results message
+        // Hide/show sections and headings
+        const $subHeading = this.$(".js_moyee_sub_heading");
+        const $otherHeading = this.$(".js_moyee_other_heading");
+        const $subSlider = this.$("#moyeeProductSliderSub");
+        const $otherSlider = this.$("#moyeeProductSlider");
+
+        if (visibleSubCount === 0) {
+            $subHeading.addClass("d-none");
+            $subSlider.addClass("d-none");
+        } else {
+            $subHeading.removeClass("d-none");
+            $subSlider.removeClass("d-none");
+        }
+
+        if (visibleOtherCount === 0) {
+            $otherHeading.addClass("d-none");
+            $otherSlider.addClass("d-none");
+        } else {
+            $otherHeading.removeClass("d-none");
+            $otherSlider.removeClass("d-none");
+        }
+
         if (visibleCount === 0) {
-            this.$slider.addClass("d-none");
             this.$noResults.removeClass("d-none");
         } else {
-            this.$slider.removeClass("d-none");
             this.$noResults.addClass("d-none");
         }
 

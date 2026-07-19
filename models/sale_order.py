@@ -299,6 +299,54 @@ class SaleOrder(models.Model):
 
         return grind, weight
 
+    def moyee_extract_coffee_characteristics(self, product):
+        """
+        Extract 'How Bold?' and 'Full or Fruity?' attributes.
+        Returns (bold, fruity)
+        Possible bold values: 'light', 'medium', 'bold', 'other'
+        Possible fruity values: 'full', 'fruity', 'other'
+        """
+        bold = "other"
+        fruity = "other"
+
+        # Check attributes
+        attr_values = product.product_template_attribute_value_ids
+        for av in attr_values:
+            attr_name = (av.attribute_id.name or "").lower()
+            val_name = (av.name or "").lower()
+
+            if "bold" in attr_name or "sterkte" in attr_name:
+                if "light" in val_name or "mild" in val_name:
+                    bold = "light"
+                elif "medium" in val_name:
+                    bold = "medium"
+                elif "bold" in val_name or "donker" in val_name or "intens" in val_name:
+                    bold = "bold"
+
+            if "fruity" in attr_name or "fruity?" in attr_name or "vol of fruitig" in attr_name or "full or fruity" in attr_name:
+                if "full" in val_name or "vol" in val_name:
+                    fruity = "full"
+                elif "fruity" in val_name or "fruitig" in val_name:
+                    fruity = "fruity"
+
+        # Fallback to name scan if still 'other'
+        name = (product.name or "").lower()
+        if bold == "other":
+            if "light" in name or "mild" in name:
+                bold = "light"
+            elif "medium" in name:
+                bold = "medium"
+            elif "bold" in name or "intens" in name or "dark" in name:
+                bold = "bold"
+
+        if fruity == "other":
+            if "full" in name or "vol" in name:
+                fruity = "full"
+            elif "fruity" in name or "fruitig" in name:
+                fruity = "fruity"
+
+        return bold, fruity
+
     # ============================================================
     # ✅ UNIVERSAL: Plan field + plan model resolver (FIXED)
     # ============================================================
