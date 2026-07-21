@@ -55,10 +55,25 @@ class SaleOrder(models.Model):
     # Hide removed lines in invoices / reports / PDFs
     # ============================================================
     def _get_invoiceable_lines(self, final=False):
+        for order in self:
+            if order._moyee_is_subscription_order():
+                return order.order_line.filtered(
+                    lambda l: not l.display_type and not l.x_moyee_is_removed and float(l.product_uom_qty or 0.0) > 0.0
+                )
         lines = super()._get_invoiceable_lines(final=final)
         return lines.filtered(
             lambda l: l.display_type or (not l.x_moyee_is_removed and float(l.product_uom_qty or 0.0) > 0.0)
         )
+
+    def _create_invoices(self, grouped=False, final=False, date=None):
+        invoices = super()._create_invoices(grouped=grouped, final=final, date=date)
+        for inv in invoices:
+            to_remove = inv.invoice_line_ids.filtered(
+                lambda il: il.sale_line_ids and all(sl.x_moyee_is_removed or float(sl.product_uom_qty or 0.0) == 0.0 for sl in il.sale_line_ids)
+            )
+            if to_remove:
+                to_remove.unlink()
+        return invoices
 
     def _get_order_lines_to_report(self):
         try:
@@ -941,13 +956,27 @@ class SaleOrder(models.Model):
         if qty <= 0:
             raise ValidationError(_("Quantity must be greater than 0."))
 
-        line = self.order_line.filtered(
-            lambda l: (not l.display_type) and l.product_id.id == product.id and not l.x_moyee_is_removed
+        existing_line = self.order_line.filtered(
+            lambda l: (not l.display_type) and l.product_id.id == product.id
         )
-        if line:
-            line_to_update = line[:1].sudo()
-            line_to_update.write({"product_uom_qty": float(line_to_update.product_uom_qty or 0.0) + qty})
+        if existing_line:
+            line_to_update = existing_line[:1].sudo()
+            if line_to_update.x_moyee_is_removed:
+                line_to_update.write({
+                    "x_moyee_is_removed": False,
+                    "product_uom_qty": qty,
+                    "x_moyee_removed_on": False,
+                    "x_moyee_removed_by": False,
+                    "x_moyee_remove_reason": False,
+                })
+            else:
+                line_to_update.write({"product_uom_qty": float(line_to_update.product_uom_qty or 0.0) + qty})
             self._moyee_recompute_line_price(line_to_update)
+            if self.state in ("sale", "done") and hasattr(line_to_update, "_action_launch_stock_rule"):
+                try:
+                    line_to_update._action_launch_stock_rule()
+                except Exception:
+                    _logger.exception("Moyee: Failed to launch stock rule for updated line %s.", line_to_update.id)
         else:
             sibling = self.order_line.filtered(lambda l: not l.display_type and not l.x_moyee_is_removed)
             vals = {
@@ -965,6 +994,11 @@ class SaleOrder(models.Model):
                         vals[fname] = val.id if hasattr(val, "id") else val
             new_line = self.env["sale.order.line"].sudo().create(vals)
             self._moyee_recompute_line_price(new_line)
+            if self.state in ("sale", "done") and hasattr(new_line, "_action_launch_stock_rule"):
+                try:
+                    new_line._action_launch_stock_rule()
+                except Exception:
+                    _logger.exception("Moyee: Failed to launch stock rule for new line %s.", new_line.id)
 
         self.with_user(1).message_post(
             body=_("Moyee: customer added product via portal (%s x %s).") % (product.display_name, qty),

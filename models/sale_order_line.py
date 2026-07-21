@@ -19,6 +19,11 @@ class SaleOrderLine(models.Model):
             vals['name'] = self._clean_subscription_name(vals['name'])
         return super().write(vals)
 
+    def _prepare_invoice_line(self, **optional_values):
+        if self.x_moyee_is_removed or float(self.product_uom_qty or 0.0) <= 0.0:
+            return {}
+        return super()._prepare_invoice_line(**optional_values)
+
     def _clean_subscription_name(self, name):
         if not name:
             return name
