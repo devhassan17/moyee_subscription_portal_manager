@@ -26,6 +26,7 @@ publicWidget.registry.MoyeeProductFilter = publicWidget.Widget.extend({
         }
 
         this._updateFilterStates();
+        this._applyFilters();
 
         return this._super.apply(this, arguments);
     },

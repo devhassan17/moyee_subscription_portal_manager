@@ -665,6 +665,20 @@
 }
 .moyee-modal-select:focus { border-color: var(--moyee-pink); }
 
+.moyee-modal-input[readonly],
+.moyee-modal-input[disabled],
+.moyee-modal-select[disabled],
+input[readonly],
+select[disabled] {
+  background-image: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  background-color: #F5F6F8 !important;
+  color: #555 !important;
+  cursor: not-allowed !important;
+}
+
 /* ── TOGGLE BUTTONS ── */
 .moyee-toggle-btn {
   background: none;

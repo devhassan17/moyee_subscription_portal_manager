@@ -111,32 +111,14 @@
 }
 
 .moyee-product-slider {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 14px;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
     padding-bottom: 8px;
-    /* hide scrollbar but keep scrollability */
-    scrollbar-width: thin;
-    scrollbar-color: #ff2b85 #fce8f1;
-}
-
-.moyee-product-slider::-webkit-scrollbar {
-    height: 5px;
-}
-.moyee-product-slider::-webkit-scrollbar-track {
-    background: #fce8f1;
-    border-radius: 10px;
-}
-.moyee-product-slider::-webkit-scrollbar-thumb {
-    background: #ff2b85;
-    border-radius: 10px;
 }
 
 .moyee-slider-card {
-    flex: 0 0 160px;
-    scroll-snap-align: start;
+    width: 100%;
     border: 1.5px solid #ffd6ea;
     border-radius: 14px;
     background: #fff;
@@ -145,12 +127,24 @@
     flex-direction: column;
     align-items: center;
     gap: 8px;
-    transition: box-shadow .2s, border-color .2s;
+    transition: box-shadow .2s, border-color .2s, transform .15s;
+    box-sizing: border-box;
 }
 
 .moyee-slider-card:hover {
     border-color: #ff2b85;
-    box-shadow: 0 4px 16px rgba(255,43,133,.15);
+    box-shadow: 0 4px 16px rgba(255,43,133,.2);
+    transform: translateY(-2px);
+}
+
+.moyee-card-in-sub {
+    border: 2.5px solid #ff2b85 !important;
+    background: linear-gradient(180deg, #FFF0F6 0%, #FFFFFF 100%) !important;
+    box-shadow: 0 4px 15px rgba(255,43,133,.18) !important;
+}
+
+.moyee-card-in-sub:hover {
+    box-shadow: 0 6px 20px rgba(255,43,133,.28) !important;
 }
 
 .moyee-slider-img {
@@ -449,4 +443,45 @@ input[type="date"] {
 }
 .moyee-qty-edit-input {
     width: 60px !important;
+}
+
+/* ── Mobile & Tablet Responsiveness for Add Products Modal ── */
+@media (max-width: 767px) {
+    .moyee-modal-overlay {
+        padding: 8px !important;
+    }
+    .moyee-modal {
+        max-width: 100% !important;
+        width: 100% !important;
+        max-height: 94vh !important;
+        border-radius: 14px !important;
+    }
+    .moyee-modal-header {
+        padding: 14px 16px 0 !important;
+    }
+    .moyee-modal-body {
+        padding: 14px !important;
+    }
+    .moyee-filter-sidebar {
+        padding: 12px !important;
+        margin-bottom: 14px !important;
+        position: static !important;
+    }
+    .moyee-product-slider {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+    }
+    .moyee-slider-card {
+        padding: 10px 8px !important;
+    }
+    .moyee-slider-img {
+        width: 100% !important;
+        height: 95px !important;
+    }
+    .moyee-slider-name {
+        font-size: 11px !important;
+    }
+    .moyee-slider-price {
+        font-size: 12px !important;
+    }
 }

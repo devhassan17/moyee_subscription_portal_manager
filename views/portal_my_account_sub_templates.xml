@@ -1282,8 +1282,8 @@
                                         <t t-set="other_prods" t-value="available_products.filtered(lambda p: p.id not in sub_product_ids)"/>
 
                                         <!-- Coffee in subscription section -->
-                                        <div class="js_moyee_sub_heading fw-bold mb-2 text-uppercase" style="font-size: 11px; color: var(--moyee-pink); letter-spacing: 0.5px; display: none;">Coffee in subscription</div>
-                                        <div class="moyee-product-slider mb-4 d-none" id="moyeeProductSliderSub" style="padding-top: 15px !important;">
+                                        <div t-attf-class="js_moyee_sub_heading fw-bold mb-2 text-uppercase {{ 'd-none' if not in_sub_prods else '' }}" style="font-size: 11px; color: var(--moyee-pink); letter-spacing: 0.5px;">Coffee in subscription</div>
+                                        <div t-attf-class="moyee-product-slider mb-4 {{ 'd-none' if not in_sub_prods else '' }}" id="moyeeProductSliderSub" style="padding-top: 15px !important;">
                                             <t t-foreach="in_sub_prods" t-as="p">
                                                 <t t-set="pname" t-value="(p.with_context(display_default_code=False).display_name or p.name or '').lower()"/>
                                                 <t t-set="p_grind" t-value="('capsule' in pname or 'cups' in pname) and 'capsules' or 'whole' in pname and 'whole' or 'filter' in pname and 'filter' or 'espresso' in pname and 'espresso' or 'whole'"/>
@@ -1291,16 +1291,20 @@
                                                 <t t-set="p_attr_str" t-value="(pname + ' ' + ' '.join(p.product_template_attribute_value_ids.mapped('name') if p.product_template_attribute_value_ids else [])).lower()"/>
                                                 <t t-set="p_bold" t-value="('light' in p_attr_str or 'mild' in p_attr_str) and 'light' or ('medium' in p_attr_str) and 'medium' or ('bold' in p_attr_str or 'intens' in p_attr_str or 'dark' in p_attr_str or 'donker' in p_attr_str) and 'bold' or 'other'"/>
                                                 <t t-set="p_fruity" t-value="('full' in p_attr_str or 'vol' in p_attr_str) and 'full' or ('fruity' in p_attr_str or 'fruitig' in p_attr_str) and 'fruity' or 'other'"/>
-                                                <div class="moyee-slider-card js_moyee_product_card" 
+                                                <t t-set="sub_lines" t-value="active_subscription.order_line.filtered(lambda l: not l.x_moyee_is_removed and l.product_id.id == p.id)"/>
+                                                <t t-set="in_sub_qty" t-value="int(sum(sub_lines.mapped('product_uom_qty'))) if sub_lines else 0"/>
+                                                <div class="moyee-slider-card js_moyee_product_card moyee-card-in-sub" 
                                                      t-att-data-grind="p_grind"
                                                      t-att-data-weight="p_weight" 
                                                      t-att-data-bold="p_bold"
                                                      t-att-data-fruity="p_fruity"
                                                      t-att-data-price="p.lst_price"
-                                                     style="border: 2px solid var(--moyee-pink); box-shadow: 0 0 8px rgba(233, 30, 140, 0.15); position: relative; border-radius: 14px;">
+                                                     style="border: 2.5px solid var(--moyee-pink) !important; box-shadow: 0 4px 14px rgba(233, 30, 140, 0.18) !important; background: linear-gradient(180deg, #FFF0F6 0%, #FFFFFF 100%) !important; position: relative; border-radius: 14px;">
                                                     
                                                     <!-- Badge -->
-                                                    <span class="badge" style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--moyee-pink); color: white; font-size: 9px; padding: 3px 6px; border-radius: 10px; font-weight: 700; white-space: nowrap; z-index: 10;">IN SUBSCRIPTION</span>
+                                                    <span class="badge" style="position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: var(--moyee-pink); color: white; font-size: 9.5px; padding: 3px 9px; border-radius: 10px; font-weight: 800; white-space: nowrap; z-index: 10; letter-spacing: 0.4px; box-shadow: 0 2px 6px rgba(233, 30, 140, 0.35);">
+                                                        ✓ <t t-esc="('%d IN SUBSCRIPTION' % in_sub_qty) if in_sub_qty &gt; 0 else 'IN SUBSCRIPTION'"/>
+                                                    </span>
                                                     
                                                     <div class="moyee-slider-img">
                                                         <img t-att-src="'/web/image/product.product/%s/image_256' % p.id"
@@ -1324,14 +1328,14 @@
                                                                    name="qty" type="number" step="1" min="1" value="1"
                                                                    style="width:50px; height: 26px; padding: 2px; border-radius: 5px;"/>
                                                         </div>
-                                                        <button class="btn btn-primary btn-sm w-100" style="font-size: 11px; padding: 4px;" type="submit">Add more</button>
+                                                        <button class="btn btn-primary btn-sm w-100" style="font-size: 11px; padding: 5px; font-weight: 700;" type="submit">+ Add more</button>
                                                     </form>
                                                 </div>
                                             </t>
                                         </div>
 
                                         <!-- Other coffees section -->
-                                        <div class="js_moyee_other_heading fw-bold mb-2 text-uppercase" style="font-size: 11px; color: #555; letter-spacing: 0.5px; display: none;">Other coffees</div>
+                                        <div t-attf-class="js_moyee_other_heading fw-bold mb-2 text-uppercase {{ 'd-none' if not other_prods else '' }}" style="font-size: 11px; color: #555; letter-spacing: 0.5px;">Other coffees</div>
                                         <div class="moyee-product-slider" id="moyeeProductSlider">
                                             <t t-foreach="other_prods" t-as="p">
                                                 <t t-set="pname" t-value="(p.with_context(display_default_code=False).display_name or p.name or '').lower()"/>
@@ -1403,12 +1407,10 @@
                                        t-att-value="partner.name or ''"/>
                             </div>
                             <div class="col-12 col-sm-6">
-                                <label class="form-label moyee-modal-label" style="font-size: 11px; font-weight: 800; color: #555; text-transform: uppercase; display: flex; align-items: center; justify-content: space-between;">
-                                    <span>Company</span>
-                                    <span style="text-transform: none; font-weight: 500; color: #999; font-size: 9.5px;">(i) email customer support to edit this</span>
-                                </label>
-                                <input class="form-control moyee-modal-input" name="company_name" type="text" readonly="readonly" style="background-color: #f5f5f5; cursor: not-allowed;"
+                                <label class="form-label moyee-modal-label" style="font-size: 11px; font-weight: 800; color: #555; text-transform: uppercase;">Company</label>
+                                <input class="form-control moyee-modal-input" name="company_name" type="text" readonly="readonly" style="background-color: #F5F6F8; cursor: not-allowed;"
                                        t-att-value="partner.parent_id.name if partner.parent_id else partner.company_name or ''"/>
+                                <small class="text-muted d-block mt-1" style="font-size: 10px; font-style: italic;">(i) email customer support to edit this</small>
                             </div>
                             <div class="col-12 col-sm-6">
                                 <label class="form-label moyee-modal-label" style="font-size: 11px; font-weight: 800; color: #555; text-transform: uppercase;">Email</label>
@@ -1436,20 +1438,11 @@
                                        t-att-value="partner.city or ''"/>
                             </div>
                             <div class="col-12 col-sm-4">
-                                <label class="form-label moyee-modal-label" style="font-size: 11px; font-weight: 800; color: #555; text-transform: uppercase; display: flex; align-items: center; justify-content: space-between;">
-                                    <span>Country</span>
-                                    <span style="text-transform: none; font-weight: 500; color: #999; font-size: 9.5px;">(i) email customer support to edit this</span>
-                                </label>
-                                <select class="form-select moyee-modal-select" name="country_id_disabled" disabled="disabled" style="background-color: #f5f5f5; cursor: not-allowed;">
-                                    <option value="">--</option>
-                                    <t t-foreach="countries" t-as="c">
-                                        <option t-att-value="c.id"
-                                                t-att-selected="partner.country_id and partner.country_id.id == c.id">
-                                            <t t-esc="c.name"/>
-                                        </option>
-                                    </t>
-                                </select>
+                                <label class="form-label moyee-modal-label" style="font-size: 11px; font-weight: 800; color: #555; text-transform: uppercase;">Country</label>
+                                <input class="form-control moyee-modal-input" type="text" readonly="readonly" style="background-color: #F5F6F8; cursor: not-allowed;"
+                                       t-att-value="partner.country_id.name if partner.country_id else ''"/>
                                 <input type="hidden" name="country_id" t-att-value="partner.country_id.id if partner.country_id else ''"/>
+                                <small class="text-muted d-block mt-1" style="font-size: 10px; font-style: italic;">(i) email customer support to edit this</small>
                             </div>
                             
                             <div class="col-12 d-flex gap-3 mt-4" style="width: 100%;">
