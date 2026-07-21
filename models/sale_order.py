@@ -55,15 +55,20 @@ class SaleOrder(models.Model):
     # Hide removed lines in invoices / reports / PDFs
     # ============================================================
     def _get_invoiceable_lines(self, final=False):
-        for order in self:
-            if order._moyee_is_subscription_order():
-                return order.order_line.filtered(
-                    lambda l: not l.display_type and not l.x_moyee_is_removed and float(l.product_uom_qty or 0.0) > 0.0
-                )
-        lines = super()._get_invoiceable_lines(final=final)
-        return lines.filtered(
-            lambda l: l.display_type or (not l.x_moyee_is_removed and float(l.product_uom_qty or 0.0) > 0.0)
+        sub_orders = self.filtered(lambda o: o._moyee_is_subscription_order())
+        non_sub_orders = self - sub_orders
+
+        sub_lines = sub_orders.mapped("order_line").filtered(
+            lambda l: not l.display_type and not l.x_moyee_is_removed and float(l.product_uom_qty or 0.0) > 0.0
         )
+
+        if non_sub_orders:
+            non_sub_lines = super(SaleOrder, non_sub_orders)._get_invoiceable_lines(final=final).filtered(
+                lambda l: l.display_type or (not l.x_moyee_is_removed and float(l.product_uom_qty or 0.0) > 0.0)
+            )
+            return sub_lines | non_sub_lines
+
+        return sub_lines
 
     def _create_invoices(self, grouped=False, final=False, date=None):
         invoices = super()._create_invoices(grouped=grouped, final=final, date=date)
