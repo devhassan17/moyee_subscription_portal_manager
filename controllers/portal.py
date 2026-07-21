@@ -170,7 +170,19 @@ class MoyeePortalHome(CustomerPortal):
             # Available products (for "Add product" popup)
             try:
                 addable_products = active_subscription._moyee_get_portal_addable_products()
-                existing_products = active_subscription.order_line.filtered(lambda l: not l.x_moyee_is_removed and not l.display_type and l.product_id).mapped("product_id")
+                existing_products = active_subscription.order_line.filtered(
+                    lambda l: not l.x_moyee_is_removed 
+                    and not l.display_type 
+                    and l.product_id 
+                    and 'delivery' not in (l.product_id.name or l.name or '').lower()
+                    and 'shipping' not in (l.product_id.name or l.name or '').lower()
+                    and 'bezorg' not in (l.product_id.name or l.name or '').lower()
+                ).mapped("product_id")
+                addable_products = addable_products.filtered(
+                    lambda p: 'delivery' not in (p.name or '').lower()
+                    and 'shipping' not in (p.name or '').lower()
+                    and 'bezorg' not in (p.name or '').lower()
+                )
                 available_products = addable_products | existing_products
             except Exception:
                 _logger.exception("Moyee: Failed to get portal addable products.")
@@ -260,9 +272,19 @@ class MoyeePortalHome(CustomerPortal):
         variant_map = []
         if active_subscription:
             try:
-                # Include both available_products and any products currently on the subscription lines
-                existing_products = active_subscription.order_line.filtered(lambda l: not l.x_moyee_is_removed).mapped("product_id")
-                all_possible_products = available_products | existing_products
+                existing_products = active_subscription.order_line.filtered(
+                    lambda l: not l.x_moyee_is_removed 
+                    and not l.display_type 
+                    and l.product_id 
+                    and 'delivery' not in (l.product_id.name or l.name or '').lower()
+                    and 'shipping' not in (l.product_id.name or l.name or '').lower()
+                    and 'bezorg' not in (l.product_id.name or l.name or '').lower()
+                ).mapped("product_id")
+                all_possible_products = (available_products | existing_products).filtered(
+                    lambda p: 'delivery' not in (p.name or '').lower()
+                    and 'shipping' not in (p.name or '').lower()
+                    and 'bezorg' not in (p.name or '').lower()
+                )
                 for p in all_possible_products:
                     grind, weight = active_subscription.moyee_extract_product_metadata(p)
                     tmpl_name = p.product_tmpl_id.name or ''
@@ -510,7 +532,19 @@ class MoyeeSubscriptionPortal(http.Controller):
         next_date_value = order[next_date_field] if next_date_field else False
 
         addable_products = order._moyee_get_portal_addable_products()
-        existing_products = order.order_line.filtered(lambda l: not l.x_moyee_is_removed and not l.display_type and l.product_id).mapped("product_id")
+        existing_products = order.order_line.filtered(
+            lambda l: not l.x_moyee_is_removed 
+            and not l.display_type 
+            and l.product_id 
+            and 'delivery' not in (l.product_id.name or l.name or '').lower()
+            and 'shipping' not in (l.product_id.name or l.name or '').lower()
+            and 'bezorg' not in (l.product_id.name or l.name or '').lower()
+        ).mapped("product_id")
+        addable_products = addable_products.filtered(
+            lambda p: 'delivery' not in (p.name or '').lower()
+            and 'shipping' not in (p.name or '').lower()
+            and 'bezorg' not in (p.name or '').lower()
+        )
         available_products = addable_products | existing_products
 
         # Try model-level logic first

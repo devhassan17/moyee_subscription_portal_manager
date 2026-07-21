@@ -1277,13 +1277,13 @@
                                         Select quantity and click "Add" to insert a coffee product into your subscription.
                                     </p>
                                     <div class="moyee-product-slider-wrap">
-                                        <t t-set="sub_lines" t-value="active_subscription.order_line.filtered(lambda l: not l.x_moyee_is_removed and not l.display_type and l.product_id)"/>
+                                        <t t-set="sub_lines" t-value="active_subscription.order_line.filtered(lambda l: not l.x_moyee_is_removed and not l.display_type and l.product_id and 'delivery' not in (l.product_id.name or l.name or '').lower() and 'shipping' not in (l.product_id.name or l.name or '').lower() and 'bezorg' not in (l.product_id.name or l.name or '').lower())"/>
                                         <t t-set="in_sub_prods" t-value="sub_lines.mapped('product_id')"/>
-                                        <t t-set="other_prods" t-value="available_products.filtered(lambda p: p.id not in in_sub_prods.ids)"/>
+                                        <t t-set="other_prods" t-value="available_products.filtered(lambda p: p.id not in in_sub_prods.ids and 'delivery' not in (p.name or '').lower() and 'shipping' not in (p.name or '').lower() and 'bezorg' not in (p.name or '').lower())"/>
 
                                         <!-- Coffee in subscription section -->
                                         <div t-attf-class="js_moyee_sub_heading fw-bold mb-2 text-uppercase {{ 'd-none' if not in_sub_prods else '' }}" style="font-size: 11px; color: var(--moyee-pink); letter-spacing: 0.5px;">Coffee in subscription</div>
-                                        <div t-attf-class="moyee-product-slider mb-4 {{ 'd-none' if not in_sub_prods else '' }}" id="moyeeProductSliderSub" style="padding-top: 18px !important; margin-top: 10px !important; overflow: visible !important;">
+                                        <div t-attf-class="moyee-product-slider mb-4 {{ 'd-none' if not in_sub_prods else '' }}" id="moyeeProductSliderSub" style="padding-top: 22px !important; margin-top: 10px !important; overflow: visible !important;">
                                             <t t-foreach="in_sub_prods" t-as="p">
                                                 <t t-set="pname" t-value="(p.with_context(display_default_code=False).display_name or p.name or '').lower()"/>
                                                 <t t-set="p_grind" t-value="('capsule' in pname or 'cups' in pname) and 'capsules' or 'whole' in pname and 'whole' or 'filter' in pname and 'filter' or 'espresso' in pname and 'espresso' or 'whole'"/>
@@ -1299,10 +1299,10 @@
                                                      t-att-data-bold="p_bold"
                                                      t-att-data-fruity="p_fruity"
                                                      t-att-data-price="p.lst_price"
-                                                     style="border: 2.5px solid var(--moyee-pink) !important; box-shadow: 0 4px 14px rgba(233, 30, 140, 0.18) !important; background: linear-gradient(180deg, #FFF0F6 0%, #FFFFFF 100%) !important; position: relative; border-radius: 14px;">
+                                                     style="border: 2.5px solid var(--moyee-pink) !important; box-shadow: 0 4px 14px rgba(233, 30, 140, 0.18) !important; background: linear-gradient(180deg, #FFF0F6 0%, #FFFFFF 100%) !important; position: relative; border-radius: 14px; margin-top: 14px !important;">
                                                     
                                                     <!-- Badge -->
-                                                    <span class="badge" style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--moyee-pink); color: white; font-size: 10px; padding: 4px 10px; border-radius: 12px; font-weight: 800; white-space: nowrap; z-index: 10; letter-spacing: 0.4px; box-shadow: 0 3px 8px rgba(233, 30, 140, 0.35); line-height: 1.1;">
+                                                    <span class="badge" style="position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: var(--moyee-pink); color: white; font-size: 10px; padding: 4px 12px; border-radius: 14px; font-weight: 800; white-space: nowrap; z-index: 10; letter-spacing: 0.5px; border: 2px solid #ffffff; box-shadow: 0 4px 10px rgba(233, 30, 140, 0.35); line-height: 1.2;">
                                                         ✓ <t t-esc="('%d IN SUBSCRIPTION' % in_sub_qty) if in_sub_qty &gt; 0 else 'IN SUBSCRIPTION'"/>
                                                     </span>
                                                     
