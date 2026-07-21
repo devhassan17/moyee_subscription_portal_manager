@@ -425,12 +425,14 @@
                                                 <t t-set="pname" t-value="(p.name or '').lower()"/>
                                                 <t t-set="p_grind" t-value="('capsule' in pname or 'cups' in pname) and 'capsules' or 'whole' in pname and 'whole' or 'filter' in pname and 'filter' or 'espresso' in pname and 'espresso' or 'whole'"/>
                                                 <t t-set="p_weight" t-value="('capsule' in pname or 'cups' in pname) and '25caps' or ('1kg' in pname.replace(' ', '') or '1 kg' in pname) and '1kg' or '250' in pname and '250g' or '1kg'"/>
-                                                <t t-set="p_char" t-value="order and callable(getattr(order, 'moyee_extract_coffee_characteristics', None)) and order.moyee_extract_coffee_characteristics(p) or (('light' if 'light' in (p.name or '').lower() or 'mild' in (p.name or '').lower() else 'medium' if 'medium' in (p.name or '').lower() else 'bold' if 'bold' in (p.name or '').lower() or 'intens' in (p.name or '').lower() or 'dark' in (p.name or '').lower() else 'other'), ('full' if 'full' in (p.name or '').lower() or 'vol' in (p.name or '').lower() else 'fruity' if 'fruity' in (p.name or '').lower() or 'fruitig' in (p.name or '').lower() else 'other'))"/>
+                                                <t t-set="p_attr_str" t-value="(pname + ' ' + ' '.join(p.product_template_attribute_value_ids.mapped('name') if p.product_template_attribute_value_ids else [])).lower()"/>
+                                                <t t-set="p_bold" t-value="('light' in p_attr_str or 'mild' in p_attr_str) and 'light' or ('medium' in p_attr_str) and 'medium' or ('bold' in p_attr_str or 'intens' in p_attr_str or 'dark' in p_attr_str or 'donker' in p_attr_str) and 'bold' or 'other'"/>
+                                                <t t-set="p_fruity" t-value="('full' in p_attr_str or 'vol' in p_attr_str) and 'full' or ('fruity' in p_attr_str or 'fruitig' in p_attr_str) and 'fruity' or 'other'"/>
                                                 <div class="moyee-slider-card js_moyee_product_card" 
                                                      t-att-data-grind="p_grind" 
                                                      t-att-data-weight="p_weight" 
-                                                     t-att-data-bold="p_char[0]"
-                                                     t-att-data-fruity="p_char[1]"
+                                                     t-att-data-bold="p_bold"
+                                                     t-att-data-fruity="p_fruity"
                                                      t-att-data-price="p.lst_price"
                                                      style="border: 2px solid var(--moyee-pink); box-shadow: 0 0 8px rgba(255,43,133,.15); position: relative; border-radius: 14px;">
                                                     
@@ -471,12 +473,14 @@
                                                 <t t-set="pname" t-value="(p.name or '').lower()"/>
                                                 <t t-set="p_grind" t-value="('capsule' in pname or 'cups' in pname) and 'capsules' or 'whole' in pname and 'whole' or 'filter' in pname and 'filter' or 'espresso' in pname and 'espresso' or 'whole'"/>
                                                 <t t-set="p_weight" t-value="('capsule' in pname or 'cups' in pname) and '25caps' or ('1kg' in pname.replace(' ', '') or '1 kg' in pname) and '1kg' or '250' in pname and '250g' or '1kg'"/>
-                                                <t t-set="p_char" t-value="order and callable(getattr(order, 'moyee_extract_coffee_characteristics', None)) and order.moyee_extract_coffee_characteristics(p) or (('light' if 'light' in (p.name or '').lower() or 'mild' in (p.name or '').lower() else 'medium' if 'medium' in (p.name or '').lower() else 'bold' if 'bold' in (p.name or '').lower() or 'intens' in (p.name or '').lower() or 'dark' in (p.name or '').lower() else 'other'), ('full' if 'full' in (p.name or '').lower() or 'vol' in (p.name or '').lower() else 'fruity' if 'fruity' in (p.name or '').lower() or 'fruitig' in (p.name or '').lower() else 'other'))"/>
+                                                <t t-set="p_attr_str" t-value="(pname + ' ' + ' '.join(p.product_template_attribute_value_ids.mapped('name') if p.product_template_attribute_value_ids else [])).lower()"/>
+                                                <t t-set="p_bold" t-value="('light' in p_attr_str or 'mild' in p_attr_str) and 'light' or ('medium' in p_attr_str) and 'medium' or ('bold' in p_attr_str or 'intens' in p_attr_str or 'dark' in p_attr_str or 'donker' in p_attr_str) and 'bold' or 'other'"/>
+                                                <t t-set="p_fruity" t-value="('full' in p_attr_str or 'vol' in p_attr_str) and 'full' or ('fruity' in p_attr_str or 'fruitig' in p_attr_str) and 'fruity' or 'other'"/>
                                                 <div class="moyee-slider-card js_moyee_product_card" 
                                                      t-att-data-grind="p_grind" 
                                                      t-att-data-weight="p_weight" 
-                                                     t-att-data-bold="p_char[0]"
-                                                     t-att-data-fruity="p_char[1]"
+                                                     t-att-data-bold="p_bold"
+                                                     t-att-data-fruity="p_fruity"
                                                      t-att-data-price="p.lst_price">
                                                     <div class="moyee-slider-img">
                                                         <img t-att-src="'/web/image/product.product/%s/image_256' % p.id"
