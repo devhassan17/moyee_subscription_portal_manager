@@ -232,48 +232,53 @@ class SaleOrder(models.Model):
 
         return filtered_products
 
-    def moyee_extract_product_metadata(self, product):
+    @api.model
+    def moyee_extract_product_metadata(self, product=None):
         """
         Extract Grind and Weight from product attributes or name.
         Returns (grind, weight)
         """
+        if not product:
+            return "other", "other"
+
         grind = "other"
         weight = "other"
 
         # 1. Check attributes
-        attr_values = product.product_template_attribute_value_ids
-        for av in attr_values:
-            if grind != "other":
-                break
-            attr_name = (av.attribute_id.name or "").lower()
-            val_name = (av.name or "").lower()
+        attr_values = getattr(product, "product_template_attribute_value_ids", False)
+        if attr_values:
+            for av in attr_values:
+                if grind != "other":
+                    break
+                attr_name = (av.attribute_id.name or "").lower()
+                val_name = (av.name or "").lower()
 
-            if "grind" in attr_name or "maling" in attr_name:
-                if "capsule" in val_name or "cup" in val_name:
-                    grind = "capsules"
-                elif "whole" in val_name or "boon" in val_name or "bonen" in val_name:
-                    grind = "whole"
-                elif "filter" in val_name:
-                    grind = "filter"
-                elif "espresso" in val_name:
-                    grind = "espresso"
+                if "grind" in attr_name or "maling" in attr_name:
+                    if "capsule" in val_name or "cup" in val_name:
+                        grind = "capsules"
+                    elif "whole" in val_name or "boon" in val_name or "bonen" in val_name:
+                        grind = "whole"
+                    elif "filter" in val_name:
+                        grind = "filter"
+                    elif "espresso" in val_name:
+                        grind = "espresso"
 
-        for av in attr_values:
-            if weight != "other":
-                break
-            attr_name = (av.attribute_id.name or "").lower()
-            val_name = (av.name or "").lower()
-            if "weight" in attr_name or "size" in attr_name or "gewicht" in attr_name:
-                v_clean = val_name.replace(" ", "")
-                if "capsules" in v_clean or "capsule" in v_clean or "cups" in v_clean or "25caps" in v_clean:
-                    weight = "25caps"
-                elif "1kg" in v_clean or "1.0kg" in v_clean or "1000g" in v_clean or "1000 g" in val_name:
-                    weight = "1kg"
-                elif "250g" in v_clean or "250" in v_clean or "0.25kg" in v_clean or "0.25 kg" in val_name:
-                    weight = "250g"
+            for av in attr_values:
+                if weight != "other":
+                    break
+                attr_name = (av.attribute_id.name or "").lower()
+                val_name = (av.name or "").lower()
+                if "weight" in attr_name or "size" in attr_name or "gewicht" in attr_name:
+                    v_clean = val_name.replace(" ", "")
+                    if "capsules" in v_clean or "capsule" in v_clean or "cups" in v_clean or "25caps" in v_clean:
+                        weight = "25caps"
+                    elif "1kg" in v_clean or "1.0kg" in v_clean or "1000g" in v_clean or "1000 g" in val_name:
+                        weight = "1kg"
+                    elif "250g" in v_clean or "250" in v_clean or "0.25kg" in v_clean or "0.25 kg" in val_name:
+                        weight = "250g"
 
         # 2. Fallback to name scanning if still 'other'
-        name = (product.display_name or "").lower()
+        name = (getattr(product, "display_name", "") or getattr(product, "name", "") or "").lower()
         if grind == "other":
             if "capsule" in name or "cup" in name:
                 grind = "capsules"
@@ -299,38 +304,43 @@ class SaleOrder(models.Model):
 
         return grind, weight
 
-    def moyee_extract_coffee_characteristics(self, product):
+    @api.model
+    def moyee_extract_coffee_characteristics(self, product=None):
         """
         Extract 'How Bold?' and 'Full or Fruity?' attributes.
         Returns (bold, fruity)
         Possible bold values: 'light', 'medium', 'bold', 'other'
         Possible fruity values: 'full', 'fruity', 'other'
         """
+        if not product:
+            return "other", "other"
+
         bold = "other"
         fruity = "other"
 
         # Check attributes
-        attr_values = product.product_template_attribute_value_ids
-        for av in attr_values:
-            attr_name = (av.attribute_id.name or "").lower()
-            val_name = (av.name or "").lower()
+        attr_values = getattr(product, "product_template_attribute_value_ids", False)
+        if attr_values:
+            for av in attr_values:
+                attr_name = (av.attribute_id.name or "").lower()
+                val_name = (av.name or "").lower()
 
-            if "bold" in attr_name or "sterkte" in attr_name:
-                if "light" in val_name or "mild" in val_name:
-                    bold = "light"
-                elif "medium" in val_name:
-                    bold = "medium"
-                elif "bold" in val_name or "donker" in val_name or "intens" in val_name:
-                    bold = "bold"
+                if "bold" in attr_name or "sterkte" in attr_name:
+                    if "light" in val_name or "mild" in val_name:
+                        bold = "light"
+                    elif "medium" in val_name:
+                        bold = "medium"
+                    elif "bold" in val_name or "donker" in val_name or "intens" in val_name:
+                        bold = "bold"
 
-            if "fruity" in attr_name or "fruity?" in attr_name or "vol of fruitig" in attr_name or "full or fruity" in attr_name:
-                if "full" in val_name or "vol" in val_name:
-                    fruity = "full"
-                elif "fruity" in val_name or "fruitig" in val_name:
-                    fruity = "fruity"
+                if "fruity" in attr_name or "fruity?" in attr_name or "vol of fruitig" in attr_name or "full or fruity" in attr_name:
+                    if "full" in val_name or "vol" in val_name:
+                        fruity = "full"
+                    elif "fruity" in val_name or "fruitig" in val_name:
+                        fruity = "fruity"
 
         # Fallback to name scan if still 'other'
-        name = (product.name or "").lower()
+        name = (getattr(product, "name", "") or getattr(product, "display_name", "") or "").lower()
         if bold == "other":
             if "light" in name or "mild" in name:
                 bold = "light"
