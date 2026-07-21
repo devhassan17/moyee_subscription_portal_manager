@@ -1083,7 +1083,7 @@ class SaleOrder(models.Model):
     # ============================================================
     # Edit line product (portal)
     # ============================================================
-    def moyee_portal_edit_line_product(self, *, portal_user_id, line_id, template_id, grind, weight, access_token=None):
+    def moyee_portal_edit_line_product(self, *, portal_user_id, line_id, template_id, grind, weight, qty=None, access_token=None):
         self.ensure_one()
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
         if not portal_user:
@@ -1125,26 +1125,43 @@ class SaleOrder(models.Model):
                 _("The selected combination of %s (%s, %s) is not available.") % (template.name, grind, weight)
             )
 
+        new_qty = None
+        if qty is not None:
+            try:
+                new_qty = float(qty)
+            except (ValueError, TypeError):
+                new_qty = None
+            if new_qty is not None and new_qty <= 0:
+                raise ValidationError(_("Quantity must be greater than 0."))
+
         old_product = line.product_id
         if old_product.id != target_product.id:
-            # Check if this product is already in the subscription (to prevent duplicates)
+            # Check if target product is already on another subscription line (to merge)
             existing_line = self.order_line.filtered(
                 lambda l: (not l.display_type) and l.product_id.id == target_product.id and not l.x_moyee_is_removed and l.id != line.id
             )
             if existing_line:
-                # Merge quantities
                 existing_line_sudo = existing_line[:1].sudo()
-                existing_line_sudo.write({"product_uom_qty": existing_line_sudo.product_uom_qty + line.product_uom_qty})
-                # Soft remove the current line
+                add_qty = new_qty if (new_qty is not None and new_qty > 0) else line.product_uom_qty
+                existing_line_sudo.write({"product_uom_qty": existing_line_sudo.product_uom_qty + add_qty})
                 line.sudo().write({"x_moyee_is_removed": True, "product_uom_qty": 0.0})
                 self._moyee_recompute_line_price(existing_line_sudo)
             else:
                 line_sudo = line.sudo()
-                line_sudo.write({
+                update_vals = {
                     "product_id": target_product.id,
                     "name": target_product.with_context(display_default_code=False).display_name or target_product.display_name,
                     "product_uom": target_product.uom_id.id,
-                })
+                }
+                if new_qty is not None and new_qty > 0:
+                    update_vals["product_uom_qty"] = new_qty
+                line_sudo.write(update_vals)
+                self._moyee_recompute_line_price(line_sudo)
+        else:
+            # Same product, update quantity if changed
+            if new_qty is not None and new_qty > 0 and new_qty != line.product_uom_qty:
+                line_sudo = line.sudo()
+                line_sudo.write({"product_uom_qty": new_qty})
                 self._moyee_recompute_line_price(line_sudo)
 
         self.with_user(1).message_post(

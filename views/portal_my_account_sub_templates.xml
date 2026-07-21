@@ -1510,21 +1510,30 @@
                                             </select>
                                         </div>
 
-                                        <!-- 3. AMOUNT -->
-                                        <div style="display: none !important;">
-                                            <label class="moyee-modal-label">AMOUNT</label>
-                                            <select class="form-select moyee-modal-input" name="weight" required="required">
-                                                <option value="1kg" t-att-selected="line_weight == '1kg' or line_weight not in ['1kg', '250g', '25caps']">1 kg</option>
-                                                <option value="250g" t-att-selected="line_weight == '250g'">250g</option>
-                                                <option value="25caps" t-att-selected="line_weight == '25caps'">25 Capsules</option>
-                                            </select>
-                                        </div>
+                                         <!-- 3. PACK SIZE / WEIGHT -->
+                                         <div>
+                                             <label class="moyee-modal-label">PACK SIZE / WEIGHT</label>
+                                             <select class="form-select moyee-modal-input" name="weight" required="required">
+                                                 <option value="1kg" t-att-selected="line_weight == '1kg' or line_weight not in ['1kg', '250g', '25caps']">1 kg</option>
+                                                 <option value="250g" t-att-selected="line_weight == '250g'">250 gram</option>
+                                                 <option value="25caps" t-att-selected="line_weight == '25caps'">25 Capsules</option>
+                                             </select>
+                                         </div>
 
-                                        <div class="d-flex gap-2 mt-3" style="width: 100%;">
-                                            <button class="moyee-modal-cancel btn btn-light w-50" type="button" style="border-radius: 8px; font-weight: 700; height: 44px; padding: 0;">Cancel</button>
-                                            <button class="moyee-modal-save btn btn-primary w-50" type="submit" style="background: var(--moyee-pink); border: none; border-radius: 8px; font-weight: 700; height: 44px; padding: 0; color: white;">Save</button>
-                                        </div>
-                                    </form>
+                                         <!-- 4. QUANTITY -->
+                                         <div>
+                                             <label class="moyee-modal-label">QUANTITY</label>
+                                             <input class="form-control moyee-modal-input text-center fw-bold" 
+                                                    name="qty" type="number" step="1" min="1" 
+                                                    t-att-value="int(line.product_uom_qty)" 
+                                                    required="required"/>
+                                         </div>
+
+                                         <div class="d-flex gap-2 mt-3" style="width: 100%;">
+                                             <button class="moyee-modal-cancel btn btn-light w-50" type="button" style="border-radius: 8px; font-weight: 700; height: 44px; padding: 0;">Cancel</button>
+                                             <button class="moyee-modal-save btn btn-primary w-50" type="submit" style="background: var(--moyee-pink); border: none; border-radius: 8px; font-weight: 700; height: 44px; padding: 0; color: white;">Save Changes</button>
+                                         </div>
+                                     </form>
                                 </div>
                             </div>
                         </div>

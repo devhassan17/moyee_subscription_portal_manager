@@ -781,12 +781,14 @@ class MoyeeSubscriptionPortal(http.Controller):
             template_id = int(post.get("coffee_type") or 0)
             grind = (post.get("grind") or "").strip()
             weight = (post.get("weight") or "").strip()
+            qty = post.get("qty")
             order.moyee_portal_edit_line_product(
                 portal_user_id=request.env.user.id,
                 line_id=line_id,
                 template_id=template_id,
                 grind=grind,
                 weight=weight,
+                qty=qty,
                 access_token=access_token,
             )
         except (AccessError, UserError, ValidationError, ValueError) as e:
