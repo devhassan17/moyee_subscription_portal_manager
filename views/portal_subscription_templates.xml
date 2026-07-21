@@ -414,13 +414,13 @@
                                             Click "Add" on a product to add it to your subscription.
                                     </p>
                                     <div class="moyee-product-slider-wrap">
-                                        <t t-set="sub_product_ids" t-value="order.order_line.filtered(lambda l: not l.x_moyee_is_removed).mapped('product_id.id')"/>
-                                        <t t-set="in_sub_prods" t-value="available_products.filtered(lambda p: p.id in sub_product_ids)"/>
-                                        <t t-set="other_prods" t-value="available_products.filtered(lambda p: p.id not in sub_product_ids)"/>
+                                        <t t-set="sub_lines" t-value="order.order_line.filtered(lambda l: not l.x_moyee_is_removed and not l.display_type and l.product_id)"/>
+                                        <t t-set="in_sub_prods" t-value="sub_lines.mapped('product_id')"/>
+                                        <t t-set="other_prods" t-value="available_products.filtered(lambda p: p.id not in in_sub_prods.ids)"/>
 
                                         <!-- Coffee in subscription section -->
                                         <div t-attf-class="js_moyee_sub_heading fw-bold mb-2 text-uppercase {{ 'd-none' if not in_sub_prods else '' }}" style="font-size: 11px; color: var(--moyee-pink); letter-spacing: 0.5px;">Coffee in subscription</div>
-                                        <div t-attf-class="moyee-product-slider mb-4 {{ 'd-none' if not in_sub_prods else '' }}" id="moyeeProductSliderSub" style="padding-top: 15px !important;">
+                                        <div t-attf-class="moyee-product-slider mb-4 {{ 'd-none' if not in_sub_prods else '' }}" id="moyeeProductSliderSub" style="padding-top: 18px !important; margin-top: 10px !important; overflow: visible !important;">
                                             <t t-foreach="in_sub_prods" t-as="p">
                                                 <t t-set="pname" t-value="(p.name or '').lower()"/>
                                                 <t t-set="p_grind" t-value="('capsule' in pname or 'cups' in pname) and 'capsules' or 'whole' in pname and 'whole' or 'filter' in pname and 'filter' or 'espresso' in pname and 'espresso' or 'whole'"/>
@@ -428,8 +428,8 @@
                                                 <t t-set="p_attr_str" t-value="(pname + ' ' + ' '.join(p.product_template_attribute_value_ids.mapped('name') if p.product_template_attribute_value_ids else [])).lower()"/>
                                                 <t t-set="p_bold" t-value="('light' in p_attr_str or 'mild' in p_attr_str) and 'light' or ('medium' in p_attr_str) and 'medium' or ('bold' in p_attr_str or 'intens' in p_attr_str or 'dark' in p_attr_str or 'donker' in p_attr_str) and 'bold' or 'other'"/>
                                                 <t t-set="p_fruity" t-value="('full' in p_attr_str or 'vol' in p_attr_str) and 'full' or ('fruity' in p_attr_str or 'fruitig' in p_attr_str) and 'fruity' or 'other'"/>
-                                                <t t-set="sub_lines" t-value="order.order_line.filtered(lambda l: not l.x_moyee_is_removed and l.product_id.id == p.id)"/>
-                                                <t t-set="in_sub_qty" t-value="int(sum(sub_lines.mapped('product_uom_qty'))) if sub_lines else 0"/>
+                                                <t t-set="p_lines" t-value="sub_lines.filtered(lambda l: l.product_id.id == p.id)"/>
+                                                <t t-set="in_sub_qty" t-value="int(sum(p_lines.mapped('product_uom_qty'))) if p_lines else 0"/>
                                                 <div class="moyee-slider-card js_moyee_product_card moyee-card-in-sub" 
                                                      t-att-data-grind="p_grind" 
                                                      t-att-data-weight="p_weight" 
@@ -439,7 +439,7 @@
                                                      style="border: 2.5px solid var(--moyee-pink) !important; box-shadow: 0 4px 14px rgba(233, 30, 140, 0.18) !important; background: linear-gradient(180deg, #FFF0F6 0%, #FFFFFF 100%) !important; position: relative; border-radius: 14px;">
                                                     
                                                     <!-- Badge -->
-                                                    <span class="badge" style="position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: var(--moyee-pink); color: white; font-size: 9.5px; padding: 3px 9px; border-radius: 10px; font-weight: 800; white-space: nowrap; z-index: 10; letter-spacing: 0.4px; box-shadow: 0 2px 6px rgba(233, 30, 140, 0.35);">
+                                                    <span class="badge" style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--moyee-pink); color: white; font-size: 10px; padding: 4px 10px; border-radius: 12px; font-weight: 800; white-space: nowrap; z-index: 10; letter-spacing: 0.4px; box-shadow: 0 3px 8px rgba(233, 30, 140, 0.35); line-height: 1.1;">
                                                         ✓ <t t-esc="('%d IN SUBSCRIPTION' % in_sub_qty) if in_sub_qty &gt; 0 else 'IN SUBSCRIPTION'"/>
                                                     </span>
                                                     

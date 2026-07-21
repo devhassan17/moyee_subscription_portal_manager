@@ -169,7 +169,9 @@ class MoyeePortalHome(CustomerPortal):
 
             # Available products (for "Add product" popup)
             try:
-                available_products = active_subscription._moyee_get_portal_addable_products()
+                addable_products = active_subscription._moyee_get_portal_addable_products()
+                existing_products = active_subscription.order_line.filtered(lambda l: not l.x_moyee_is_removed and not l.display_type and l.product_id).mapped("product_id")
+                available_products = addable_products | existing_products
             except Exception:
                 _logger.exception("Moyee: Failed to get portal addable products.")
 
@@ -507,7 +509,9 @@ class MoyeeSubscriptionPortal(http.Controller):
         next_date_field = order._moyee_get_subscription_next_date_field_name()
         next_date_value = order[next_date_field] if next_date_field else False
 
-        available_products = order._moyee_get_portal_addable_products()
+        addable_products = order._moyee_get_portal_addable_products()
+        existing_products = order.order_line.filtered(lambda l: not l.x_moyee_is_removed and not l.display_type and l.product_id).mapped("product_id")
+        available_products = addable_products | existing_products
 
         # Try model-level logic first
         available_plans = order._moyee_get_portal_changeable_plans()
