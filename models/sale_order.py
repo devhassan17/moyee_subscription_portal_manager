@@ -240,10 +240,12 @@ class SaleOrder(models.Model):
 
         products = Product.search(domain, order="name, id", limit=200)
 
-        # Exclude service/maintenance/accessory products
-        exclude_keywords = {"onderhoud", "service", "maintenance", "installatie", "repair", "reparatie", "schoonmaak", "cleaning", "reiniging", "optie", "support"}
+        # Exclude service/maintenance/accessory/delivery products
+        exclude_keywords = {"onderhoud", "service", "maintenance", "installatie", "repair", "reparatie", "schoonmaak", "cleaning", "reiniging", "optie", "support", "delivery", "shipping", "bezorg", "levering", "verzend", "verzending", "verzendkosten", "transport", "postnl", "dhl", "ups"}
         filtered_products = Product.browse()
         for p in products:
+            if getattr(p, 'is_delivery', False) or getattr(p.product_tmpl_id, 'is_delivery', False):
+                continue
             p_name = (p.name or "").lower()
             p_code = (p.default_code or "").lower()
             if any(kw in p_name or kw in p_code for kw in exclude_keywords):

@@ -117,7 +117,14 @@ class SaleOrderLine(models.Model):
         """Server-side protection: never allow 'delivery' product removal."""
         for line in self:
             pname = (line.product_id.display_name or line.name or "").lower()
-            if "delivery" in pname:
+            is_del = (
+                getattr(line, 'is_delivery', False)
+                or getattr(line.product_id, 'is_delivery', False)
+                or getattr(line.product_id, 'type', '') == 'service'
+                or getattr(line.product_id, 'detailed_type', '') == 'service'
+                or any(kw in pname for kw in ('delivery', 'shipping', 'bezorg', 'levering', 'verzend', 'transport', 'postnl', 'dhl', 'ups'))
+            )
+            if is_del:
                 raise UserError(_("You can not delete delivery product."))
 
     def _moyee_soft_remove_vals(self, removed_by_user_id, reason=None, now=None):

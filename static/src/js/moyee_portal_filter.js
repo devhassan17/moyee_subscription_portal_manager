@@ -16,7 +16,8 @@ publicWidget.registry.MoyeeProductFilter = publicWidget.Widget.extend({
      * @override
      */
     start: function () {
-        this.$cards = this.$(".js_moyee_product_card");
+        this.$otherCards = this.$("#moyeeProductSlider .js_moyee_product_card");
+        this.$subCards = this.$("#moyeeProductSliderSub .js_moyee_product_card");
         this.$noResults = this.$("#moyeeNoResults");
         this.$slider = this.$("#moyeeProductSlider");
 
@@ -97,11 +98,17 @@ publicWidget.registry.MoyeeProductFilter = publicWidget.Widget.extend({
         const activeBolds = this.$(".moyee-filter-check[id^='bold']:checked").map(function() { return $(this).val(); }).get();
         const activeFruities = this.$(".moyee-filter-check[id^='char']:checked").map(function() { return $(this).val(); }).get();
 
-        let visibleCount = 0;
-        let visibleSubCount = 0;
+        // Refresh card references
+        this.$otherCards = this.$("#moyeeProductSlider .js_moyee_product_card");
+        this.$subCards = this.$("#moyeeProductSliderSub .js_moyee_product_card");
+
+        // Subscription cards should ALWAYS remain visible and not be hidden by the filter
+        this.$subCards.removeClass("d-none");
+        const visibleSubCount = this.$subCards.length;
+
         let visibleOtherCount = 0;
 
-        this.$cards.each(function () {
+        this.$otherCards.each(function () {
             const $card = $(this);
             const grind = $card.data("grind");
             const weight = $card.data("weight");
@@ -115,12 +122,7 @@ publicWidget.registry.MoyeeProductFilter = publicWidget.Widget.extend({
 
             if (matchGrind && matchWeight && matchBold && matchFruity) {
                 $card.removeClass("d-none");
-                visibleCount++;
-                if ($card.closest("#moyeeProductSliderSub").length > 0) {
-                    visibleSubCount++;
-                } else {
-                    visibleOtherCount++;
-                }
+                visibleOtherCount++;
             } else {
                 $card.addClass("d-none");
             }
@@ -148,7 +150,8 @@ publicWidget.registry.MoyeeProductFilter = publicWidget.Widget.extend({
             $otherSlider.removeClass("d-none");
         }
 
-        if (visibleCount === 0) {
+        const isFilterActive = activeGrinds.length > 0 || activeWeights.length > 0 || activeBolds.length > 0 || activeFruities.length > 0;
+        if (visibleOtherCount === 0 && (this.$otherCards.length > 0 || isFilterActive)) {
             this.$noResults.removeClass("d-none");
         } else {
             this.$noResults.addClass("d-none");
@@ -219,10 +222,6 @@ publicWidget.registry.MoyeeProductFilter = publicWidget.Widget.extend({
 publicWidget.registry.MoyeeSubscriptionBreadcrumbFix = publicWidget.Widget.extend({
     selector: "#wrapwrap",
     start: function () {
-        // Hide breadcrumbs on the main subscription portal page.
-        // Odoo's purchase module has a core bug that incorrectly adds "Purchase Orders"
-        // to the breadcrumb of sale orders in "sent" or "cancel" state. 
-        // We hide the entire breadcrumb bar here to avoid customer confusion.
         if (this.$("a[href*='/moyee/manage']").length > 0) {
             this.$("ol.breadcrumb").closest('nav, .o_portal_submenu, .portal-breadcrumbs').hide();
         }

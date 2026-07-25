@@ -174,14 +174,17 @@ class MoyeePortalHome(CustomerPortal):
                     lambda l: not l.x_moyee_is_removed 
                     and not l.display_type 
                     and l.product_id 
-                    and 'delivery' not in (l.product_id.name or l.name or '').lower()
-                    and 'shipping' not in (l.product_id.name or l.name or '').lower()
-                    and 'bezorg' not in (l.product_id.name or l.name or '').lower()
+                    and not getattr(l, 'is_delivery', False)
+                    and not getattr(l.product_id, 'is_delivery', False)
+                    and getattr(l.product_id, 'type', '') != 'service'
+                    and getattr(l.product_id, 'detailed_type', '') != 'service'
+                    and not any(kw in (l.product_id.name or l.name or '').lower() for kw in ('delivery', 'shipping', 'bezorg', 'levering', 'verzend', 'transport', 'postnl', 'dhl', 'ups'))
                 ).mapped("product_id")
                 addable_products = addable_products.filtered(
-                    lambda p: 'delivery' not in (p.name or '').lower()
-                    and 'shipping' not in (p.name or '').lower()
-                    and 'bezorg' not in (p.name or '').lower()
+                    lambda p: not getattr(p, 'is_delivery', False)
+                    and getattr(p, 'type', '') != 'service'
+                    and getattr(p, 'detailed_type', '') != 'service'
+                    and not any(kw in (p.name or '').lower() for kw in ('delivery', 'shipping', 'bezorg', 'levering', 'verzend', 'transport', 'postnl', 'dhl', 'ups'))
                 )
                 available_products = addable_products | existing_products
             except Exception:
@@ -276,14 +279,17 @@ class MoyeePortalHome(CustomerPortal):
                     lambda l: not l.x_moyee_is_removed 
                     and not l.display_type 
                     and l.product_id 
-                    and 'delivery' not in (l.product_id.name or l.name or '').lower()
-                    and 'shipping' not in (l.product_id.name or l.name or '').lower()
-                    and 'bezorg' not in (l.product_id.name or l.name or '').lower()
+                    and not getattr(l, 'is_delivery', False)
+                    and not getattr(l.product_id, 'is_delivery', False)
+                    and getattr(l.product_id, 'type', '') != 'service'
+                    and getattr(l.product_id, 'detailed_type', '') != 'service'
+                    and not any(kw in (l.product_id.name or l.name or '').lower() for kw in ('delivery', 'shipping', 'bezorg', 'levering', 'verzend', 'transport', 'postnl', 'dhl', 'ups'))
                 ).mapped("product_id")
                 all_possible_products = (available_products | existing_products).filtered(
-                    lambda p: 'delivery' not in (p.name or '').lower()
-                    and 'shipping' not in (p.name or '').lower()
-                    and 'bezorg' not in (p.name or '').lower()
+                    lambda p: not getattr(p, 'is_delivery', False)
+                    and getattr(p, 'type', '') != 'service'
+                    and getattr(p, 'detailed_type', '') != 'service'
+                    and not any(kw in (p.name or '').lower() for kw in ('delivery', 'shipping', 'bezorg', 'levering', 'verzend', 'transport', 'postnl', 'dhl', 'ups'))
                 )
                 for p in all_possible_products:
                     grind, weight = active_subscription.moyee_extract_product_metadata(p)
@@ -536,14 +542,17 @@ class MoyeeSubscriptionPortal(http.Controller):
             lambda l: not l.x_moyee_is_removed 
             and not l.display_type 
             and l.product_id 
-            and 'delivery' not in (l.product_id.name or l.name or '').lower()
-            and 'shipping' not in (l.product_id.name or l.name or '').lower()
-            and 'bezorg' not in (l.product_id.name or l.name or '').lower()
+            and not getattr(l, 'is_delivery', False)
+            and not getattr(l.product_id, 'is_delivery', False)
+            and getattr(l.product_id, 'type', '') != 'service'
+            and getattr(l.product_id, 'detailed_type', '') != 'service'
+            and not any(kw in (l.product_id.name or l.name or '').lower() for kw in ('delivery', 'shipping', 'bezorg', 'levering', 'verzend', 'transport', 'postnl', 'dhl', 'ups'))
         ).mapped("product_id")
         addable_products = addable_products.filtered(
-            lambda p: 'delivery' not in (p.name or '').lower()
-            and 'shipping' not in (p.name or '').lower()
-            and 'bezorg' not in (p.name or '').lower()
+            lambda p: not getattr(p, 'is_delivery', False)
+            and getattr(p, 'type', '') != 'service'
+            and getattr(p, 'detailed_type', '') != 'service'
+            and not any(kw in (p.name or '').lower() for kw in ('delivery', 'shipping', 'bezorg', 'levering', 'verzend', 'transport', 'postnl', 'dhl', 'ups'))
         )
         available_products = addable_products | existing_products
 
