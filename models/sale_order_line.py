@@ -113,18 +113,22 @@ class SaleOrderLine(models.Model):
         self.ensure_one()
         return self.order_id._moyee_is_subscription_order() if self.order_id else False
 
+    def _moyee_is_delivery_line(self):
+        """Check if line is a delivery, shipping, or service product line."""
+        self.ensure_one()
+        pname = (self.product_id.display_name or self.product_id.name or self.name or "").lower()
+        return (
+            getattr(self, 'is_delivery', False)
+            or getattr(self.product_id, 'is_delivery', False)
+            or getattr(self.product_id, 'type', '') == 'service'
+            or getattr(self.product_id, 'detailed_type', '') == 'service'
+            or any(kw in pname for kw in ('delivery', 'shipping', 'bezorg', 'levering', 'verzend', 'transport', 'postnl', 'dhl', 'ups'))
+        )
+
     def _moyee_block_delivery_product(self):
         """Server-side protection: never allow 'delivery' product removal."""
         for line in self:
-            pname = (line.product_id.display_name or line.name or "").lower()
-            is_del = (
-                getattr(line, 'is_delivery', False)
-                or getattr(line.product_id, 'is_delivery', False)
-                or getattr(line.product_id, 'type', '') == 'service'
-                or getattr(line.product_id, 'detailed_type', '') == 'service'
-                or any(kw in pname for kw in ('delivery', 'shipping', 'bezorg', 'levering', 'verzend', 'transport', 'postnl', 'dhl', 'ups'))
-            )
-            if is_del:
+            if line._moyee_is_delivery_line():
                 raise UserError(_("You can not delete delivery product."))
 
     def _moyee_soft_remove_vals(self, removed_by_user_id, reason=None, now=None):

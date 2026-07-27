@@ -223,8 +223,7 @@
                                 <t t-foreach="visible_lines" t-as="line">
                                     <t t-if="not line.display_type">
                                         <!-- Skip delivery products entirely -->
-                                        <t t-set="lname_check" t-value="(line.product_id.with_context(display_default_code=False).display_name or line.name or '').lower()"/>
-                                        <t t-if="not ('is_delivery' in line._fields and line.is_delivery) and not ('is_delivery' in line.product_id._fields and line.product_id.is_delivery) and getattr(line.product_id, 'type', '') != 'service' and getattr(line.product_id, 'detailed_type', '') != 'service' and not any(kw in lname_check for kw in ('delivery', 'shipping', 'bezorg', 'levering', 'verzend', 'transport', 'postnl', 'dhl', 'ups'))">
+                                        <t t-if="not line._moyee_is_delivery_line()">
                                             <div class="moyee-product-row">
 
                                                 <!-- Image -->
@@ -414,9 +413,9 @@
                                             Click "Add" on a product to add it to your subscription.
                                     </p>
                                     <div class="moyee-product-slider-wrap">
-                                        <t t-set="sub_lines" t-value="order.order_line.filtered(lambda l: not l.x_moyee_is_removed and not l.display_type and l.product_id and not getattr(l, 'is_delivery', False) and not getattr(l.product_id, 'is_delivery', False) and getattr(l.product_id, 'type', '') != 'service' and getattr(l.product_id, 'detailed_type', '') != 'service' and not any(kw in (l.product_id.name or l.name or '').lower() for kw in ('delivery', 'shipping', 'bezorg', 'levering', 'verzend', 'transport', 'postnl', 'dhl', 'ups')))"/>
+                                        <t t-set="sub_lines" t-value="order._moyee_get_sub_lines()"/>
                                         <t t-set="in_sub_prods" t-value="sub_lines.mapped('product_id')"/>
-                                        <t t-set="other_prods" t-value="available_products.filtered(lambda p: p.id not in in_sub_prods.ids and not getattr(p, 'is_delivery', False) and getattr(p, 'type', '') != 'service' and getattr(p, 'detailed_type', '') != 'service' and not any(kw in (p.name or '').lower() for kw in ('delivery', 'shipping', 'bezorg', 'levering', 'verzend', 'transport', 'postnl', 'dhl', 'ups')))"/>
+                                        <t t-set="other_prods" t-value="available_products.filtered(lambda p: p.id not in in_sub_prods.ids)"/>
 
                                         <!-- Coffee in subscription section -->
                                         <div t-attf-class="js_moyee_sub_heading fw-bold mb-2 text-uppercase {{ 'd-none' if not in_sub_prods else '' }}" style="font-size: 11px; color: var(--moyee-pink); letter-spacing: 0.5px;">Coffee in subscription</div>

@@ -90,6 +90,20 @@ class SaleOrder(models.Model):
             lambda l: l.display_type or (not l.x_moyee_is_removed and float(l.product_uom_qty or 0.0) > 0.0)
         )
 
+    def _moyee_get_sub_lines(self):
+        """Return active, non-removed subscription product lines (excluding delivery and display lines)."""
+        self.ensure_one()
+        return self.order_line.filtered(
+            lambda l: not l.x_moyee_is_removed and not l.display_type and l.product_id and not l._moyee_is_delivery_line()
+        )
+
+    def _moyee_get_delivery_lines(self):
+        """Return active, non-removed delivery lines."""
+        self.ensure_one()
+        return self.order_line.filtered(
+            lambda l: not l.x_moyee_is_removed and not l.display_type and l._moyee_is_delivery_line()
+        )
+
     @api.depends('order_line.price_subtotal', 'order_line.price_tax', 'order_line.price_total', 'order_line.x_moyee_is_removed')
     def _compute_amounts(self):
         super()._compute_amounts()
