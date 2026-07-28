@@ -57,8 +57,16 @@ publicWidget.registry.MoyeeMyAccountPage = publicWidget.Widget.extend({
         this._invoicesPage = 1;
         this._pageSize = 10;
 
-        // Remove "by Post" option from Receive Invoices dropdown
-        this.$('select[name="invoice_sending_method"] option[value="post"]').remove();
+        // Exit early if not on a Moyee portal page or modal container
+        if (!this.$(".moyee-portal-container").length && !this.$(".moyee-sub-card").length && !this.$("[data-moyee-modal]").length) {
+            return this._super.apply(this, arguments);
+        }
+
+        // Remove "by Post" option from Receive Invoices dropdown safely
+        var $postOpt = this.$('select[name="invoice_sending_method"] option[value="post"]');
+        if ($postOpt.length) {
+            $postOpt.remove();
+        }
 
         return this._super.apply(this, arguments);
     },

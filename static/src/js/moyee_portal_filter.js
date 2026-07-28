@@ -16,6 +16,11 @@ publicWidget.registry.MoyeeProductFilter = publicWidget.Widget.extend({
      * @override
      */
     start: function () {
+        // Exit early if custom Moyee portal elements are not present on the current page
+        if (!this.$("#moyeeProductSlider").length && !this.$(".moyee-filter-check").length && !this.$("#moyeeSameAsShipping").length) {
+            return this._super.apply(this, arguments);
+        }
+
         this.$otherCards = this.$("#moyeeProductSlider .js_moyee_product_card");
         this.$subCards = this.$("#moyeeProductSliderSub .js_moyee_product_card");
         this.$noResults = this.$("#moyeeNoResults");
