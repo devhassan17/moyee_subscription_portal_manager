@@ -3,7 +3,7 @@
 import publicWidget from "@web/legacy/js/public/public_widget";
 
 publicWidget.registry.MoyeeProductFilter = publicWidget.Widget.extend({
-    selector: ".o_portal_wrap",
+    selector: ".moyee-account-page",
     events: {
         'change .moyee-filter-check': '_onFilterChange',
         'click #clearMoyeeFilters': '_onClearFilters',

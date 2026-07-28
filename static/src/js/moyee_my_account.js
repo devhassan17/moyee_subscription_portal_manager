@@ -7,7 +7,7 @@ import publicWidget from "@web/legacy/js/public/public_widget";
  * Handles FAQ accordion, order/invoice expand, modals, smooth scroll, and TAF.
  */
 publicWidget.registry.MoyeeMyAccountPage = publicWidget.Widget.extend({
-    selector: "#wrapwrap",
+    selector: ".moyee-account-page",
     events: {
         /* FAQ accordion */
         "click .moyee-faq-q": "_onFaqToggle",
