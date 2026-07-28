@@ -358,9 +358,9 @@ class MoyeePortalHome(CustomerPortal):
         if not enable_redesign:
             return super().home(**kw)
 
-        # Check target user/partner filter if set to 'selected'
-        redesign_target = getattr(company, "moyee_redesign_target", "all") or "all"
-        if redesign_target == "selected":
+        # If user filtration checkbox is checked, only selected subscription users see the new Moyee portal home page (/my/home)
+        enable_user_filter = getattr(company, "moyee_enable_user_filter", False)
+        if enable_user_filter:
             partner = request.env.user.partner_id
             commercial = partner.commercial_partner_id
             allowed_partners = company.moyee_redesign_partner_ids
@@ -369,7 +369,7 @@ class MoyeePortalHome(CustomerPortal):
             all_allowed_ids = set(allowed_partner_ids + allowed_commercial_ids)
 
             if partner.id not in all_allowed_ids and commercial.id not in all_allowed_ids:
-                # User/Partner is not in the selected subscription customers list -> render default Odoo portal
+                # User/Partner is not in the selected subscription customers list -> render default Odoo portal page
                 return super().home(**kw)
 
         values = self._prepare_portal_layout_values()
