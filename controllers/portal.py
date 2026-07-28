@@ -352,25 +352,39 @@ class MoyeePortalHome(CustomerPortal):
 
     @http.route(["/my", "/my/home"], type="http", auth="user", website=True)
     def home(self, **kw):
-        # Check if custom redesign is enabled for the current company
         company = getattr(request, "website", None) and request.website.company_id or request.env.company
-        enable_redesign = company.moyee_enable_portal_redesign if "moyee_enable_portal_redesign" in company._fields else True
+        # Defensive field checks: handle cases where database columns are not yet upgraded
+        enable_redesign = True
+        if "moyee_enable_portal_redesign" in company._fields:
+            try:
+                enable_redesign = bool(company.moyee_enable_portal_redesign)
+            except Exception:
+                enable_redesign = True
+
         if not enable_redesign:
             return super().home(**kw)
 
-        # If user filtration checkbox is checked, only selected subscription users see the new Moyee portal home page (/my/home)
-        enable_user_filter = getattr(company, "moyee_enable_user_filter", False)
-        if enable_user_filter:
-            partner = request.env.user.partner_id
-            commercial = partner.commercial_partner_id
-            allowed_partners = company.moyee_redesign_partner_ids
-            allowed_partner_ids = allowed_partners.ids if allowed_partners else []
-            allowed_commercial_ids = allowed_partners.mapped("commercial_partner_id").ids if allowed_partners else []
-            all_allowed_ids = set(allowed_partner_ids + allowed_commercial_ids)
+        # Defensive check for user filtration
+        enable_user_filter = False
+        if "moyee_enable_user_filter" in company._fields:
+            try:
+                enable_user_filter = bool(company.moyee_enable_user_filter)
+            except Exception:
+                enable_user_filter = False
 
-            if partner.id not in all_allowed_ids and commercial.id not in all_allowed_ids:
-                # User/Partner is not in the selected subscription customers list -> render default Odoo portal page
-                return super().home(**kw)
+        if enable_user_filter and "moyee_redesign_partner_ids" in company._fields:
+            try:
+                partner = request.env.user.partner_id
+                commercial = partner.commercial_partner_id
+                allowed_partners = company.moyee_redesign_partner_ids
+                allowed_partner_ids = allowed_partners.ids if allowed_partners else []
+                allowed_commercial_ids = allowed_partners.mapped("commercial_partner_id").ids if allowed_partners else []
+                all_allowed_ids = set(allowed_partner_ids + allowed_commercial_ids)
+
+                if partner.id not in all_allowed_ids and commercial.id not in all_allowed_ids:
+                    return super().home(**kw)
+            except Exception:
+                pass
 
         values = self._prepare_portal_layout_values()
         home_values = self._prepare_home_portal_values(counters=set(), **kw)
