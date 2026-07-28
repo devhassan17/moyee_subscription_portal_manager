@@ -9,6 +9,23 @@ class ResCompany(models.Model):
         string="Enable Moyee Custom Portal Redesign",
         default=True,
     )
+    moyee_redesign_target = fields.Selection(
+        [
+            ("all", "All Subscription Customers"),
+            ("selected", "Selected Subscription Customers Only"),
+        ],
+        string="Apply Redesign To",
+        default="all",
+        help="Choose whether the custom Moyee portal redesign applies to all customers or only to specifically selected subscription customers.",
+    )
+    moyee_redesign_partner_ids = fields.Many2many(
+        comodel_name="res.partner",
+        relation="moyee_company_redesign_partner_rel",
+        column1="company_id",
+        column2="partner_id",
+        string="Selected Subscription Customers",
+        help="Only partners selected here (and their commercial contacts) will see the custom Moyee portal redesign when 'Apply Redesign To' is set to 'Selected Subscription Customers Only'. All others will see Odoo's default portal page.",
+    )
 
 
 class ResConfigSettings(models.TransientModel):
@@ -19,6 +36,16 @@ class ResConfigSettings(models.TransientModel):
         related="company_id.moyee_enable_portal_redesign",
         readonly=False,
         string="Enable Moyee Custom Portal Redesign",
+    )
+    moyee_redesign_target = fields.Selection(
+        related="company_id.moyee_redesign_target",
+        readonly=False,
+        string="Apply Redesign To",
+    )
+    moyee_redesign_partner_ids = fields.Many2many(
+        related="company_id.moyee_redesign_partner_ids",
+        readonly=False,
+        string="Selected Subscription Customers",
     )
 
     # Styling Overrides

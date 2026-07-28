@@ -111,6 +111,22 @@
                                     <div class="text-muted">Toggle the Moyee premium account portal redesign for the selected company. If turned off, Odoo's default portal layout and styling will be restored for this company.</div>
                                 </div>
                             </div>
+                            <div class="col-12 col-lg-6 o_setting_box" invisible="not moyee_enable_portal_redesign">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_redesign_target"/>
+                                    <div class="text-muted">Choose whether the custom portal redesign is visible to all subscription customers or only specifically selected partners.</div>
+                                    <field name="moyee_redesign_target" widget="radio"/>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box" invisible="not moyee_enable_portal_redesign or moyee_redesign_target != 'selected'">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_redesign_partner_ids"/>
+                                    <div class="text-muted">Select subscription customers/partners who will see the custom Moyee portal redesign. Unselected users will see Odoo's default portal page.</div>
+                                    <field name="moyee_redesign_partner_ids" widget="many2many_tags" placeholder="Select subscription customers..."/>
+                                </div>
+                            </div>
                         </div>
                     </block>
 
