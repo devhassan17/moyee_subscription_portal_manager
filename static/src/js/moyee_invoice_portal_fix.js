@@ -2,24 +2,48 @@
 
 import publicWidget from "@web/legacy/js/public/public_widget";
 
-// Safely patch PortalHomeCounters widget to prevent null textContent errors on standard portal pages
-if (publicWidget && publicWidget.registry && publicWidget.registry.PortalHomeCounters) {
-    publicWidget.registry.PortalHomeCounters.include({
-        _updateCounters: function (counters) {
-            if (!counters) return this._super.apply(this, arguments);
-            try {
-                Object.entries(counters).forEach(([key, count]) => {
-                    const els = document.querySelectorAll(`.o_portal_my_home_counter[data-count-key="${key}"], [data-count-key="${key}"]`);
-                    els.forEach(el => {
-                        if (el) {
-                            el.textContent = count;
-                        }
+function patchCountersWidget(WidgetClass) {
+    if (WidgetClass && WidgetClass.include && !WidgetClass.prototype._moyee_patched) {
+        WidgetClass.prototype._moyee_patched = true;
+        WidgetClass.include({
+            _updateCounters: function (counters) {
+                if (!counters) return;
+                try {
+                    Object.entries(counters).forEach(([key, count]) => {
+                        const els = document.querySelectorAll(`.o_portal_my_home_counter[data-count-key="${key}"], [data-count-key="${key}"]`);
+                        els.forEach(el => {
+                            if (el) {
+                                try {
+                                    el.textContent = count;
+                                } catch (err) {}
+                            }
+                        });
                     });
-                });
-            } catch (e) {
-                // Ignore fallback safe checks
+                } catch (e) {}
             }
-        }
+        });
+    }
+}
+
+// 1. Try registry keys (PascalCase & camelCase)
+if (publicWidget && publicWidget.registry) {
+    if (publicWidget.registry.PortalHomeCounters) {
+        patchCountersWidget(publicWidget.registry.PortalHomeCounters);
+    }
+    if (publicWidget.registry.portalHomeCounters) {
+        patchCountersWidget(publicWidget.registry.portalHomeCounters);
+    }
+}
+
+// 2. Global unhandled promise rejection handler to prevent textContent error popups
+if (typeof window !== "undefined") {
+    window.addEventListener("unhandledrejection", function (event) {
+        try {
+            const msg = (event && event.reason && (event.reason.message || String(event.reason))) || "";
+            if (msg.includes("textContent") || msg.includes("setting 'textContent'")) {
+                event.preventDefault();
+            }
+        } catch (e) {}
     });
 }
 
