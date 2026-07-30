@@ -1318,13 +1318,14 @@
                                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                                         <input type="hidden" name="access_token" t-att-value="active_subscription.access_token" t-if="active_subscription and active_subscription.access_token"/>
                                                         <input type="hidden" name="product_id" t-att-value="p.id"/>
+                                                         <input type="hidden" name="mode" value="set"/>
                                                         <div class="d-flex align-items-center gap-1 mb-2 justify-content-center">
                                                             <label class="moyee-label mb-0" style="white-space:nowrap; font-size: 11px;">Qty</label>
                                                             <input class="form-control form-control-sm text-center"
-                                                                   name="qty" type="number" step="1" min="1" value="1"
+                                                                   name="qty" type="number" step="1" min="1" t-att-value="in_sub_qty or 1"
                                                                    style="width:50px; height: 26px; padding: 2px; border-radius: 5px;"/>
                                                         </div>
-                                                        <button class="btn btn-primary btn-sm w-100" style="font-size: 11px; padding: 5px; font-weight: 700;" type="submit">+ Add more</button>
+                                                        <button class="btn btn-primary btn-sm w-100" style="font-size: 11px; padding: 5px; font-weight: 700;" type="submit">Update quantity</button>
                                                     </form>
                                                 </div>
                                             </t>

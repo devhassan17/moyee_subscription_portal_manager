@@ -770,15 +770,17 @@ class MoyeeSubscriptionPortal(http.Controller):
         try:
             product_id = int(post.get("product_id") or 0)
             qty = float(post.get("qty") or 0.0)
+            mode = post.get("mode", "add")
             order.moyee_portal_add_product(
                 portal_user_id=request.env.user.id,
                 product_id=product_id,
                 qty=qty,
+                mode=mode,
                 access_token=access_token,
             )
         except (AccessError, UserError, ValidationError, ValueError) as e:
             return self._moyee_redirect_back(order, error=str(e), access_token=access_token)
-        return self._moyee_redirect_back(order, message=_("Product added successfully."), access_token=access_token)
+        return self._moyee_redirect_back(order, message=_("Subscription updated successfully."), access_token=access_token)
 
     @http.route(
         [

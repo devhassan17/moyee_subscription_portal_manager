@@ -460,12 +460,13 @@
                                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                                         <input type="hidden" name="access_token" t-att-value="access_token" t-if="access_token"/>
                                                         <input type="hidden" name="product_id" t-att-value="p.id"/>
+                                                         <input type="hidden" name="mode" value="set"/>
                                                         <div class="d-flex align-items-center gap-1 mb-2">
                                                             <label class="moyee-label mb-0 moyee-qty-lbl">Qty</label>
                                                             <input class="form-control form-control-sm moyee-input text-center moyee-qty-edit-input"
-                                                                   name="qty" type="number" step="1" min="1" value="1"/>
+                                                                   name="qty" type="number" step="1" min="1" t-att-value="in_sub_qty or 1"/>
                                                         </div>
-                                                        <button class="btn btn-primary btn-sm w-100" style="font-weight: 700;" type="submit">+ Add more</button>
+                                                        <button class="btn btn-primary btn-sm w-100" style="font-weight: 700;" type="submit">Update quantity</button>
                                                     </form>
                                                 </div>
                                             </t>

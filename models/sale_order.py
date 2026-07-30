@@ -104,6 +104,38 @@ class SaleOrder(models.Model):
             lambda l: not l.x_moyee_is_removed and not l.display_type and l._moyee_is_delivery_line()
         )
 
+    def _moyee_auto_recompute_delivery(self):
+        """Automatically recalculate delivery shipping cost when subscription lines change,
+        avoiding 'already invoiced' UserError on subscription orders."""
+        for order in self:
+            if not getattr(order, 'carrier_id', False):
+                continue
+            try:
+                # Call carrier rate computation for updated order lines/weight
+                res = order.carrier_id.rate_shipment(order)
+                if res.get('success'):
+                    price_unit = float(res.get('price', 0.0))
+                    delivery_lines = order._moyee_get_delivery_lines()
+                    if delivery_lines:
+                        for dline in delivery_lines:
+                            dline.sudo().write({'price_unit': price_unit})
+                    else:
+                        carrier_prod = order.carrier_id.product_id
+                        if carrier_prod:
+                            order.env['sale.order.line'].sudo().create({
+                                'order_id': order.id,
+                                'product_id': carrier_prod.id,
+                                'name': carrier_prod.with_context(display_default_code=False).display_name or carrier_prod.name,
+                                'product_uom_qty': 1.0,
+                                'price_unit': price_unit,
+                                'sequence': 999,
+                            })
+                    if 'recompute_delivery_price' in order._fields:
+                        order.sudo().write({'recompute_delivery_price': False})
+                    order._compute_amounts()
+            except Exception as e:
+                _logger.warning("Moyee: Auto delivery recompute error on SO %s: %s", order.name, str(e))
+
     @api.depends('order_line.price_subtotal', 'order_line.price_tax', 'order_line.price_total', 'order_line.x_moyee_is_removed')
     def _compute_amounts(self):
         super()._compute_amounts()
@@ -956,7 +988,7 @@ class SaleOrder(models.Model):
     # ============================================================
     # Add product (portal)
     # ============================================================
-    def moyee_portal_add_product(self, *, portal_user_id, product_id, qty=1.0, access_token=None):
+    def moyee_portal_add_product(self, *, portal_user_id, product_id, qty=1.0, mode="add", access_token=None):
         self.ensure_one()
         portal_user = self.env["res.users"].browse(int(portal_user_id)).exists()
         if not portal_user:
@@ -991,7 +1023,10 @@ class SaleOrder(models.Model):
                     "x_moyee_remove_reason": False,
                 })
             else:
-                line_to_update.write({"product_uom_qty": float(line_to_update.product_uom_qty or 0.0) + qty})
+                if mode == "set":
+                    line_to_update.write({"product_uom_qty": qty})
+                else:
+                    line_to_update.write({"product_uom_qty": float(line_to_update.product_uom_qty or 0.0) + qty})
             self._moyee_recompute_line_price(line_to_update)
             if self.state in ("sale", "done") and hasattr(line_to_update, "_action_launch_stock_rule"):
                 try:
@@ -1021,8 +1056,11 @@ class SaleOrder(models.Model):
                 except Exception:
                     _logger.exception("Moyee: Failed to launch stock rule for new line %s.", new_line.id)
 
+        # Automatically recalculate delivery cost for updated order weight
+        self._moyee_auto_recompute_delivery()
+
         self.with_user(1).message_post(
-            body=_("Moyee: customer added product via portal (%s x %s).") % (product.display_name, qty),
+            body=_("Moyee: customer updated product via portal (%s x %s).") % (product.display_name, qty),
             subtype_xmlid="mail.mt_note",
             author_id=portal_user.partner_id.id,
         )
@@ -1125,6 +1163,9 @@ class SaleOrder(models.Model):
         line_to_update.write({"product_uom_qty": qty})
         self._moyee_recompute_line_price(line_to_update)
 
+        # Automatically recalculate delivery cost for updated order weight
+        self._moyee_auto_recompute_delivery()
+
         product_label = line.product_id.display_name if line.product_id else (line.name or _("(no product)"))
         self.with_user(1).message_post(
             body=_("Moyee: customer changed quantity via portal — %s: %s → %s.") % (
@@ -1134,6 +1175,24 @@ class SaleOrder(models.Model):
             author_id=portal_user.partner_id.id,
         )
         return True
+
+    def action_open_delivery_wizard(self):
+        self.ensure_one()
+        if self._moyee_is_subscription_order():
+            has_invoiced_delivery = any(
+                l._moyee_is_delivery_line() and float(l.qty_invoiced or 0.0) > 0.0
+                for l in self.order_line
+            )
+            if has_invoiced_delivery:
+                self._moyee_auto_recompute_delivery()
+                return True
+        try:
+            return super().action_open_delivery_wizard()
+        except UserError as e:
+            if "already invoiced" in str(e).lower() and self._moyee_is_subscription_order():
+                self._moyee_auto_recompute_delivery()
+                return True
+            raise
 
     # ============================================================
     # Edit line product (portal)

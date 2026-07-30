@@ -191,6 +191,7 @@ class SaleOrderLine(models.Model):
                 reason or _("(no reason provided)"),
             )
             line.order_id.message_post(body=body, subtype_xmlid="mail.mt_note")
+            line.order_id._moyee_auto_recompute_delivery()
 
         return True
 
@@ -242,6 +243,7 @@ class SaleOrderLine(models.Model):
                 subtype_xmlid="mail.mt_note",
                 author_id=portal_user.partner_id.id,
             )
+            line.order_id._moyee_auto_recompute_delivery()
 
         return True
 
