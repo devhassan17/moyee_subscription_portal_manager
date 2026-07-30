@@ -350,8 +350,6 @@ class MoyeePortalHome(CustomerPortal):
         })
         return values
 
-    @http.route(["/my", "/my/home"], type="http", auth="user", website=True)
-    def home(self, **kw):
     def _is_moyee_redesign_active_for_user(self):
         company = getattr(request, "website", None) and request.website.company_id or request.env.company
         enable_redesign = True
