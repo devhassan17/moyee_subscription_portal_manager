@@ -68,3 +68,24 @@ if (typeof window !== "undefined") {
         removePostOption();
     }
 })();
+
+// Safely inject dummy elements to prevent custom theme script crashes at home:1517
+(function () {
+    const ensureDummyNodes = () => {
+        try {
+            if (document.body && !document.querySelector('.arrow.right')) {
+                const dummyDiv = document.createElement('div');
+                dummyDiv.style.display = 'none';
+                dummyDiv.className = 'moyee-dummy-theme-nodes';
+                dummyDiv.innerHTML = '<div class="timeline"></div><div class="arrow right"></div><div class="arrow left"></div>';
+                document.body.appendChild(dummyDiv);
+            }
+        } catch (e) {}
+    };
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", ensureDummyNodes);
+    } else {
+        ensureDummyNodes();
+    }
+})();

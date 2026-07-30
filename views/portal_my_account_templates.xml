@@ -10,6 +10,17 @@
 
          Uses sub-templates defined in portal_my_account_sub_templates.xml
          ========================================================= -->
+    <!-- Guarantee dummy theme nodes on ALL portal pages to prevent theme script crashes at home:1517 -->
+    <template id="portal_layout_moyee_theme_safety" inherit_id="portal.portal_layout" name="Moyee Theme Script Safety Nodes">
+        <xpath expr="//div[@id='wrapwrap']" position="inside">
+            <div style="display: none !important;" class="moyee-dummy-theme-nodes" aria-hidden="true">
+                <div class="timeline"></div>
+                <div class="arrow right"></div>
+                <div class="arrow left"></div>
+            </div>
+        </xpath>
+    </template>
+
     <template id="portal_my_home_moyee" name="Moyee My Account Page">
         <t t-call="portal.portal_layout">
 

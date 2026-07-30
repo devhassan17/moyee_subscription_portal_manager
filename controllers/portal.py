@@ -352,8 +352,8 @@ class MoyeePortalHome(CustomerPortal):
 
     @http.route(["/my", "/my/home"], type="http", auth="user", website=True)
     def home(self, **kw):
+    def _is_moyee_redesign_active_for_user(self):
         company = getattr(request, "website", None) and request.website.company_id or request.env.company
-        # Defensive field checks: handle cases where database columns are not yet upgraded
         enable_redesign = True
         if "moyee_enable_portal_redesign" in company._fields:
             try:
@@ -362,9 +362,8 @@ class MoyeePortalHome(CustomerPortal):
                 enable_redesign = True
 
         if not enable_redesign:
-            return super().home(**kw)
+            return False
 
-        # Defensive check for user filtration
         enable_user_filter = False
         if "moyee_enable_user_filter" in company._fields:
             try:
@@ -382,9 +381,15 @@ class MoyeePortalHome(CustomerPortal):
                 all_allowed_ids = set(allowed_partner_ids + allowed_commercial_ids)
 
                 if partner.id not in all_allowed_ids and commercial.id not in all_allowed_ids:
-                    return super().home(**kw)
+                    return False
             except Exception:
                 pass
+        return True
+
+    @http.route(["/my/home"], type="http", auth="user", website=True)
+    def home(self, **kw):
+        if not self._is_moyee_redesign_active_for_user():
+            return super().home(**kw)
 
         values = self._prepare_portal_layout_values()
         home_values = self._prepare_home_portal_values(counters=set(), **kw)
@@ -436,12 +441,16 @@ class MoyeePortalHome(CustomerPortal):
         return response
 
     @http.route(["/my/orders", "/my/orders/page/<int:page>"], type="http", auth="user", website=True)
-    def portal_my_orders(self, **kw):
-        return request.redirect("/my/home")
+    def portal_my_orders(self, page=1, date_begin=None, date_end=None, sortby=None, **kw):
+        if not self._is_moyee_redesign_active_for_user():
+            return super().portal_my_orders(page=page, date_begin=date_begin, date_end=date_end, sortby=sortby, **kw)
+        return request.redirect("/my/home#moyee-orders-section")
 
     @http.route(["/my/invoices", "/my/invoices/page/<int:page>"], type="http", auth="user", website=True)
-    def portal_my_invoices(self, **kw):
-        return request.redirect("/my/home")
+    def portal_my_invoices(self, page=1, date_begin=None, date_end=None, sortby=None, **kw):
+        if not self._is_moyee_redesign_active_for_user():
+            return super().portal_my_invoices(page=page, date_begin=date_begin, date_end=date_end, sortby=sortby, **kw)
+        return request.redirect("/my/home#moyee-invoices-section")
 
     def details_form_validate(self, data, partner_creation=False):
         error, error_message = super().details_form_validate(data, partner_creation)
