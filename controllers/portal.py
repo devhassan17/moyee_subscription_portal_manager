@@ -79,8 +79,7 @@ class MoyeePortalHome(CustomerPortal):
         min_price = 0.0
         max_price = 0.0
 
-        current_website = getattr(request, "website", False)
-        current_company_id = current_website and current_website.company_id.id or request.env.company.id
+        current_company_id = request.env.company.id or False
 
         # Find the user's active subscription order
         sub_domain = [
@@ -354,7 +353,7 @@ class MoyeePortalHome(CustomerPortal):
         return values
 
     def _is_moyee_redesign_active_for_user(self):
-        company = getattr(request, "website", None) and request.website.company_id or request.env.company
+        company = request.env.company
         company_sudo = company.sudo()
         
         enable_redesign = True
