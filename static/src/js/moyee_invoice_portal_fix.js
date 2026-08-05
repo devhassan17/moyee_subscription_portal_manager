@@ -8,6 +8,15 @@ function patchCountersWidget(WidgetClass) {
         WidgetClass.include({
             _updateCounters: function (counters) {
                 if (!counters) return;
+                
+                // 1) Let Odoo's default logic run (removes spinners on default portal)
+                try {
+                    if (typeof this._super === 'function') {
+                        this._super.apply(this, arguments);
+                    }
+                } catch (e) {}
+
+                // 2) Fallback for custom Moyee portal where this.$ scope might miss our custom DOM nodes
                 try {
                     Object.entries(counters).forEach(([key, count]) => {
                         const els = document.querySelectorAll(`.o_portal_my_home_counter[data-count-key="${key}"], [data-count-key="${key}"]`);

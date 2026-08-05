@@ -57,6 +57,9 @@ class MoyeePortalHome(CustomerPortal):
             counters = set()
         values = super()._prepare_home_portal_values(counters)
 
+        if not self._is_moyee_redesign_active_for_user():
+            return values
+
         partner = request.env.user.partner_id
         commercial = partner.commercial_partner_id
 

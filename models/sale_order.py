@@ -1342,3 +1342,53 @@ class SaleOrder(models.Model):
         if self.expected_date:
             return self.expected_date.date() if hasattr(self.expected_date, 'date') else self.expected_date
         return False
+
+    # ============================================================
+    # Portal Status Mappings
+    # ============================================================
+    def _get_moyee_portal_order_status(self):
+        self.ensure_one()
+        state = self.state or 'draft'
+        if state in ('draft', 'sent'):
+            return {'label': 'In progress', 'class': 'moyee-status-processing'}
+        elif state == 'sale':
+            return {'label': 'In progress', 'class': 'moyee-status-processing'}
+        elif state == 'done':
+            return {'label': 'Completed', 'class': 'moyee-status-delivered'}
+        elif state == 'cancel':
+            return {'label': 'Cancelled', 'class': 'moyee-status-cancelled'}
+        return {'label': 'In progress', 'class': 'moyee-status-processing'}
+
+    def _get_moyee_portal_delivery_status(self):
+        self.ensure_one()
+        pickings = self.picking_ids.filtered(lambda p: p.state != 'cancel') if 'picking_ids' in self._fields else self.env['stock.picking']
+        
+        if not pickings:
+            return {'label': 'Pending shipment', 'class': 'moyee-status-upcoming'}
+        
+        if all(p.state == 'done' for p in pickings):
+            state = 'done'
+        elif any(p.state == 'done' for p in pickings):
+            state = 'partial'
+        else:
+            state = 'pending'
+            
+        if state == 'pending':
+            return {'label': 'Pending shipment', 'class': 'moyee-status-upcoming'}
+        elif state == 'partial':
+            return {'label': 'On the way', 'class': 'moyee-status-transit'}
+        elif state == 'done':
+            m_date = self._moyee_get_monta_delivery_date()
+            t_ref = self._moyee_get_tracking_ref()
+            today = fields.Date.context_today(self)
+            
+            if m_date:
+                if m_date < today:
+                    return {'label': 'Delivered', 'class': 'moyee-status-delivered'}
+                else:
+                    return {'label': 'On the way', 'class': 'moyee-status-transit'}
+            else:
+                if t_ref:
+                    return {'label': 'On the way', 'class': 'moyee-status-transit'}
+                else:
+                    return {'label': 'Delivered', 'class': 'moyee-status-delivered'}

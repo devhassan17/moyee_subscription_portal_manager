@@ -333,15 +333,13 @@
                                         </t>
                                         ·
                                         <t t-esc="len(so.order_line.filtered(lambda l: not l.display_type and not l.x_moyee_is_removed))"/> items
-                                        <!-- Monta Delivery Date -->
+                                        <!-- Delivery Status & Date -->
                                         <t t-set="m_date" t-value="so._moyee_get_monta_delivery_date()"/>
-                                        · <span style="color: var(--moyee-pink); font-weight: 600;">
-                                            Delivery: 
+                                        <t t-set="p_del_status" t-value="so._get_moyee_portal_delivery_status()"/>
+                                        · <span t-attf-class="#{p_del_status['class']}" style="font-weight: 600;">
+                                            <t t-esc="p_del_status['label']"/>
                                             <t t-if="m_date">
-                                                <t t-esc="m_date.strftime('%d %B %Y')"/>
-                                            </t>
-                                            <t t-else="">
-                                                Not available yet
+                                                : <t t-esc="m_date.strftime('%d %B %Y')"/>
                                             </t>
                                         </span>
                                         <!-- Track & Trace info -->
@@ -363,21 +361,10 @@
                                         </span>
                                     </div>
                                 </div>
-                                <t t-set="so_state" t-value="so.state or ''"/>
-                                <t t-if="so_state == 'sale'">
-                                    <span class="moyee-order-status moyee-status-processing">Confirmed</span>
-                                </t>
-                                <t t-elif="so_state == 'done'">
-                                    <span class="moyee-order-status moyee-status-delivered">Completed</span>
-                                </t>
-                                <t t-elif="so_state == 'cancel'">
-                                    <span class="moyee-order-status moyee-status-cancelled">Cancelled</span>
-                                </t>
-                                <t t-else="">
-                                    <span class="moyee-order-status moyee-status-upcoming">
-                                        <t t-esc="so_state"/>
-                                    </span>
-                                </t>
+                                <t t-set="p_order_status" t-value="so._get_moyee_portal_order_status()"/>
+                                <span t-attf-class="moyee-order-status #{p_order_status['class']}">
+                                    <t t-esc="p_order_status['label']"/>
+                                </span>
                                 <div class="d-flex align-items-center gap-2">
                                     <t t-if="not so.is_subscription_order">
                                         <form t-attf-action="/my/orders/{{ so.id }}/reorder" method="post" class="mb-0">
@@ -441,16 +428,10 @@
                                         </t>
                                     </div>
                                 </div>
-                                <t t-set="inv_state" t-value="inv.payment_state or ''"/>
-                                <t t-if="inv_state == 'paid'">
-                                    <span class="moyee-invoice-status moyee-invoice-paid">Paid</span>
-                                </t>
-                                <t t-elif="inv_state == 'in_payment'">
-                                    <span class="moyee-invoice-status moyee-invoice-paid">In payment</span>
-                                </t>
-                                <t t-else="">
-                                    <span class="moyee-invoice-status moyee-invoice-open">Open</span>
-                                </t>
+                                <t t-set="p_invoice_status" t-value="inv._get_moyee_portal_invoice_status()"/>
+                                <span t-attf-class="moyee-invoice-status #{p_invoice_status['class']}">
+                                    <t t-esc="p_invoice_status['label']"/>
+                                </span>
                                 <a t-att-href="inv.get_portal_url(report_type='pdf', download=True)" class="moyee-invoice-download">
                                     ⬇ PDF
                                 </a>
