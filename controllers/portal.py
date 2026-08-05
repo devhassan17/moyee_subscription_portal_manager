@@ -355,10 +355,12 @@ class MoyeePortalHome(CustomerPortal):
 
     def _is_moyee_redesign_active_for_user(self):
         company = getattr(request, "website", None) and request.website.company_id or request.env.company
+        company_sudo = company.sudo()
+        
         enable_redesign = True
-        if "moyee_enable_portal_redesign" in company._fields:
+        if "moyee_enable_portal_redesign" in company_sudo._fields:
             try:
-                enable_redesign = bool(company.moyee_enable_portal_redesign)
+                enable_redesign = bool(company_sudo.moyee_enable_portal_redesign)
             except Exception:
                 enable_redesign = True
 
@@ -366,17 +368,17 @@ class MoyeePortalHome(CustomerPortal):
             return False
 
         enable_user_filter = False
-        if "moyee_enable_user_filter" in company._fields:
+        if "moyee_enable_user_filter" in company_sudo._fields:
             try:
-                enable_user_filter = bool(company.moyee_enable_user_filter)
+                enable_user_filter = bool(company_sudo.moyee_enable_user_filter)
             except Exception:
                 enable_user_filter = False
 
-        if enable_user_filter and "moyee_redesign_partner_ids" in company._fields:
+        if enable_user_filter and "moyee_redesign_partner_ids" in company_sudo._fields:
             try:
                 partner = request.env.user.partner_id
                 commercial = partner.commercial_partner_id
-                allowed_partners = company.moyee_redesign_partner_ids
+                allowed_partners = company_sudo.moyee_redesign_partner_ids
                 allowed_partner_ids = allowed_partners.ids if allowed_partners else []
                 allowed_commercial_ids = allowed_partners.mapped("commercial_partner_id").ids if allowed_partners else []
                 all_allowed_ids = set(allowed_partner_ids + allowed_commercial_ids)
