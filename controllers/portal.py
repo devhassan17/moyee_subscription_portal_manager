@@ -80,7 +80,7 @@ class MoyeePortalHome(CustomerPortal):
         max_price = 0.0
 
         current_website = getattr(request, "website", False)
-        current_company_id = current_website and current_website.company_id.id or False
+        current_company_id = current_website and current_website.company_id.id or request.env.company.id
 
         # Find the user's active subscription order
         sub_domain = [
@@ -385,8 +385,10 @@ class MoyeePortalHome(CustomerPortal):
 
                 if partner.id not in all_allowed_ids and commercial.id not in all_allowed_ids:
                     return False
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error("Moyee user filter error: %s", e)
+                return False
         return True
 
     @http.route(["/my/home"], type="http", auth="user", website=True)

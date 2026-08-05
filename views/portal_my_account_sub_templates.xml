@@ -795,7 +795,7 @@
          10) Modals Sub-template
          ========================================================= -->
     <template id="portal_my_home_moyee_modals" name="Moyee My Account - Modals">
-        <t t-if="has_subscription and active_subscription">
+        <div>
 
             <!-- Style overrides for modals to make grids look amazing -->
             <style>
@@ -817,8 +817,9 @@
                 }
             </style>
 
-            <!-- 1) NEXT SHIPMENT DATE MODAL -->
-            <div class="moyee-modal-overlay" id="moyee-modal-shipment-date">
+            <t t-if="has_subscription and active_subscription">
+                <!-- 1) NEXT SHIPMENT DATE MODAL -->
+                <div class="moyee-modal-overlay" id="moyee-modal-shipment-date">
                 <div class="moyee-modal">
                     <div class="moyee-modal-header" style="padding: 24px 24px 0;">
                         <div class="moyee-modal-title" style="font-size: 22px; font-weight: 800; color: #111;">Change order send date</div>
@@ -1367,6 +1368,8 @@
                 </div>
             </div>
 
+            </t>
+            
             <!-- 5b) PERSONAL DETAILS EDIT MODAL -->
             <div class="moyee-modal-overlay" id="moyee-modal-personal-details">
                 <div class="moyee-modal" style="max-width: 600px;">
@@ -1697,7 +1700,7 @@
                     </div>
                 </div>
             </t>
-        </t>
+        </div>
     </template>
 
 </odoo>
