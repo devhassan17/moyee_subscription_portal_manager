@@ -8,16 +8,12 @@ function patchCountersWidget(WidgetClass) {
         WidgetClass.include({
             _updateCounters: function (counters) {
                 console.log("Moyee: _updateCounters called with counters:", counters);
-                
-                if (!counters) {
-                    console.warn("Moyee: No counters provided to _updateCounters");
-                    return;
-                }
+                const data = counters || {};
                 
                 // 1) Let Odoo's default logic run (removes spinners on default portal)
                 try {
                     if (typeof this._super === 'function') {
-                        this._super.apply(this, arguments);
+                        this._super(data);
                     } else {
                         console.warn("Moyee: _super is not a function in PortalHomeCounters._updateCounters");
                     }
@@ -25,22 +21,26 @@ function patchCountersWidget(WidgetClass) {
                     console.error("Moyee: Error in PortalHomeCounters _super call:", e);
                 }
 
-                // 2) Fallback for custom Moyee portal where this.$ scope might miss our custom DOM nodes
-                try {
-                    Object.entries(counters).forEach(([key, count]) => {
-                        const els = document.querySelectorAll(`.o_portal_my_home_counter[data-count-key="${key}"], [data-count-key="${key}"]`);
-                        els.forEach(el => {
-                            if (el) {
-                                try {
-                                    el.textContent = count;
-                                } catch (err) {
-                                    console.error(`Moyee: Error setting textContent for counter ${key}:`, err);
+                if (!counters) {
+                    console.debug("Moyee: _updateCounters called without data, skipping custom fallback update.");
+                } else {
+                    // 2) Fallback for custom Moyee portal where this.$ scope might miss our custom DOM nodes
+                    try {
+                        Object.entries(counters).forEach(([key, count]) => {
+                            const els = document.querySelectorAll(`.o_portal_my_home_counter[data-count-key="${key}"], [data-count-key="${key}"]`);
+                            els.forEach(el => {
+                                if (el) {
+                                    try {
+                                        el.textContent = count;
+                                    } catch (err) {
+                                        console.error(`Moyee: Error setting textContent for counter ${key}:`, err);
+                                    }
                                 }
-                            }
+                            });
                         });
-                    });
-                } catch (e) {
-                    console.error("Moyee: Error in fallback counter update:", e);
+                    } catch (e) {
+                        console.error("Moyee: Error in fallback counter update:", e);
+                    }
                 }
                 
                 // 3) Final safety check: if any spinners are left in counter elements, remove them to avoid infinite loading UI
