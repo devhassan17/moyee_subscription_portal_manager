@@ -104,15 +104,6 @@
                             </div>
                             <div class="col-12 col-lg-6 o_setting_box">
                                 <div class="o_setting_left_pane">
-                                    <field name="moyee_enable_portal_redesign"/>
-                                </div>
-                                <div class="o_setting_right_pane">
-                                    <label for="moyee_enable_portal_redesign"/>
-                                    <div class="text-muted">Toggle the custom Moyee account portal home page (/my/home) for the selected company. If turned off, Odoo's default portal page will be restored for this company.</div>
-                                </div>
-                            </div>
-                            <div class="col-12 col-lg-6 o_setting_box" invisible="not moyee_enable_portal_redesign">
-                                <div class="o_setting_left_pane">
                                     <field name="moyee_enable_user_filter"/>
                                 </div>
                                 <div class="o_setting_right_pane">
@@ -120,7 +111,7 @@
                                     <div class="text-muted">If checked, only the selected subscription customers will see the new Moyee Portal Home page (/my/home). Unselected users will see Odoo's default portal page.</div>
                                 </div>
                             </div>
-                            <div class="col-12 col-lg-6 o_setting_box" invisible="not moyee_enable_portal_redesign or not moyee_enable_user_filter">
+                            <div class="col-12 col-lg-6 o_setting_box" invisible="not moyee_enable_user_filter">
                                 <div class="o_setting_left_pane"/>
                                 <div class="o_setting_right_pane">
                                     <label for="moyee_redesign_partner_ids"/>

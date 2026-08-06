@@ -5,10 +5,7 @@ from odoo import fields, models
 class ResCompany(models.Model):
     _inherit = "res.company"
 
-    moyee_enable_portal_redesign = fields.Boolean(
-        string="Enable Moyee Custom Portal Home Page",
-        default=True,
-    )
+
     moyee_enable_user_filter = fields.Boolean(
         string="Filter New Portal Home Page by Specific Subscription Customers",
         default=False,
@@ -27,12 +24,7 @@ class ResCompany(models.Model):
 class ResConfigSettings(models.TransientModel):
     _inherit = "res.config.settings"
 
-    # Master Toggle (Company Dependent)
-    moyee_enable_portal_redesign = fields.Boolean(
-        related="company_id.moyee_enable_portal_redesign",
-        readonly=False,
-        string="Enable Moyee Custom Portal Home Page",
-    )
+
     moyee_enable_user_filter = fields.Boolean(
         related="company_id.moyee_enable_user_filter",
         readonly=False,

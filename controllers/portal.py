@@ -357,16 +357,6 @@ class MoyeePortalHome(CustomerPortal):
         company = getattr(request, "website", False) and request.website.company_id or request.env.company
         company_sudo = company.sudo()
         
-        enable_redesign = True
-        if "moyee_enable_portal_redesign" in company_sudo._fields:
-            try:
-                enable_redesign = bool(company_sudo.moyee_enable_portal_redesign)
-            except Exception:
-                enable_redesign = True
-
-        if not enable_redesign:
-            return False
-
         # Hardcode company check: only allow for Moyee Coffee
         if company and "Moyee Coffee" not in company.name:
             return False
