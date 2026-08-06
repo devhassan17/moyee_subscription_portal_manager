@@ -367,6 +367,10 @@ class MoyeePortalHome(CustomerPortal):
         if not enable_redesign:
             return False
 
+        # Hardcode company check: only allow for Moyee Coffee
+        if company and "Moyee Coffee" not in company.name:
+            return False
+
         enable_user_filter = False
         if "moyee_enable_user_filter" in company_sudo._fields:
             try:
@@ -389,6 +393,7 @@ class MoyeePortalHome(CustomerPortal):
                 import logging
                 logging.getLogger(__name__).error("Moyee user filter error: %s", e)
                 return False
+
         return True
 
     @http.route(['/my', '/my/home'], type="http", auth="user", website=True)
