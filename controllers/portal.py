@@ -391,7 +391,7 @@ class MoyeePortalHome(CustomerPortal):
                 return False
         return True
 
-    @http.route(["/my/home"], type="http", auth="user", website=True)
+    @http.route(['/my', '/my/home'], type="http", auth="user", website=True)
     def home(self, **kw):
         if not self._is_moyee_redesign_active_for_user():
             return super().home(**kw)

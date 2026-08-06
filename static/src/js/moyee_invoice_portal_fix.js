@@ -45,9 +45,13 @@ function patchCountersWidget(WidgetClass) {
                 
                 // 3) Final safety check: if any spinners are left in counter elements, remove them to avoid infinite loading UI
                 try {
-                    document.querySelectorAll('.o_portal_my_home_counter .fa-spinner').forEach(spinner => {
+                    document.querySelectorAll('.o_portal_my_home_counter [class*="spinner"], .o_portal_my_home_counter .fa-spin').forEach(spinner => {
                         console.warn("Moyee: Found unresolved spinner in counter, hiding it to unblock UI.");
-                        spinner.style.display = 'none';
+                        const parent = spinner.closest('.o_portal_my_home_counter');
+                        spinner.remove();
+                        if (parent && !parent.textContent.trim()) {
+                            parent.textContent = '0'; // default to 0 to prevent empty UI bugs
+                        }
                     });
                 } catch (e) {
                     console.error("Moyee: Error trying to hide leftover spinners:", e);
