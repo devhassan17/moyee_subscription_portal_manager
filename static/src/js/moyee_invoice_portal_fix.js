@@ -7,14 +7,23 @@ function patchCountersWidget(WidgetClass) {
         WidgetClass.prototype._moyee_patched = true;
         WidgetClass.include({
             _updateCounters: function (counters) {
-                if (!counters) return;
+                console.log("Moyee: _updateCounters called with counters:", counters);
+                
+                if (!counters) {
+                    console.warn("Moyee: No counters provided to _updateCounters");
+                    return;
+                }
                 
                 // 1) Let Odoo's default logic run (removes spinners on default portal)
                 try {
                     if (typeof this._super === 'function') {
                         this._super.apply(this, arguments);
+                    } else {
+                        console.warn("Moyee: _super is not a function in PortalHomeCounters._updateCounters");
                     }
-                } catch (e) {}
+                } catch (e) {
+                    console.error("Moyee: Error in PortalHomeCounters _super call:", e);
+                }
 
                 // 2) Fallback for custom Moyee portal where this.$ scope might miss our custom DOM nodes
                 try {
@@ -24,11 +33,25 @@ function patchCountersWidget(WidgetClass) {
                             if (el) {
                                 try {
                                     el.textContent = count;
-                                } catch (err) {}
+                                } catch (err) {
+                                    console.error(`Moyee: Error setting textContent for counter ${key}:`, err);
+                                }
                             }
                         });
                     });
-                } catch (e) {}
+                } catch (e) {
+                    console.error("Moyee: Error in fallback counter update:", e);
+                }
+                
+                // 3) Final safety check: if any spinners are left in counter elements, remove them to avoid infinite loading UI
+                try {
+                    document.querySelectorAll('.o_portal_my_home_counter .fa-spinner').forEach(spinner => {
+                        console.warn("Moyee: Found unresolved spinner in counter, hiding it to unblock UI.");
+                        spinner.style.display = 'none';
+                    });
+                } catch (e) {
+                    console.error("Moyee: Error trying to hide leftover spinners:", e);
+                }
             }
         });
     }
@@ -52,7 +75,9 @@ if (typeof window !== "undefined") {
             if (msg.includes("textContent") || msg.includes("setting 'textContent'")) {
                 event.preventDefault();
             }
-        } catch (e) {}
+        } catch (e) {
+            console.error("Moyee: Error in unhandledrejection listener:", e);
+        }
     });
 }
 
@@ -64,11 +89,15 @@ if (typeof window !== "undefined") {
             if (select && select.options) {
                 Array.from(select.options).forEach(opt => {
                     if (opt && (opt.value === 'post' || (opt.textContent && opt.textContent.toLowerCase().includes('post')))) {
-                        try { opt.remove(); } catch (e) {}
+                        try { opt.remove(); } catch (e) {
+                            console.error("Moyee: Error removing 'post' option:", e);
+                        }
                     }
                 });
             }
-        } catch (err) {}
+        } catch (err) {
+            console.error("Moyee: Error in removePostOption:", err);
+        }
     };
 
     if (document.readyState === "loading") {
@@ -89,7 +118,9 @@ if (typeof window !== "undefined") {
                 dummyDiv.innerHTML = '<div class="timeline"></div><div class="arrow right"></div><div class="arrow left"></div>';
                 document.body.appendChild(dummyDiv);
             }
-        } catch (e) {}
+        } catch (e) {
+            console.error("Moyee: Error injecting dummy theme nodes:", e);
+        }
     };
 
     if (document.readyState === "loading") {
