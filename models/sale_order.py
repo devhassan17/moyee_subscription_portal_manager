@@ -142,27 +142,6 @@ class SaleOrder(models.Model):
         for order in self:
             if order._moyee_is_subscription_order():
                 order_lines = order.order_line.filtered(lambda x: not x.display_type and not x.x_moyee_is_removed)
-                
-                # Check company rounding method (global vs per-line)
-                round_globally = getattr(order.company_id, 'tax_calculation_rounding_method', False) == 'round_globally'
-                if round_globally:
-                    try:
-                        tax_results = self.env['account.tax']._compute_taxes([
-                            line._convert_to_tax_base_line_dict() for line in order_lines
-                        ])
-                        totals = tax_results.get('totals', {})
-                        order.amount_untaxed = totals.get(order.currency_id, {}).get('amount_untaxed', 0.0)
-                        order.amount_tax = totals.get(order.currency_id, {}).get('amount_tax', 0.0)
-                        order.amount_total = order.amount_untaxed + order.amount_tax
-                    except Exception:
-                        _logger.exception("Moyee: Failed to compute taxes round globally on order %s, falling back to sums.", order.name)
-                        order.amount_untaxed = sum(order_lines.mapped('price_subtotal'))
-                        order.amount_tax = sum(order_lines.mapped('price_tax'))
-                        order.amount_total = sum(order_lines.mapped('price_total'))
-                else:
-                    order.amount_untaxed = sum(order_lines.mapped('price_subtotal'))
-                    order.amount_tax = sum(order_lines.mapped('price_tax'))
-                    order.amount_total = sum(order_lines.mapped('price_total'))
 
                 # Update standard Odoo subscription fields if present (e.g. Recurring Amount / MRR)
                 for fname in ("recurring_amount_untaxed", "recurring_amount_tax", "recurring_amount_total"):
@@ -184,24 +163,6 @@ class SaleOrder(models.Model):
                             order[fname] = sum(one_time_lines.mapped('price_tax'))
                         elif fname == "non_recurring_amount_total":
                             order[fname] = sum(one_time_lines.mapped('price_total'))
-
-    @api.depends('order_line.price_subtotal', 'order_line.price_tax', 'order_line.price_total', 'order_line.x_moyee_is_removed')
-    def _compute_tax_totals(self):
-        super()._compute_tax_totals()
-        for order in self:
-            if order._moyee_is_subscription_order():
-                order_lines = order.order_line.filtered(lambda x: not x.display_type and not x.x_moyee_is_removed)
-                try:
-                    if hasattr(self.env['sale.order.line'], '_convert_to_tax_base_line_dict'):
-                        tax_base_lines = [line._convert_to_tax_base_line_dict() for line in order_lines]
-                    else:
-                        tax_base_lines = [line._prepare_base_line_for_taxes_computation() for line in order_lines]
-                    order.tax_totals = self.env['account.tax']._prepare_tax_totals(
-                        tax_base_lines,
-                        order.currency_id or order.company_id.currency_id,
-                    )
-                except Exception:
-                    _logger.exception("Moyee: Failed to compute tax totals on order %s.", order.name)
 
     # ============================================================
     # Portal security helpers

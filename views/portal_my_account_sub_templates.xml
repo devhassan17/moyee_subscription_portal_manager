@@ -374,7 +374,12 @@
                                         </form>
                                     </t>
                                     <div class="moyee-order-price">
-                                        € <t t-esc="'%.2f' % so.amount_total"/>
+                                        <t t-if="so.is_subscription_order and 'recurring_amount_total' in so">
+                                            € <t t-esc="'%.2f' % so.recurring_amount_total"/>
+                                        </t>
+                                        <t t-else="">
+                                            € <t t-esc="'%.2f' % so.amount_total"/>
+                                        </t>
                                     </div>
                                 </div>
                             </a>
@@ -1076,7 +1081,8 @@
                                 <t t-foreach="visible_lines" t-as="line">
                                     <t t-if="not line.display_type">
                                         <t t-set="lname_check" t-value="(line.product_id and line.product_id.name or line.name or '').lower()"/>
-                                        <t t-if="not line._moyee_is_delivery_line()">
+                                        <t t-set="is_discount_line" t-value="line.price_total &lt; 0 or line.price_subtotal &lt; 0 or 'discount' in lname_check or 'promo' in lname_check or 'coupon' in lname_check"/>
+                                        <t t-if="not line._moyee_is_delivery_line() and not is_discount_line">
                                             <div class="d-flex align-items-center justify-content-between gap-3 p-2 rounded" style="background: var(--moyee-gray-1);">
                                                 
                                                 <div class="d-flex align-items-center gap-2" style="flex: 1; min-width: 0;">
@@ -1254,7 +1260,8 @@
                                     </p>
                                     <div class="moyee-product-slider-wrap">
                                         <t t-set="sub_lines" t-value="active_subscription._moyee_get_sub_lines()"/>
-                                        <t t-set="in_sub_prods" t-value="sub_lines.mapped('product_id')"/>
+                                        <t t-set="sub_discount_lines" t-value="sub_lines.filtered(lambda l: l.price_total &lt; 0 or l.price_subtotal &lt; 0 or 'discount' in (l.product_id and l.product_id.name or l.name or '').lower() or 'promo' in (l.product_id and l.product_id.name or l.name or '').lower() or 'coupon' in (l.product_id and l.product_id.name or l.name or '').lower())"/>
+                                        <t t-set="in_sub_prods" t-value="sub_lines.filtered(lambda l: l not in sub_discount_lines).mapped('product_id')"/>
                                         <t t-set="other_prods" t-value="available_products.filtered(lambda p: p.id not in in_sub_prods.ids)"/>
 
                                         <!-- Coffee in subscription section -->
@@ -1441,7 +1448,8 @@
             <t t-foreach="visible_lines or []" t-as="line">
                 <t t-if="not line.display_type">
                     <t t-set="lname_check" t-value="(line.product_id and line.product_id.name or line.name or '').lower()"/>
-                    <t t-if="not line._moyee_is_delivery_line()">
+                    <t t-set="is_discount_line" t-value="line.price_total &lt; 0 or line.price_subtotal &lt; 0 or 'discount' in lname_check or 'promo' in lname_check or 'coupon' in lname_check"/>
+                    <t t-if="not line._moyee_is_delivery_line() and not is_discount_line">
                         <t t-set="lname" t-value="lname_check"/>
                         <t t-set="line_grind" t-value="line._moyee_get_portal_grind_value()"/>
                         <t t-set="line_weight" t-value="line._moyee_get_portal_weight_value()"/>
