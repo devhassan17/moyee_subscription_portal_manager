@@ -1261,7 +1261,7 @@
                                     <div class="moyee-product-slider-wrap">
                                         <t t-set="sub_lines" t-value="active_subscription._moyee_get_sub_lines()"/>
                                         <t t-set="sub_discount_lines" t-value="sub_lines.filtered(lambda l: l.price_total &lt; 0 or l.price_subtotal &lt; 0 or 'discount' in (l.product_id and l.product_id.name or l.name or '').lower() or 'promo' in (l.product_id and l.product_id.name or l.name or '').lower() or 'coupon' in (l.product_id and l.product_id.name or l.name or '').lower())"/>
-                                        <t t-set="in_sub_prods" t-value="sub_lines.filtered(lambda l: l not in sub_discount_lines).mapped('product_id')"/>
+                                        <t t-set="in_sub_prods" t-value="sub_lines.filtered(lambda l: l not in sub_discount_lines and float(l.product_uom_qty or 0.0) &gt; 0.0).mapped('product_id')"/>
                                         <t t-set="other_prods" t-value="available_products.filtered(lambda p: p.id not in in_sub_prods.ids)"/>
 
                                         <!-- Coffee in subscription section -->
