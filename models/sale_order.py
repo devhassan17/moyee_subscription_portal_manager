@@ -273,7 +273,7 @@ class SaleOrder(models.Model):
         grind = "other"
         weight = "other"
 
-        # 1. Check attributes
+        # 1. Check variant attributes
         attr_values = getattr(product, "product_template_attribute_value_ids", False)
         if attr_values:
             for av in attr_values:
@@ -282,7 +282,7 @@ class SaleOrder(models.Model):
                 attr_name = (av.attribute_id.name or "").lower()
                 val_name = (av.name or "").lower()
 
-                if "grind" in attr_name or "maling" in attr_name:
+                if "grind" in attr_name or "maling" in attr_name or "brew" in attr_name or "hoe zet je" in attr_name or "how do you brew" in attr_name:
                     if "capsule" in val_name or "cup" in val_name:
                         grind = "capsules"
                     elif "whole" in val_name or "boon" in val_name or "bonen" in val_name:
@@ -297,7 +297,7 @@ class SaleOrder(models.Model):
                     break
                 attr_name = (av.attribute_id.name or "").lower()
                 val_name = (av.name or "").lower()
-                if "weight" in attr_name or "size" in attr_name or "gewicht" in attr_name:
+                if "weight" in attr_name or "size" in attr_name or "gewicht" in attr_name or "inhoud" in attr_name:
                     v_clean = val_name.replace(" ", "")
                     if "capsules" in v_clean or "capsule" in v_clean or "cups" in v_clean or "25caps" in v_clean:
                         weight = "25caps"
@@ -306,7 +306,42 @@ class SaleOrder(models.Model):
                     elif "250g" in v_clean or "250" in v_clean or "0.25kg" in v_clean or "0.25 kg" in val_name:
                         weight = "250g"
 
-        # 2. Fallback to name scanning if still 'other'
+        # 2. Check template attribute lines if still 'other'
+        tmpl = getattr(product, "product_tmpl_id", False)
+        if tmpl and (grind == "other" or weight == "other"):
+            for line in getattr(tmpl, "attribute_line_ids", []):
+                attr_name = (line.attribute_id.name or "").lower()
+                val_names = [v.name.lower() for v in line.value_ids if v.name]
+
+                if grind == "other" and ("grind" in attr_name or "maling" in attr_name or "brew" in attr_name or "how do you brew" in attr_name or "hoe zet je" in attr_name):
+                    for val_name in val_names:
+                        if "capsule" in val_name or "cup" in val_name:
+                            grind = "capsules"
+                            break
+                        elif "whole" in val_name or "boon" in val_name or "bonen" in val_name:
+                            grind = "whole"
+                            break
+                        elif "filter" in val_name:
+                            grind = "filter"
+                            break
+                        elif "espresso" in val_name:
+                            grind = "espresso"
+                            break
+
+                if weight == "other" and ("weight" in attr_name or "size" in attr_name or "gewicht" in attr_name or "inhoud" in attr_name):
+                    for val_name in val_names:
+                        v_clean = val_name.replace(" ", "")
+                        if "capsules" in v_clean or "capsule" in v_clean or "cups" in v_clean or "25caps" in v_clean:
+                            weight = "25caps"
+                            break
+                        elif "1kg" in v_clean or "1.0kg" in v_clean or "1000g" in v_clean:
+                            weight = "1kg"
+                            break
+                        elif "250g" in v_clean or "250" in v_clean or "0.25kg" in v_clean:
+                            weight = "250g"
+                            break
+
+        # 3. Fallback to name scanning if still 'other'
         name = (getattr(product, "display_name", "") or getattr(product, "name", "") or "").lower()
         if grind == "other":
             if "capsule" in name or "cup" in name:
@@ -318,7 +353,7 @@ class SaleOrder(models.Model):
             elif "espresso grind" in name or "espressogrind" in name or "espresso" in name:
                 grind = "espresso"
             else:
-                grind = "whole" # Default fallback for coffee products
+                grind = "whole"  # Default fallback for coffee products
 
         if weight == "other":
             name_clean = name.replace(" ", "")
@@ -329,7 +364,7 @@ class SaleOrder(models.Model):
             elif "250g" in name_clean or "0.25kg" in name_clean or "250" in name_clean:
                 weight = "250g"
             else:
-                weight = "1kg" # Default fallback
+                weight = "1kg"  # Default fallback
 
         return grind, weight
 
@@ -347,35 +382,63 @@ class SaleOrder(models.Model):
         bold = "other"
         fruity = "other"
 
-        # Check attributes
+        # 1. Check variant attributes
         attr_values = getattr(product, "product_template_attribute_value_ids", False)
         if attr_values:
             for av in attr_values:
                 attr_name = (av.attribute_id.name or "").lower()
                 val_name = (av.name or "").lower()
 
-                if "bold" in attr_name or "sterkte" in attr_name:
+                if "bold" in attr_name or "sterkte" in attr_name or "how bold" in attr_name or "strength" in attr_name:
                     if "light" in val_name or "mild" in val_name:
                         bold = "light"
                     elif "medium" in val_name:
                         bold = "medium"
-                    elif "bold" in val_name or "donker" in val_name or "intens" in val_name:
+                    elif "bold" in val_name or "donker" in val_name or "intens" in val_name or "dark" in val_name:
                         bold = "bold"
 
-                if "fruity" in attr_name or "fruity?" in attr_name or "vol of fruitig" in attr_name or "full or fruity" in attr_name:
+                if "fruity" in attr_name or "fruity?" in attr_name or "vol of fruitig" in attr_name or "full or fruity" in attr_name or "smaak" in attr_name or "flavor" in attr_name:
                     if "full" in val_name or "vol" in val_name:
                         fruity = "full"
                     elif "fruity" in val_name or "fruitig" in val_name:
                         fruity = "fruity"
 
-        # Fallback to name scan if still 'other'
+        # 2. Check template attribute lines if still 'other'
+        tmpl = getattr(product, "product_tmpl_id", False)
+        if tmpl and (bold == "other" or fruity == "other"):
+            for line in getattr(tmpl, "attribute_line_ids", []):
+                attr_name = (line.attribute_id.name or "").lower()
+                val_names = [v.name.lower() for v in line.value_ids if v.name]
+
+                if bold == "other" and ("bold" in attr_name or "sterkte" in attr_name or "how bold" in attr_name or "strength" in attr_name):
+                    for val_name in val_names:
+                        if "light" in val_name or "mild" in val_name:
+                            bold = "light"
+                            break
+                        elif "medium" in val_name:
+                            bold = "medium"
+                            break
+                        elif "bold" in val_name or "donker" in val_name or "intens" in val_name or "dark" in val_name:
+                            bold = "bold"
+                            break
+
+                if fruity == "other" and ("fruity" in attr_name or "fruity?" in attr_name or "vol of fruitig" in attr_name or "full or fruity" in attr_name or "smaak" in attr_name or "flavor" in attr_name):
+                    for val_name in val_names:
+                        if "full" in val_name or "vol" in val_name:
+                            fruity = "full"
+                            break
+                        elif "fruity" in val_name or "fruitig" in val_name:
+                            fruity = "fruity"
+                            break
+
+        # 3. Fallback to product name scan if still 'other'
         name = (getattr(product, "name", "") or getattr(product, "display_name", "") or "").lower()
         if bold == "other":
             if "light" in name or "mild" in name:
                 bold = "light"
             elif "medium" in name:
                 bold = "medium"
-            elif "bold" in name or "intens" in name or "dark" in name:
+            elif "bold" in name or "intens" in name or "dark" in name or "donker" in name:
                 bold = "bold"
 
         if fruity == "other":

@@ -296,6 +296,7 @@ class MoyeePortalHome(CustomerPortal):
                 )
                 for p in all_possible_products:
                     grind, weight = active_subscription.moyee_extract_product_metadata(p)
+                    bold, fruity = active_subscription.moyee_extract_coffee_characteristics(p)
                     tmpl_name = p.product_tmpl_id.name or ''
                     tmpl_name = tmpl_name.replace('(Subscription)', '').replace('(subscription)', '').replace('(SUBSCRIPTION)', '')
                     tmpl_name = tmpl_name.strip()
@@ -305,6 +306,8 @@ class MoyeePortalHome(CustomerPortal):
                         "tmpl_name": tmpl_name,
                         "grind": grind,
                         "weight": weight,
+                        "bold": bold,
+                        "fruity": fruity,
                     })
             except Exception:
                 _logger.exception("Moyee: Failed to build variant map.")
