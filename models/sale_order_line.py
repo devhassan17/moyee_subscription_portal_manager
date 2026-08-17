@@ -140,6 +140,7 @@ class SaleOrderLine(models.Model):
         safe_qty = max(float(self.qty_delivered or 0.0), 0.0)
         vals = {
             "product_uom_qty": safe_qty,
+            "price_unit": 0.0,
             "x_moyee_is_removed": True,
             "x_moyee_removed_on": now,
             "x_moyee_removed_by": removed_by_user_id,
