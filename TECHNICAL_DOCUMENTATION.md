@@ -1,6 +1,6 @@
 # Moyee Subscription Portal Manager: Complete Technical Documentation
 
-This document serves as the comprehensive technical specification and architectural manual for the **Moyee Subscription Portal Manager** module (version `18.0.2.0.93`). Developed for Moyee Coffee, this module introduces an advanced "soft-remove" paradigm for subscription lines, filters backend and invoice layouts dynamically, and exposes a high-end customer self-service portal interface for secure subscription administration.
+This document serves as the comprehensive technical specification and architectural manual for the **Moyee Subscription Portal Manager** module (version `18.0.2.0.94`). Developed for Moyee Coffee, this module introduces an advanced "soft-remove" paradigm for subscription lines, filters backend and invoice layouts dynamically, and exposes a high-end customer self-service portal interface for secure subscription administration.
 
 ---
 
