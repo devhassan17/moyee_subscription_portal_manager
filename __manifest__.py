@@ -29,8 +29,8 @@ Portal + backend build:
         "views/portal_subscription_templates.xml",
         "views/portal_my_account_sub_templates.xml",
         "views/portal_my_account_templates.xml",
-        "views/res_config_settings_views.xml",
         "views/moyee_subscription_bulk_product_wizard_views.xml",
+        "views/res_config_settings_views.xml",
         "reports/report_invoice.xml",
     ],
     "assets": {

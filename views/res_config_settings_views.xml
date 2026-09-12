@@ -83,6 +83,14 @@
         <field name="target">current</field>
     </record>
 
+    <!-- Bulk Subscription Product Manager Action -->
+    <record id="action_moyee_subscription_bulk_product_wizard" model="ir.actions.act_window">
+        <field name="name">Bulk Subscription Product Manager</field>
+        <field name="res_model">moyee.subscription.bulk.product.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
     <record id="res_config_settings_view_form" model="ir.ui.view">
         <field name="name">res.config.settings.view.form.inherit.moyee</field>
         <field name="model">res.config.settings</field>

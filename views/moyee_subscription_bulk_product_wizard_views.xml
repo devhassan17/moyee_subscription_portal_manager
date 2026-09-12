@@ -94,12 +94,4 @@
         </field>
     </record>
 
-    <!-- Wizard Action -->
-    <record id="action_moyee_subscription_bulk_product_wizard" model="ir.actions.act_window">
-        <field name="name">Bulk Subscription Product Manager</field>
-        <field name="res_model">moyee.subscription.bulk.product.wizard</field>
-        <field name="view_mode">form</field>
-        <field name="target">new</field>
-    </record>
-
 </odoo>
