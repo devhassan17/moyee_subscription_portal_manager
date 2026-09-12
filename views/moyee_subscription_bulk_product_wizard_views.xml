@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Wizard Form View -->
+    <record id="moyee_subscription_bulk_product_wizard_view_form" model="ir.ui.view">
+        <field name="name">moyee.subscription.bulk.product.wizard.view.form</field>
+        <field name="model">moyee.subscription.bulk.product.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Bulk Subscription Product Manager">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Bulk Subscription Product Manager</h1>
+                        <p class="text-muted">Filter subscriptions based on products, price ranges, country, age/dates, and insert products in bulk.</p>
+                    </div>
+
+                    <!-- Step 1: Filters -->
+                    <group string="1. Filter Criteria" name="filter_criteria">
+                        <group>
+                            <field name="product_ids" widget="many2many_tags" options="{'no_create': True}" placeholder="Select product(s)..."/>
+                            <field name="product_filter_mode"/>
+                            <field name="country_ids" widget="many2many_tags" options="{'no_create': True}" placeholder="Select country/countries..."/>
+                            <field name="subscription_state"/>
+                        </group>
+                        <group>
+                            <label for="price_min" string="Subscription Price Range"/>
+                            <div class="o_row">
+                                <field name="price_min" placeholder="Min Price"/>
+                                <span class="mx-2">to</span>
+                                <field name="price_max" placeholder="Max Price"/>
+                            </div>
+                            <field name="subscription_age"/>
+                            <field name="date_from" invisible="subscription_age != 'custom'"/>
+                            <field name="date_to" invisible="subscription_age != 'custom'"/>
+                        </group>
+                    </group>
+
+                    <div class="text-end mb-3">
+                        <button name="action_apply_filter" 
+                                string="Apply Filters" 
+                                type="object" 
+                                class="btn-primary" 
+                                icon="fa-filter"/>
+                    </div>
+
+                    <!-- Step 2: Filtered Results Preview -->
+                    <group string="2. Filtered Subscriptions Preview" name="preview_section">
+                        <div class="alert alert-info d-flex align-items-center justify-content-between py-2 px-3" role="status">
+                            <div>
+                                <i class="fa fa-info-circle me-2"/>
+                                <strong>Matched Subscriptions:</strong> 
+                                <field name="matched_count" class="fw-bold ms-1"/>
+                            </div>
+                            <span class="text-muted small">Subscriptions below will receive the bulk product addition.</span>
+                        </div>
+                        <field name="subscription_ids" widget="many2many" options="{'no_create': True}">
+                            <list create="false" edit="false" delete="false">
+                                <field name="name" string="Subscription #"/>
+                                <field name="partner_id" string="Customer"/>
+                                <field name="partner_id" widget="many2one" string="Country" domain="[]" context="{'show_address': 0}">
+                                    <field name="country_id"/>
+                                </field>
+                                <field name="date_order" string="Creation Date"/>
+                                <field name="amount_total" string="Total Amount" widget="monetary"/>
+                                <field name="state" widget="badge" decoration-success="state == 'sale'" decoration-info="state == 'done'"/>
+                            </list>
+                        </field>
+                    </group>
+
+                    <!-- Step 3: Bulk Product Action -->
+                    <group string="3. Bulk Product Addition" name="bulk_addition_section">
+                        <group>
+                            <field name="add_product_id" options="{'no_create': True}" required="1" placeholder="Search &amp; select product to add..."/>
+                            <field name="add_qty" required="1"/>
+                            <field name="add_price_unit"/>
+                        </group>
+                        <group class="d-flex align-items-end justify-content-end">
+                            <div class="p-3 bg-light rounded border w-100">
+                                <h5>Ready to Apply?</h5>
+                                <p class="text-muted small mb-2">Adding this product will update all matched subscriptions listed above simultaneously.</p>
+                                <button name="action_bulk_add_product" 
+                                        string="Add Product in Bulk to Subscriptions" 
+                                        type="object" 
+                                        class="btn-success btn-lg w-100" 
+                                        icon="fa-plus-circle" 
+                                        confirm="Are you sure you want to add this product in bulk to all matched subscriptions?"/>
+                            </div>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button string="Close" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Wizard Action -->
+    <record id="action_moyee_subscription_bulk_product_wizard" model="ir.actions.act_window">
+        <field name="name">Bulk Subscription Product Manager</field>
+        <field name="res_model">moyee.subscription.bulk.product.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

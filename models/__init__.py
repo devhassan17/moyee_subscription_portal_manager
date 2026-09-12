@@ -5,3 +5,4 @@ from . import account_move
 from . import res_config_settings
 from . import moyee_portal_faq
 from . import moyee_portal_brew_guide
+from . import moyee_subscription_bulk_product_wizard

@@ -382,6 +382,24 @@
                             </div>
                         </div>
                     </block>
+                    <block title="Bulk Subscription Operations" name="moyee_bulk_ops_block">
+                        <div class="row mt16 o_settings_container">
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <span class="o_form_label">Bulk Add Product to Subscriptions</span>
+                                    <div class="text-muted">Filter subscriptions based on contained products, min/max price range, customer country, and subscription age/dates, then add products in bulk.</div>
+                                    <div class="mt8">
+                                        <button name="%(action_moyee_subscription_bulk_product_wizard)d" 
+                                                icon="oi-arrow-right"
+                                                string="Launch Bulk Product Adder" 
+                                                type="action" 
+                                                class="btn-link"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </block>
 
                 </app>
             </xpath>
@@ -401,6 +419,12 @@
               name="Moyee Portal"
               web_icon="moyee_subscription_portal_manager,static/description/icon.png"
               sequence="10"/>
+
+    <menuitem id="menu_moyee_portal_bulk_product"
+              name="Bulk Product Adder"
+              parent="menu_moyee_portal_root"
+              action="action_moyee_subscription_bulk_product_wizard"
+              sequence="15"/>
 
     <menuitem id="menu_moyee_portal_settings"
               name="Configuration"
