@@ -46,7 +46,7 @@
                     <group string="2. Filtered Subscriptions Preview" name="preview_section">
                         <div class="alert alert-info d-flex align-items-center justify-content-between py-2 px-3" role="status">
                             <div>
-                                <i class="fa fa-info-circle me-2"/>
+                                <i class="fa fa-info-circle me-2" title="Matched Subscriptions"/>
                                 <strong>Matched Subscriptions:</strong> 
                                 <field name="matched_count" class="fw-bold ms-1"/>
                             </div>
@@ -56,9 +56,7 @@
                             <list create="false" edit="false" delete="false">
                                 <field name="name" string="Subscription #"/>
                                 <field name="partner_id" string="Customer"/>
-                                <field name="partner_id" widget="many2one" string="Country" domain="[]" context="{'show_address': 0}">
-                                    <field name="country_id"/>
-                                </field>
+                                <field name="partner_country_id" string="Country"/>
                                 <field name="date_order" string="Creation Date"/>
                                 <field name="amount_total" string="Total Amount" widget="monetary"/>
                                 <field name="state" widget="badge" decoration-success="state == 'sale'" decoration-info="state == 'done'"/>

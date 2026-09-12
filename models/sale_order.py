@@ -20,6 +20,12 @@ class SaleOrder(models.Model):
         compute="_compute_is_subscription_order",
         store=False,
     )
+    partner_country_id = fields.Many2one(
+        comodel_name="res.country",
+        related="partner_id.country_id",
+        string="Country",
+        store=False,
+    )
 
     moyee_removed_line_ids = fields.One2many(
         comodel_name="sale.order.line",
