@@ -127,9 +127,17 @@ class MoyeeSubscriptionBulkProductWizard(models.TransientModel):
         """Query subscriptions matching specified criteria and update subscription_ids."""
         self.ensure_one()
 
-        # Find all confirmed sale orders
+        # Find all confirmed subscription orders
+        SaleOrder = self.env["sale.order"]
         domain = [("state", "in", ["sale", "done"])]
-        all_orders = self.env["sale.order"].search(domain)
+        if "is_subscription" in SaleOrder._fields:
+            domain.append(("is_subscription", "=", True))
+        elif "plan_id" in SaleOrder._fields:
+            domain.append(("plan_id", "!=", False))
+        elif "recurring_plan_id" in SaleOrder._fields:
+            domain.append(("recurring_plan_id", "!=", False))
+
+        all_orders = SaleOrder.search(domain)
 
         # Filter strictly for subscription orders
         orders = all_orders.filtered(lambda o: o._moyee_is_subscription_order())
@@ -187,35 +195,50 @@ class MoyeeSubscriptionBulkProductWizard(models.TransientModel):
                 lambda o: (o.recurring_amount_total if "recurring_amount_total" in o._fields and o.recurring_amount_total else o.amount_total) <= self.price_max
             )
 
-        # 5. Contained Products Filter
+        # 5. Contained Products Filter (Checks active non-removed subscription lines)
         if self.product_ids:
-            p_ids = set(self.product_ids.ids)
+            selected_pids = set(self.product_ids.ids)
+            selected_tmpl_ids = set(self.product_ids.mapped("product_tmpl_id").ids)
+
+            def _get_order_products(order):
+                lines = order._moyee_get_sub_lines() if hasattr(order, "_moyee_get_sub_lines") else order.order_line.filtered(lambda l: not getattr(l, "x_moyee_is_removed", False) and not l.display_type and l.product_id)
+                pids = set()
+                tmpl_ids = set()
+                for l in lines:
+                    if l.product_id:
+                        pids.add(l.product_id.id)
+                        if l.product_id.product_tmpl_id:
+                            tmpl_ids.add(l.product_id.product_tmpl_id.id)
+                return pids, tmpl_ids
+
             if self.product_filter_mode == "any":
-                orders = orders.filtered(
-                    lambda o: any(
-                        line.product_id.id in p_ids
-                        for line in o.order_line
-                        if not line.x_moyee_is_removed and not line.display_type and line.product_id
-                    )
-                )
+                filtered_orders = SaleOrder.browse()
+                for order in orders:
+                    pids, tmpl_ids = _get_order_products(order)
+                    if (pids & selected_pids) or (tmpl_ids & selected_tmpl_ids):
+                        filtered_orders |= order
+                orders = filtered_orders
+
             elif self.product_filter_mode == "all":
-                orders = orders.filtered(
-                    lambda o: p_ids.issubset(
-                        {
-                            line.product_id.id
-                            for line in o.order_line
-                            if not line.x_moyee_is_removed and not line.display_type and line.product_id
-                        }
-                    )
-                )
+                filtered_orders = SaleOrder.browse()
+                for order in orders:
+                    pids, tmpl_ids = _get_order_products(order)
+                    match_all = True
+                    for sel_prod in self.product_ids:
+                        if sel_prod.id not in pids and sel_prod.product_tmpl_id.id not in tmpl_ids:
+                            match_all = False
+                            break
+                    if match_all:
+                        filtered_orders |= order
+                orders = filtered_orders
+
             elif self.product_filter_mode == "exclude":
-                orders = orders.filtered(
-                    lambda o: not any(
-                        line.product_id.id in p_ids
-                        for line in o.order_line
-                        if not line.x_moyee_is_removed and not line.display_type and line.product_id
-                    )
-                )
+                filtered_orders = SaleOrder.browse()
+                for order in orders:
+                    pids, tmpl_ids = _get_order_products(order)
+                    if not ((pids & selected_pids) or (tmpl_ids & selected_tmpl_ids)):
+                        filtered_orders |= order
+                orders = filtered_orders
 
         self.subscription_ids = orders
 

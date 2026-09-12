@@ -57,6 +57,7 @@
                                 <field name="name" string="Subscription #"/>
                                 <field name="partner_id" string="Customer"/>
                                 <field name="partner_country_id" string="Country"/>
+                                <field name="moyee_active_product_names" string="Active Products"/>
                                 <field name="date_order" string="Creation Date"/>
                                 <field name="amount_total" string="Total Amount" widget="monetary"/>
                                 <field name="state" widget="badge" decoration-success="state == 'sale'" decoration-info="state == 'done'"/>

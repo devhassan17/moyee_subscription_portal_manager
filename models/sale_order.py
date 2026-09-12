@@ -34,23 +34,39 @@ class SaleOrder(models.Model):
         domain=[("x_moyee_is_removed", "=", True)],
     )
 
+    moyee_active_product_names = fields.Char(
+        string="Active Products",
+        compute="_compute_moyee_active_product_names",
+        store=False,
+    )
+
+    def _compute_moyee_active_product_names(self):
+        for order in self:
+            sub_lines = order._moyee_get_sub_lines() if hasattr(order, "_moyee_get_sub_lines") else order.order_line.filtered(lambda l: not getattr(l, "x_moyee_is_removed", False) and not l.display_type and l.product_id)
+            names = []
+            for l in sub_lines:
+                pname = l.product_id.display_name or l.product_id.name or l.name
+                qty = int(l.product_uom_qty) if l.product_uom_qty.is_integer() else l.product_uom_qty
+                names.append(f"{pname} (x{qty})")
+            order.moyee_active_product_names = ", ".join(names) if names else "No active products"
+
     # ============================================================
     # Subscription detection (robust across Odoo builds)
     # ============================================================
     def _moyee_is_subscription_order(self):
         self.ensure_one()
-        for fname in (
-            "is_subscription",
-            "plan_id",
-            "subscription_state",
-            "subscription_status",
-            "recurring_plan_id",
-            "subscription_pricing_id",
-            "subscription_plan_id",
-            "recurring_pricing_id",
-        ):
-            if fname in self._fields and getattr(self, fname, False):
-                return True
+        if "is_subscription" in self._fields:
+            return bool(self.is_subscription)
+        if "plan_id" in self._fields:
+            return bool(self.plan_id)
+        if "recurring_plan_id" in self._fields:
+            return bool(self.recurring_plan_id)
+        if "subscription_state" in self._fields:
+            state_val = str(self.subscription_state or "").lower()
+            return bool(state_val and state_val not in ("0", "false", "none", "draft", "cancel"))
+        if "subscription_status" in self._fields:
+            status_val = str(self.subscription_status or "").lower()
+            return bool(status_val and status_val not in ("0", "false", "none", "draft", "cancel"))
         return False
 
     def _compute_is_subscription_order(self):
