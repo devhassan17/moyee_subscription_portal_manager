@@ -425,20 +425,15 @@
 
     <menuitem id="menu_moyee_portal_root"
               name="Moyee Portal"
+              action="action_moyee_portal_settings"
               web_icon="moyee_subscription_portal_manager,static/description/icon.png"
               sequence="10"/>
-
-    <menuitem id="menu_moyee_portal_bulk_product"
-              name="Bulk Product Adder"
-              parent="menu_moyee_portal_root"
-              action="action_moyee_subscription_bulk_product_wizard"
-              sequence="15"/>
 
     <menuitem id="menu_moyee_portal_settings"
               name="Configuration"
               parent="menu_moyee_portal_root"
               action="action_moyee_portal_settings"
-              sequence="100"/>
+              sequence="10"/>
 
     <menuitem id="menu_moyee_portal_faq"
               name="Portal FAQs"
@@ -451,5 +446,11 @@
               parent="menu_moyee_portal_root"
               action="action_moyee_portal_brew_guide"
               sequence="30"/>
+
+    <menuitem id="menu_moyee_portal_bulk_product"
+              name="Bulk Product Adder"
+              parent="menu_moyee_portal_root"
+              action="action_moyee_subscription_bulk_product_wizard"
+              sequence="40"/>
 
 </odoo>
