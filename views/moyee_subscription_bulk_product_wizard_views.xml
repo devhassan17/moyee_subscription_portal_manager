@@ -10,7 +10,7 @@
                 <sheet>
                     <div class="oe_title">
                         <h1>Bulk Subscription Product Manager</h1>
-                        <p class="text-muted">Filter subscriptions based on products, price ranges, country, age/dates, and insert products in bulk.</p>
+                        <p class="text-muted">Filter subscriptions based on products, price ranges, country, age/dates, and add or remove products in bulk.</p>
                     </div>
 
                     <!-- Step 1: Filters -->
@@ -50,7 +50,7 @@
                                 <strong>Matched Subscriptions:</strong> 
                                 <field name="matched_count" class="fw-bold ms-1"/>
                             </div>
-                            <span class="text-muted small">Subscriptions below will receive the bulk product addition.</span>
+                            <span class="text-muted small">Subscriptions below will be affected by the bulk operation.</span>
                         </div>
                         <field name="subscription_ids" widget="many2many" options="{'no_create': True}">
                             <list create="false" edit="false" delete="false">
@@ -66,15 +66,20 @@
                     </group>
 
                     <!-- Step 3: Bulk Product Action -->
-                    <group string="3. Bulk Product Addition" name="bulk_addition_section">
+                    <group string="3. Bulk Product Operations" name="bulk_action_section">
+                        <field name="operation_type" widget="radio" class="mb-3"/>
+                    </group>
+
+                    <!-- Action Block: Add Product -->
+                    <group invisible="operation_type != 'add'" name="bulk_add_section">
                         <group>
-                            <field name="add_product_id" options="{'no_create': True}" required="1" placeholder="Search &amp; select product to add..."/>
-                            <field name="add_qty" required="1"/>
+                            <field name="add_product_id" options="{'no_create': True}" required="operation_type == 'add'" placeholder="Search &amp; select product to add..."/>
+                            <field name="add_qty" required="operation_type == 'add'"/>
                             <field name="add_price_unit"/>
                         </group>
                         <group class="d-flex align-items-end justify-content-end">
                             <div class="p-3 bg-light rounded border w-100">
-                                <h5>Ready to Apply?</h5>
+                                <h5>Ready to Add in Bulk?</h5>
                                 <p class="text-muted small mb-2">Adding this product will update all matched subscriptions listed above simultaneously.</p>
                                 <button name="action_bulk_add_product" 
                                         string="Add Product in Bulk to Subscriptions" 
@@ -82,6 +87,26 @@
                                         class="btn-success btn-lg w-100" 
                                         icon="fa-plus-circle" 
                                         confirm="Are you sure you want to add this product in bulk to all matched subscriptions?"/>
+                            </div>
+                        </group>
+                    </group>
+
+                    <!-- Action Block: Remove Product -->
+                    <group invisible="operation_type != 'remove'" name="bulk_remove_section">
+                        <group>
+                            <field name="remove_product_id" options="{'no_create': True}" required="operation_type == 'remove'" placeholder="Search &amp; select product to remove..."/>
+                            <field name="remove_reason" placeholder="e.g. Bulk product removal requested..."/>
+                        </group>
+                        <group class="d-flex align-items-end justify-content-end">
+                            <div class="p-3 bg-light rounded border w-100">
+                                <h5>Ready to Remove in Bulk?</h5>
+                                <p class="text-muted small mb-2">Soft-removing this product will remove it from active subscription lines for all matched subscriptions listed above.</p>
+                                <button name="action_bulk_remove_product" 
+                                        string="Remove Product in Bulk from Subscriptions" 
+                                        type="object" 
+                                        class="btn-danger btn-lg w-100" 
+                                        icon="fa-trash" 
+                                        confirm="Are you sure you want to soft-remove this product in bulk from all matched subscriptions?"/>
                             </div>
                         </group>
                     </group>

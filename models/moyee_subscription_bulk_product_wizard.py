@@ -90,8 +90,17 @@ class MoyeeSubscriptionBulkProductWizard(models.TransientModel):
     )
 
     # ============================================================
-    # Bulk Addition Target Configuration
+    # Bulk Operations Target Configuration
     # ============================================================
+    operation_type = fields.Selection(
+        [
+            ("add", "Add Product to Subscriptions"),
+            ("remove", "Remove / Delete Product from Subscriptions"),
+        ],
+        string="Operation Type",
+        default="add",
+        required=True,
+    )
     add_product_id = fields.Many2one(
         comodel_name="product.product",
         string="Product to Add in Bulk",
@@ -107,9 +116,29 @@ class MoyeeSubscriptionBulkProductWizard(models.TransientModel):
         help="Unit price for the added product. Auto-filled from product list price.",
     )
 
+    remove_product_id = fields.Many2one(
+        comodel_name="product.product",
+        string="Product to Remove in Bulk",
+        domain=[("sale_ok", "=", True)],
+        help="Select the specific product to soft-remove from all filtered subscriptions.",
+    )
+    remove_reason = fields.Char(
+        string="Removal Reason",
+        default="Bulk Product Removal Wizard",
+        help="Reason logged in subscription order chatter when soft-removing this product.",
+    )
+
     # ============================================================
     # Onchange & Compute Helpers
     # ============================================================
+    @api.onchange("product_ids")
+    def _onchange_product_ids(self):
+        if self.product_ids and len(self.product_ids) == 1:
+            if not self.remove_product_id:
+                self.remove_product_id = self.product_ids[0].id
+            if not self.add_product_id:
+                self.add_product_id = self.product_ids[0].id
+
     @api.onchange("add_product_id")
     def _onchange_add_product_id(self):
         if self.add_product_id:
@@ -333,3 +362,106 @@ class MoyeeSubscriptionBulkProductWizard(models.TransientModel):
                 "sticky": False,
             },
         }
+
+    # ============================================================
+    # Bulk Product Soft-Removal Action
+    # ============================================================
+    def action_bulk_remove_product(self):
+        """Soft-remove the chosen product in bulk from all filtered subscriptions."""
+        self.ensure_one()
+
+        if not self.remove_product_id:
+            raise UserError(_("Please select a product to remove."))
+        if not self.subscription_ids:
+            raise UserError(_("No subscriptions selected or found for bulk product removal."))
+
+        product = self.remove_product_id
+        prod_name = product.display_name or product.name
+
+        # Safety check: Prevent removing delivery products
+        pname = prod_name.lower()
+        if (
+            getattr(product, "is_delivery", False)
+            or getattr(product, "type", "") == "service"
+            or getattr(product, "detailed_type", "") == "service"
+            or any(kw in pname for kw in ("delivery", "shipping", "bezorg", "levering", "verzend", "transport", "postnl", "dhl", "ups"))
+        ):
+            raise UserError(_("Delivery products cannot be removed from subscriptions."))
+
+        now = fields.Datetime.now()
+        count = 0
+        lines_removed_count = 0
+
+        for order in self.subscription_ids:
+            # Find active (non-removed) lines matching target product
+            matching_lines = order.order_line.filtered(
+                lambda l: not l.x_moyee_is_removed and not l.display_type and l.product_id and l.product_id.id == product.id
+            )
+
+            if not matching_lines:
+                continue
+
+            order_updated = False
+            for line in matching_lines:
+                vals = line._moyee_soft_remove_vals(self.env.user.id, reason=self.remove_reason, now=now)
+                line.write(vals)
+                order_updated = True
+                lines_removed_count += 1
+
+            if order_updated:
+                # Recompute order totals
+                order._compute_amounts()
+
+                # Auto recompute delivery cost if applicable
+                if hasattr(order, "_moyee_auto_recompute_delivery"):
+                    try:
+                        order._moyee_auto_recompute_delivery()
+                    except Exception as e:
+                        _logger.warning("Bulk product remove: delivery recompute failed for SO %s: %s", order.name, e)
+
+                # Log note in order chatter
+                order.message_post(
+                    body=_(
+                        "Moyee Bulk Operations: Soft-removed '%s' from subscription.\n"
+                        "- By: %s\n"
+                        "- When: %s\n"
+                        "- Reason: %s"
+                    ) % (
+                        prod_name,
+                        self.env.user.display_name,
+                        fields.Datetime.to_string(now),
+                        self.remove_reason or _("(bulk operation)"),
+                    ),
+                    subtype_xmlid="mail.mt_note",
+                )
+                count += 1
+
+        if count == 0:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": _("No Matching Products Found"),
+                    "message": _("No active subscription lines found containing product '%s' among selected subscriptions.") % prod_name,
+                    "type": "warning",
+                    "sticky": False,
+                },
+            }
+
+        msg = _("Successfully soft-removed product '%s' from %d subscription(s) (%d line(s) updated).") % (
+            prod_name,
+            count,
+            lines_removed_count,
+        )
+
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Bulk Removal Complete"),
+                "message": msg,
+                "type": "success",
+                "sticky": False,
+            },
+        }
+

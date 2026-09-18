@@ -44,6 +44,7 @@ Portal + backend build:
             "moyee_subscription_portal_manager/static/src/js/moyee_portal_filter.js",
             "moyee_subscription_portal_manager/static/src/js/moyee_my_account.js",
             "moyee_subscription_portal_manager/static/src/js/moyee_invoice_portal_fix.js",
+            "moyee_subscription_portal_manager/static/src/js/moyee_frontend_custom.js",
         ],
     },
     "installable": True,

@@ -395,12 +395,12 @@
                             <div class="col-12 col-lg-6 o_setting_box">
                                 <div class="o_setting_left_pane"/>
                                 <div class="o_setting_right_pane">
-                                    <span class="o_form_label">Bulk Add Product to Subscriptions</span>
-                                    <div class="text-muted">Filter subscriptions based on contained products, min/max price range, customer country, and subscription age/dates, then add products in bulk.</div>
+                                    <span class="o_form_label">Bulk Subscription Product Manager</span>
+                                    <div class="text-muted">Filter subscriptions based on contained products, min/max price range, customer country, and subscription age/dates, then add or remove products in bulk.</div>
                                     <div class="mt8">
                                         <button name="%(action_moyee_subscription_bulk_product_wizard)d" 
                                                 icon="oi-arrow-right"
-                                                string="Launch Bulk Product Adder" 
+                                                string="Launch Bulk Product Manager" 
                                                 type="action" 
                                                 class="btn-link"/>
                                     </div>
@@ -448,7 +448,7 @@
               sequence="30"/>
 
     <menuitem id="menu_moyee_portal_bulk_product"
-              name="Bulk Product Adder"
+              name="Bulk Product Manager"
               parent="menu_moyee_portal_root"
               action="action_moyee_subscription_bulk_product_wizard"
               sequence="40"/>
