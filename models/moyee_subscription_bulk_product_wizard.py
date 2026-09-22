@@ -64,9 +64,10 @@ class MoyeeSubscriptionBulkProductWizard(models.TransientModel):
 
     subscription_state = fields.Selection(
         [
-            ("all", "All States"),
             ("active", "Active Subscriptions Only"),
             ("paused", "Paused Subscriptions Only"),
+            ("all", "All Active & Paused (Excl. Churned)"),
+            ("churned", "Churned / Closed Subscriptions Only"),
         ],
         string="Subscription State Filter",
         default="active",
@@ -150,6 +151,57 @@ class MoyeeSubscriptionBulkProductWizard(models.TransientModel):
             wizard.matched_count = len(wizard.subscription_ids)
 
     # ============================================================
+    # Internal Filter Helpers
+    # ============================================================
+    def _moyee_is_churned_order(self, order):
+        """Robust check for churned / closed subscriptions."""
+        if order.state in ("cancel", "draft"):
+            return True
+
+        if "subscription_state" in order._fields and order.subscription_state:
+            sval = str(order.subscription_state).lower()
+            if sval in ("5_churned", "4_closed", "closed", "cancel", "churned", "churn") or "churn" in sval or "close" in sval:
+                return True
+
+        if "subscription_status" in order._fields and order.subscription_status:
+            sval = str(order.subscription_status).lower()
+            if sval in ("closed", "cancel", "churned") or "churn" in sval or "close" in sval:
+                return True
+
+        for sfield in ("subscription_stage_id", "stage_id"):
+            if sfield in order._fields and order[sfield]:
+                stage = order[sfield]
+                stage_name = (stage.name or "").lower()
+                stage_cat = (getattr(stage, "category", "") or "").lower()
+                if any(kw in stage_name or kw in stage_cat for kw in ("churn", "close", "closed", "cancel")):
+                    return True
+
+        return False
+
+    def _moyee_is_paused_order(self, order):
+        """Robust check for paused subscriptions."""
+        if self._moyee_is_churned_order(order):
+            return False
+
+        if "subscription_state" in order._fields and order.subscription_state:
+            sval = str(order.subscription_state).lower()
+            if sval == "4_paused" or "pause" in sval:
+                return True
+
+        if "subscription_status" in order._fields and order.subscription_status:
+            sval = str(order.subscription_status).lower()
+            if "pause" in sval:
+                return True
+
+        for sfield in ("subscription_stage_id", "stage_id"):
+            if sfield in order._fields and order[sfield]:
+                stage_name = (order[sfield].name or "").lower()
+                if "pause" in stage_name or "hold" in stage_name:
+                    return True
+
+        return False
+
+    # ============================================================
     # Filter Execution Action
     # ============================================================
     def action_apply_filter(self):
@@ -171,16 +223,23 @@ class MoyeeSubscriptionBulkProductWizard(models.TransientModel):
         # Filter strictly for subscription orders
         orders = all_orders.filtered(lambda o: o._moyee_is_subscription_order())
 
-        # 1. State Filter
+        # 1. State Filter (strictly exclude churned/closed unless churned explicitly chosen)
         if self.subscription_state == "active":
             orders = orders.filtered(
-                lambda o: not getattr(o, "subscription_state", False)
-                or str(o.subscription_state).lower() not in ("closed", "cancel", "churned", "4_closed", "4_paused")
+                lambda o: not self._moyee_is_churned_order(o) and not self._moyee_is_paused_order(o)
             )
         elif self.subscription_state == "paused":
             orders = orders.filtered(
-                lambda o: getattr(o, "subscription_state", "") == "4_paused"
-                or "paused" in str(getattr(o, "subscription_state", "")).lower()
+                lambda o: self._moyee_is_paused_order(o)
+            )
+        elif self.subscription_state == "churned":
+            orders = orders.filtered(
+                lambda o: self._moyee_is_churned_order(o)
+            )
+        else:
+            # "all": exclude churned subscriptions by default
+            orders = orders.filtered(
+                lambda o: not self._moyee_is_churned_order(o)
             )
 
         # 2. Country Filter

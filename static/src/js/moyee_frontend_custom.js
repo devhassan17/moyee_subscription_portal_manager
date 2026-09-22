@@ -12,6 +12,9 @@
 (function () {
   "use strict";
 
+  window.MoyeeFrontendCustomLoaded = true;
+  console.log("[Moyee] Custom Frontend JS Loaded Successfully");
+
   /* ============================================================
    * 1. HOMEPAGE HELPER & TIMELINE SCROLLER
    * ============================================================ */
