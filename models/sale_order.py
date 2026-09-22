@@ -292,101 +292,124 @@ class SaleOrder(models.Model):
         if not product:
             return "other", "other"
 
+        # Always check product in base en_US context first for deterministic attribute matching
+        product_en = product.sudo().with_context(lang='en_US')
+
         grind = "other"
         weight = "other"
 
-        # 1. Check variant attributes
-        attr_values = getattr(product, "product_template_attribute_value_ids", False)
-        if attr_values:
-            for av in attr_values:
-                if grind != "other":
-                    break
-                attr_name = (av.attribute_id.name or "").lower()
-                val_name = (av.name or "").lower()
+        # Helper to check attributes on product record
+        def _scan_attributes(prod_rec):
+            nonlocal grind, weight
+            attr_values = getattr(prod_rec, "product_template_attribute_value_ids", False)
+            if attr_values:
+                for av in attr_values:
+                    if grind != "other":
+                        break
+                    attr_name = (av.attribute_id.name or "").lower()
+                    val_name = (av.name or "").lower()
 
-                if "grind" in attr_name or "maling" in attr_name or "brew" in attr_name or "hoe zet je" in attr_name or "how do you brew" in attr_name:
-                    if "capsule" in val_name or "cup" in val_name:
-                        grind = "capsules"
-                    elif "whole" in val_name or "boon" in val_name or "bonen" in val_name:
-                        grind = "whole"
-                    elif "filter" in val_name:
-                        grind = "filter"
-                    elif "espresso" in val_name:
-                        grind = "espresso"
-
-            for av in attr_values:
-                if weight != "other":
-                    break
-                attr_name = (av.attribute_id.name or "").lower()
-                val_name = (av.name or "").lower()
-                if "weight" in attr_name or "size" in attr_name or "gewicht" in attr_name or "inhoud" in attr_name:
-                    v_clean = val_name.replace(" ", "")
-                    if "capsules" in v_clean or "capsule" in v_clean or "cups" in v_clean or "25caps" in v_clean:
-                        weight = "25caps"
-                    elif "1kg" in v_clean or "1.0kg" in v_clean or "1000g" in v_clean or "1000 g" in val_name:
-                        weight = "1kg"
-                    elif "250g" in v_clean or "250" in v_clean or "0.25kg" in v_clean or "0.25 kg" in val_name:
-                        weight = "250g"
-
-        # 2. Check template attribute lines if still 'other'
-        tmpl = getattr(product, "product_tmpl_id", False)
-        if tmpl and (grind == "other" or weight == "other"):
-            for line in getattr(tmpl, "attribute_line_ids", []):
-                attr_name = (line.attribute_id.name or "").lower()
-                val_names = [v.name.lower() for v in line.value_ids if v.name]
-
-                if grind == "other" and ("grind" in attr_name or "maling" in attr_name or "brew" in attr_name or "how do you brew" in attr_name or "hoe zet je" in attr_name):
-                    for val_name in val_names:
-                        if "capsule" in val_name or "cup" in val_name:
+                    if any(kw in attr_name for kw in ("grind", "maling", "mahlgrad", "mahlung", "brew", "zubereitung", "hoe zet je", "how do you brew")):
+                        if any(kw in val_name for kw in ("capsule", "kapsel", "cup")):
                             grind = "capsules"
-                            break
-                        elif "whole" in val_name or "boon" in val_name or "bonen" in val_name:
+                        elif any(kw in val_name for kw in ("whole", "boon", "bonen", "bohn", "bohnen", "ganz", "ganze")):
                             grind = "whole"
-                            break
-                        elif "filter" in val_name:
+                        elif "filter" in val_name or "gemahlen" in val_name:
                             grind = "filter"
-                            break
                         elif "espresso" in val_name:
                             grind = "espresso"
-                            break
 
-                if weight == "other" and ("weight" in attr_name or "size" in attr_name or "gewicht" in attr_name or "inhoud" in attr_name):
-                    for val_name in val_names:
+                for av in attr_values:
+                    if weight != "other":
+                        break
+                    attr_name = (av.attribute_id.name or "").lower()
+                    val_name = (av.name or "").lower()
+                    if any(kw in attr_name for kw in ("weight", "size", "gewicht", "inhoud")):
                         v_clean = val_name.replace(" ", "")
-                        if "capsules" in v_clean or "capsule" in v_clean or "cups" in v_clean or "25caps" in v_clean:
+                        if any(kw in v_clean for kw in ("capsules", "capsule", "kapsel", "kapseln", "cups", "25caps")):
                             weight = "25caps"
-                            break
-                        elif "1kg" in v_clean or "1.0kg" in v_clean or "1000g" in v_clean:
+                        elif any(kw in v_clean for kw in ("1kg", "1.0kg", "1000g", "1000 g")):
                             weight = "1kg"
-                            break
-                        elif "250g" in v_clean or "250" in v_clean or "0.25kg" in v_clean:
+                        elif any(kw in v_clean for kw in ("250g", "250gram", "250gramm", "0.25kg")) or "250" in v_clean:
                             weight = "250g"
-                            break
+
+        # 1. Try en_US context first, then native context if needed
+        _scan_attributes(product_en)
+        if grind == "other" or weight == "other":
+            _scan_attributes(product)
+
+        # 2. Check template attribute lines if still 'other'
+        def _scan_template(prod_rec):
+            nonlocal grind, weight
+            tmpl = getattr(prod_rec, "product_tmpl_id", False)
+            if tmpl and (grind == "other" or weight == "other"):
+                for line in getattr(tmpl, "attribute_line_ids", []):
+                    attr_name = (line.attribute_id.name or "").lower()
+                    val_names = [v.name.lower() for v in line.value_ids if v.name]
+
+                    if grind == "other" and any(kw in attr_name for kw in ("grind", "maling", "mahlgrad", "mahlung", "brew", "zubereitung", "how do you brew", "hoe zet je")):
+                        for val_name in val_names:
+                            if any(kw in val_name for kw in ("capsule", "kapsel", "cup")):
+                                grind = "capsules"
+                                break
+                            elif any(kw in val_name for kw in ("whole", "boon", "bonen", "bohn", "bohnen", "ganz", "ganze")):
+                                grind = "whole"
+                                break
+                            elif "filter" in val_name or "gemahlen" in val_name:
+                                grind = "filter"
+                                break
+                            elif "espresso" in val_name:
+                                grind = "espresso"
+                                break
+
+                    if weight == "other" and any(kw in attr_name for kw in ("weight", "size", "gewicht", "inhoud")):
+                        for val_name in val_names:
+                            v_clean = val_name.replace(" ", "")
+                            if any(kw in v_clean for kw in ("capsules", "capsule", "kapsel", "kapseln", "cups", "25caps")):
+                                weight = "25caps"
+                                break
+                            elif any(kw in v_clean for kw in ("1kg", "1.0kg", "1000g")):
+                                weight = "1kg"
+                                break
+                            elif any(kw in v_clean for kw in ("250g", "250", "0.25kg")):
+                                weight = "250g"
+                                break
+
+        _scan_template(product_en)
+        if grind == "other" or weight == "other":
+            _scan_template(product)
 
         # 3. Fallback to name scanning if still 'other'
-        name = (getattr(product, "display_name", "") or getattr(product, "name", "") or "").lower()
-        if grind == "other":
-            if "capsule" in name or "cup" in name:
-                grind = "capsules"
-            elif "whole" in name or "boon" in name or "bonen" in name:
-                grind = "whole"
-            elif "filter grind" in name or "filtergrind" in name or "filter" in name:
-                grind = "filter"
-            elif "espresso grind" in name or "espressogrind" in name or "espresso" in name:
-                grind = "espresso"
-            else:
-                grind = "whole"  # Default fallback for coffee products
+        names_to_check = [
+            (getattr(product_en, "display_name", "") or getattr(product_en, "name", "") or "").lower(),
+            (getattr(product, "display_name", "") or getattr(product, "name", "") or "").lower(),
+        ]
+        for name in names_to_check:
+            if not name:
+                continue
+            if grind == "other":
+                if any(kw in name for kw in ("capsule", "kapsel", "cup")):
+                    grind = "capsules"
+                elif any(kw in name for kw in ("whole", "boon", "bonen", "bohn", "bohnen", "ganz", "ganze")):
+                    grind = "whole"
+                elif any(kw in name for kw in ("filter grind", "filtergrind", "filtermahlung", "filtermaling", "filter")):
+                    grind = "filter"
+                elif any(kw in name for kw in ("espresso grind", "espressogrind", "espressomahlung", "espressomaling", "espresso")):
+                    grind = "espresso"
 
+            if weight == "other":
+                name_clean = name.replace(" ", "")
+                if any(kw in name_clean for kw in ("capsule", "kapsel", "cups", "25caps", "25capsule", "25cups")):
+                    weight = "25caps"
+                elif any(kw in name_clean for kw in ("1kg", "1000g", "1.0kg")):
+                    weight = "1kg"
+                elif any(kw in name_clean for kw in ("250g", "0.25kg", "250")):
+                    weight = "250g"
+
+        if grind == "other":
+            grind = "whole"  # Default fallback for coffee products
         if weight == "other":
-            name_clean = name.replace(" ", "")
-            if "capsule" in name_clean or "cups" in name_clean or any(x in name_clean for x in ("25caps", "25capsule", "25cups")):
-                weight = "25caps"
-            elif "1kg" in name_clean or "1000g" in name_clean or "1.0kg" in name_clean:
-                weight = "1kg"
-            elif "250g" in name_clean or "0.25kg" in name_clean or "250" in name_clean:
-                weight = "250g"
-            else:
-                weight = "1kg"  # Default fallback
+            weight = "1kg"  # Default fallback
 
         return grind, weight
 

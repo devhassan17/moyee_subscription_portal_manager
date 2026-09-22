@@ -54,21 +54,46 @@ class SaleOrderLine(models.Model):
     # -----------------------
     def _moyee_get_portal_weight_display(self):
         self.ensure_one()
-        # Try product weight first
+        weight_val = self._moyee_get_portal_weight_value()
+        lang = (self.env.context.get('lang') or getattr(self.env, 'lang', '') or '').lower()
+        path = ''
+        try:
+            from odoo.http import request
+            if request and hasattr(request, 'httprequest'):
+                path = (request.httprequest.path or '').lower()
+        except Exception:
+            pass
+
+        is_de = '/de' in path or path.startswith('/de') or lang.startswith('de')
+        is_nl = '/nl' in path or path.startswith('/nl') or lang.startswith('nl')
+
+        if weight_val == "1kg":
+            return "1 kg"
+        elif weight_val == "250g":
+            if is_de:
+                return "250 Gramm"
+            elif is_nl:
+                return "250 gram"
+            return "250g"
+        elif weight_val == "25caps":
+            if is_de:
+                return "25 Kapseln"
+            return "25 Capsules"
+        
+        # Fallback using standard logic
         weight = self.product_id.weight
         if weight == 1.0:
             return "1 kg"
         elif weight == 0.25:
-            return "250g"
+            return "250 Gramm" if is_de else "250 gram" if is_nl else "250g"
         
-        # Try searching name / display name / code
         lname = (self.product_id.display_name or self.name or "").lower()
         if "1kg" in lname.replace(" ", "") or "1 kg" in lname:
             return "1 kg"
         if "250" in lname:
-            return "250g"
+            return "250 Gramm" if is_de else "250 gram" if is_nl else "250g"
         if "25" in lname or "capsule" in lname or "cups" in lname:
-            return "25 Capsules"
+            return "25 Kapseln" if is_de else "25 Capsules"
         return "—"
 
     def _moyee_get_portal_weight_value(self):
@@ -76,9 +101,9 @@ class SaleOrderLine(models.Model):
         disp = self._moyee_get_portal_weight_display()
         if disp == "1 kg":
             return "1kg"
-        elif disp == "250g":
+        elif disp in ("250g", "250 gram", "250 Gramm"):
             return "250g"
-        elif disp == "25 Capsules":
+        elif disp in ("25 Capsules", "25 Kapseln"):
             return "25caps"
         return ""
 
@@ -90,15 +115,45 @@ class SaleOrderLine(models.Model):
     def _moyee_get_portal_grind_display(self):
         self.ensure_one()
         val = self._moyee_get_portal_grind_value()
-        if val == "whole":
+        lang = (self.env.context.get('lang') or getattr(self.env, 'lang', '') or '').lower()
+        path = ''
+        try:
+            from odoo.http import request
+            if request and hasattr(request, 'httprequest'):
+                path = (request.httprequest.path or '').lower()
+        except Exception:
+            pass
+
+        if '/de' in path or path.startswith('/de') or lang.startswith('de'):
+            if val == "whole":
+                return "Ganze Bohnen"
+            elif val == "filter":
+                return "Filtermahlung"
+            elif val == "espresso":
+                return "Espressomahlung"
+            elif val == "capsules":
+                return "Kapseln"
+            return "Ganze Bohnen"
+        elif '/nl' in path or path.startswith('/nl') or lang.startswith('nl'):
+            if val == "whole":
+                return "Hele bonen"
+            elif val == "filter":
+                return "Filtermaling"
+            elif val == "espresso":
+                return "Espressomaling"
+            elif val == "capsules":
+                return "Capsules"
+            return "Hele bonen"
+        else:
+            if val == "whole":
+                return "Whole beans"
+            elif val == "filter":
+                return "Filter grind"
+            elif val == "espresso":
+                return "Espresso grind"
+            elif val == "capsules":
+                return "Capsules"
             return "Whole beans"
-        elif val == "filter":
-            return "Filter grind"
-        elif val == "espresso":
-            return "Espresso grind"
-        elif val == "capsules":
-            return "Capsules"
-        return "Whole beans"
 
     def _moyee_check_manager_rights(self):
         """Backend-only: allow employees (and superuser)."""

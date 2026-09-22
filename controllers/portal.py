@@ -274,6 +274,16 @@ class MoyeePortalHome(CustomerPortal):
             "inspire_btn2_url": ICP.get_param("moyee_subscription_portal_manager.inspire_btn2_url", "/shop"),
         }
 
+        # Determine selected language from URL path or request context
+        url_path = (request.httprequest.path or "").lower()
+        lang_ctx = (request.env.lang or getattr(request, 'lang', '') or '').lower()
+        if "/de" in url_path or url_path.startswith("/de") or lang_ctx.startswith("de"):
+            moyee_lang = "de"
+        elif "/nl" in url_path or url_path.startswith("/nl") or lang_ctx.startswith("nl"):
+            moyee_lang = "nl"
+        else:
+            moyee_lang = "en"
+
         # Variant map for front-end cascading selections
         variant_map = []
         if active_subscription:
@@ -295,9 +305,10 @@ class MoyeePortalHome(CustomerPortal):
                     and not any(kw in (p.name or '').lower() for kw in ('delivery', 'shipping', 'bezorg', 'levering', 'verzend', 'transport', 'postnl', 'dhl', 'ups', 'discount', 'promo', 'coupon'))
                 )
                 for p in all_possible_products:
+                    p_en = p.sudo().with_context(lang='en_US')
                     grind, weight = active_subscription.moyee_extract_product_metadata(p)
                     bold, fruity = active_subscription.moyee_extract_coffee_characteristics(p)
-                    tmpl_name = p.product_tmpl_id.name or ''
+                    tmpl_name = p_en.product_tmpl_id.name or p.product_tmpl_id.name or ''
                     tmpl_name = tmpl_name.replace('(Subscription)', '').replace('(subscription)', '').replace('(SUBSCRIPTION)', '')
                     tmpl_name = tmpl_name.strip()
                     variant_map.append({
@@ -353,6 +364,7 @@ class MoyeePortalHome(CustomerPortal):
             "variant_map_json": variant_map_json,
             "pause_options": pause_options,
             "close_reasons": close_reasons,
+            "moyee_lang": moyee_lang,
         })
         return values
 
