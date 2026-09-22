@@ -301,54 +301,58 @@ class MoyeeSubscriptionBulkProductWizard(models.TransientModel):
         count = 0
 
         for order in self.subscription_ids:
-            # Check if active line already exists for this product on this order
-            existing_line = order.order_line.filtered(
-                lambda l: not l.x_moyee_is_removed and not l.display_type and l.product_id and l.product_id.id == product.id
-            )
+            try:
+                with self.env.cr.savepoint():
+                    # Check if active line already exists for this product on this order
+                    existing_line = order.order_line.filtered(
+                        lambda l: not l.x_moyee_is_removed and not l.display_type and l.product_id and l.product_id.id == product.id
+                    )
 
-            if existing_line:
-                # Update quantity on existing line
-                existing_line = existing_line[0]
-                new_qty = float(existing_line.product_uom_qty or 0.0) + self.add_qty
-                existing_line.write({
-                    "product_uom_qty": new_qty,
-                    "price_unit": self.add_price_unit if self.add_price_unit > 0.0 else existing_line.price_unit,
-                })
-            else:
-                # Create line description
-                line_name = prod_name
-                if hasattr(product, "get_product_multiline_description_sale"):
-                    line_name = product.get_product_multiline_description_sale() or prod_name
+                    if existing_line:
+                        # Update quantity on existing line
+                        existing_line = existing_line[0]
+                        new_qty = float(existing_line.product_uom_qty or 0.0) + self.add_qty
+                        existing_line.write({
+                            "product_uom_qty": new_qty,
+                            "price_unit": self.add_price_unit if self.add_price_unit > 0.0 else existing_line.price_unit,
+                        })
+                    else:
+                        # Create line description
+                        line_name = prod_name
+                        if hasattr(product, "get_product_multiline_description_sale"):
+                            line_name = product.get_product_multiline_description_sale() or prod_name
 
-                # Create new order line
-                OrderLine.create({
-                    "order_id": order.id,
-                    "product_id": product.id,
-                    "name": line_name,
-                    "product_uom_qty": self.add_qty,
-                    "price_unit": self.add_price_unit,
-                })
+                        # Create new order line
+                        OrderLine.create({
+                            "order_id": order.id,
+                            "product_id": product.id,
+                            "name": line_name,
+                            "product_uom_qty": self.add_qty,
+                            "price_unit": self.add_price_unit,
+                        })
 
-            # Recompute order totals
-            order._compute_amounts()
+                    # Recompute order totals
+                    order._compute_amounts()
 
-            # Auto recompute delivery shipping cost if applicable
-            if hasattr(order, "_moyee_auto_recompute_delivery"):
-                try:
-                    order._moyee_auto_recompute_delivery()
-                except Exception as e:
-                    _logger.warning("Bulk product add: delivery recompute failed for SO %s: %s", order.name, e)
+                    # Auto recompute delivery shipping cost if applicable
+                    if hasattr(order, "_moyee_auto_recompute_delivery"):
+                        try:
+                            order._moyee_auto_recompute_delivery()
+                        except Exception as e:
+                            _logger.warning("Bulk product add: delivery recompute failed for SO %s: %s", order.name, e)
 
-            # Log note in order chatter
-            order.message_post(
-                body=_("Moyee Bulk Operations: Added '%s' (Qty: %s, Price: %s) to subscription.") % (
-                    prod_name,
-                    self.add_qty,
-                    self.add_price_unit,
-                ),
-                subtype_xmlid="mail.mt_note",
-            )
-            count += 1
+                    # Log note in order chatter
+                    order.message_post(
+                        body=_("Moyee Bulk Operations: Added '%s' (Qty: %s, Price: %s) to subscription.") % (
+                            prod_name,
+                            self.add_qty,
+                            self.add_price_unit,
+                        ),
+                        subtype_xmlid="mail.mt_note",
+                    )
+                    count += 1
+            except Exception as e:
+                _logger.exception("Bulk product add failed for subscription SO %s: %s", order.name, e)
 
         msg = _("Successfully added product '%s' to %d subscription(s).") % (prod_name, count)
 
@@ -401,40 +405,44 @@ class MoyeeSubscriptionBulkProductWizard(models.TransientModel):
             if not matching_lines:
                 continue
 
-            order_updated = False
-            for line in matching_lines:
-                vals = line._moyee_soft_remove_vals(self.env.user.id, reason=self.remove_reason, now=now)
-                line.write(vals)
-                order_updated = True
-                lines_removed_count += 1
+            try:
+                with self.env.cr.savepoint():
+                    order_updated = False
+                    for line in matching_lines:
+                        vals = line._moyee_soft_remove_vals(self.env.user.id, reason=self.remove_reason, now=now)
+                        line.write(vals)
+                        order_updated = True
+                        lines_removed_count += 1
 
-            if order_updated:
-                # Recompute order totals
-                order._compute_amounts()
+                    if order_updated:
+                        # Recompute order totals
+                        order._compute_amounts()
 
-                # Auto recompute delivery cost if applicable
-                if hasattr(order, "_moyee_auto_recompute_delivery"):
-                    try:
-                        order._moyee_auto_recompute_delivery()
-                    except Exception as e:
-                        _logger.warning("Bulk product remove: delivery recompute failed for SO %s: %s", order.name, e)
+                        # Auto recompute delivery cost if applicable
+                        if hasattr(order, "_moyee_auto_recompute_delivery"):
+                            try:
+                                order._moyee_auto_recompute_delivery()
+                            except Exception as e:
+                                _logger.warning("Bulk product remove: delivery recompute failed for SO %s: %s", order.name, e)
 
-                # Log note in order chatter
-                order.message_post(
-                    body=_(
-                        "Moyee Bulk Operations: Soft-removed '%s' from subscription.\n"
-                        "- By: %s\n"
-                        "- When: %s\n"
-                        "- Reason: %s"
-                    ) % (
-                        prod_name,
-                        self.env.user.display_name,
-                        fields.Datetime.to_string(now),
-                        self.remove_reason or _("(bulk operation)"),
-                    ),
-                    subtype_xmlid="mail.mt_note",
-                )
-                count += 1
+                        # Log note in order chatter
+                        order.message_post(
+                            body=_(
+                                "Moyee Bulk Operations: Soft-removed '%s' from subscription.\n"
+                                "- By: %s\n"
+                                "- When: %s\n"
+                                "- Reason: %s"
+                            ) % (
+                                prod_name,
+                                self.env.user.display_name,
+                                fields.Datetime.to_string(now),
+                                self.remove_reason or _("(bulk operation)"),
+                            ),
+                            subtype_xmlid="mail.mt_note",
+                        )
+                        count += 1
+            except Exception as e:
+                _logger.exception("Bulk product remove failed for subscription SO %s: %s", order.name, e)
 
         if count == 0:
             return {

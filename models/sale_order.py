@@ -133,28 +133,29 @@ class SaleOrder(models.Model):
             if not getattr(order, 'carrier_id', False):
                 continue
             try:
-                # Call carrier rate computation for updated order lines/weight
-                res = order.carrier_id.rate_shipment(order)
-                if res.get('success'):
-                    price_unit = float(res.get('price', 0.0))
-                    delivery_lines = order._moyee_get_delivery_lines()
-                    if delivery_lines:
-                        for dline in delivery_lines:
-                            dline.sudo().write({'price_unit': price_unit})
-                    else:
-                        carrier_prod = order.carrier_id.product_id
-                        if carrier_prod:
-                            order.env['sale.order.line'].sudo().create({
-                                'order_id': order.id,
-                                'product_id': carrier_prod.id,
-                                'name': carrier_prod.with_context(display_default_code=False).display_name or carrier_prod.name,
-                                'product_uom_qty': 1.0,
-                                'price_unit': price_unit,
-                                'sequence': 999,
-                            })
-                    if 'recompute_delivery_price' in order._fields:
-                        order.sudo().write({'recompute_delivery_price': False})
-                    order._compute_amounts()
+                with self.env.cr.savepoint():
+                    # Call carrier rate computation for updated order lines/weight
+                    res = order.carrier_id.rate_shipment(order)
+                    if res.get('success'):
+                        price_unit = float(res.get('price', 0.0))
+                        delivery_lines = order._moyee_get_delivery_lines()
+                        if delivery_lines:
+                            for dline in delivery_lines:
+                                dline.sudo().write({'price_unit': price_unit})
+                        else:
+                            carrier_prod = order.carrier_id.product_id
+                            if carrier_prod:
+                                order.env['sale.order.line'].sudo().create({
+                                    'order_id': order.id,
+                                    'product_id': carrier_prod.id,
+                                    'name': carrier_prod.with_context(display_default_code=False).display_name or carrier_prod.name,
+                                    'product_uom_qty': 1.0,
+                                    'price_unit': price_unit,
+                                    'sequence': 999,
+                                })
+                        if 'recompute_delivery_price' in order._fields:
+                            order.sudo().write({'recompute_delivery_price': False})
+                        order._compute_amounts()
             except Exception as e:
                 _logger.warning("Moyee: Auto delivery recompute error on SO %s: %s", order.name, str(e))
 
