@@ -113,10 +113,17 @@ class SaleOrder(models.Model):
         )
 
     def _moyee_get_sub_lines(self):
-        """Return active, non-removed subscription product lines (excluding delivery and display lines)."""
+        """Return active, non-removed subscription product lines (excluding delivery, display, and company-hidden products)."""
         self.ensure_one()
+        hidden_product_ids = set()
+        if self.company_id and hasattr(self.company_id, "moyee_hidden_product_ids"):
+            hidden_product_ids = set(self.company_id.moyee_hidden_product_ids.ids)
         return self.order_line.filtered(
-            lambda l: not l.x_moyee_is_removed and not l.display_type and l.product_id and not l._moyee_is_delivery_line()
+            lambda l: not l.x_moyee_is_removed
+            and not l.display_type
+            and l.product_id
+            and not l._moyee_is_delivery_line()
+            and (not hidden_product_ids or l.product_id.id not in hidden_product_ids)
         )
 
     def _moyee_get_delivery_lines(self):

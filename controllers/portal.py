@@ -112,11 +112,21 @@ class MoyeePortalHome(CustomerPortal):
                 active_subscription = subscriptions[0]
             has_subscription = True
 
-            # Visible lines (include active lines with quantity > 0)
+            # Fetch hidden products configured for the active company
+            hidden_product_ids = set()
+            company_rec = active_subscription.company_id if active_subscription and active_subscription.company_id else request.env.company
+            if company_rec and hasattr(company_rec, "moyee_hidden_product_ids"):
+                hidden_product_ids = set(company_rec.moyee_hidden_product_ids.ids)
+
+            # Visible lines (include active lines with quantity > 0, excluding hidden products)
             visible_lines = active_subscription.order_line.filtered(
                 lambda l: (
                     l.display_type
-                    or (not l.x_moyee_is_removed and float(l.product_uom_qty or 0.0) > 0.0)
+                    or (
+                        not l.x_moyee_is_removed 
+                        and float(l.product_uom_qty or 0.0) > 0.0
+                        and (not hidden_product_ids or (l.product_id and l.product_id.id not in hidden_product_ids))
+                    )
                 )
             )
 
@@ -190,6 +200,8 @@ class MoyeePortalHome(CustomerPortal):
                     and not any(kw in (p.name or '').lower() for kw in ('delivery', 'shipping', 'bezorg', 'levering', 'verzend', 'transport', 'postnl', 'dhl', 'ups', 'discount', 'promo', 'coupon'))
                 )
                 available_products = addable_products | existing_products
+                if hidden_product_ids:
+                    available_products = available_products.filtered(lambda p: p.id not in hidden_product_ids)
             except Exception:
                 _logger.exception("Moyee: Failed to get portal addable products.")
 
@@ -635,9 +647,20 @@ class MoyeeSubscriptionPortal(http.Controller):
             len(available_plans),
         )
 
+        hidden_product_ids = set()
+        company_rec = order.company_id if order and order.company_id else request.env.company
+        if company_rec and hasattr(company_rec, "moyee_hidden_product_ids"):
+            hidden_product_ids = set(company_rec.moyee_hidden_product_ids.ids)
+
         visible_lines = order.order_line.filtered(
-            lambda l: l.display_type or (not l.x_moyee_is_removed and float(l.product_uom_qty or 0.0) > 0.0)
+            lambda l: l.display_type or (
+                not l.x_moyee_is_removed 
+                and float(l.product_uom_qty or 0.0) > 0.0
+                and (not hidden_product_ids or (l.product_id and l.product_id.id not in hidden_product_ids))
+            )
         )
+        if hidden_product_ids:
+            available_products = available_products.filtered(lambda p: p.id not in hidden_product_ids)
 
         countries = request.env["res.country"].sudo().search([], order="name, id")
 

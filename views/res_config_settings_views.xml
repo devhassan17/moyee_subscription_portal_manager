@@ -233,6 +233,14 @@
                                     <div class="text-muted">Show dynamic Brew Guides section.</div>
                                 </div>
                             </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_hidden_product_ids"/>
+                                    <div class="text-muted">Select specific products to hide from the customer subscription products view on the account portal (/my/home).</div>
+                                    <field name="moyee_hidden_product_ids" widget="many2many_tags" placeholder="Select products to hide..."/>
+                                </div>
+                            </div>
                         </div>
                     </block>
 

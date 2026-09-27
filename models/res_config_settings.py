@@ -18,6 +18,13 @@ class ResCompany(models.Model):
         column2="partner_id",
         string="Selected Subscription Customers",
         help="Select subscription customers/partners who will see the new Moyee Portal Home page (/my/home). Unselected users will see Odoo's default portal page.",
+    )    moyee_hidden_product_ids = fields.Many2many(
+        comodel_name="product.product",
+        relation="moyee_company_hidden_product_rel",
+        column1="company_id",
+        column2="product_id",
+        string="Hidden Subscription Products on Portal",
+        help="Select specific products that will be hidden from the customer subscription products view on the account portal (/my/home).",
     )
 
 
@@ -34,6 +41,12 @@ class ResConfigSettings(models.TransientModel):
         related="company_id.moyee_redesign_partner_ids",
         readonly=False,
         string="Selected Subscription Customers",
+    )
+    moyee_hidden_product_ids = fields.Many2many(
+        related="company_id.moyee_hidden_product_ids",
+        readonly=False,
+        string="Hidden Subscription Products on Portal",
+        help="Select specific products that will be hidden from the customer subscription products view on the account portal (/my/home).",
     )
 
     # Styling Overrides
