@@ -118,46 +118,39 @@ class SaleOrderLine(models.Model):
 
     def _moyee_get_portal_grind_display(self):
         self.ensure_one()
-        val = self._moyee_get_portal_grind_value()
-        lang = (self.env.context.get('lang') or getattr(self.env, 'lang', '') or '').lower()
-        path = ''
-        try:
-            from odoo.http import request
-            if request and hasattr(request, 'httprequest'):
-                path = (request.httprequest.path or '').lower()
-        except Exception:
-            pass
+        if self.product_id:
+            # 1. Check if product variant has an explicit Grind attribute value
+            avs = getattr(self.product_id, "product_template_attribute_value_ids", False)
+            if not avs and hasattr(self.product_id, "product_variant_combination"):
+                avs = self.product_id.product_variant_combination
+            if avs:
+                for av in avs:
+                    attr_name = (av.attribute_id.name or "").lower()
+                    val_name_raw = (getattr(av, "product_attribute_value_id", False) and av.product_attribute_value_id.name) or av.name or ""
+                    if not val_name_raw:
+                        continue
+                    if ":" in val_name_raw:
+                        val_name_raw = val_name_raw.split(":", 1)[-1].strip()
+                    val_lower = val_name_raw.lower()
 
-        if '/de' in path or path.startswith('/de') or lang.startswith('de'):
-            if val == "whole":
-                return "Ganze Bohnen"
-            elif val == "filter":
-                return "Filtermahlung"
-            elif val == "espresso":
-                return "Espressomahlung"
-            elif val == "capsules":
-                return "Kapseln"
-            return "Ganze Bohnen"
-        elif '/nl' in path or path.startswith('/nl') or lang.startswith('nl'):
-            if val == "whole":
-                return "Hele bonen"
-            elif val == "filter":
-                return "Filtermaling"
-            elif val == "espresso":
-                return "Espressomaling"
-            elif val == "capsules":
-                return "Capsules"
-            return "Hele bonen"
-        else:
-            if val == "whole":
-                return "Whole beans"
-            elif val == "filter":
-                return "Filter grind"
-            elif val == "espresso":
-                return "Espresso grind"
-            elif val == "capsules":
-                return "Capsules"
-            return "Whole beans"
+                    is_grind_attr = any(kw in attr_name for kw in ("grind", "maling", "mahlgrad", "mahlung", "brew", "zubereitung", "hoe zet je", "how do you brew", "type", "koffie", "zetwijze"))
+                    if is_grind_attr or any(kw in val_lower for kw in ("whole", "boon", "bonen", "bohn", "ganz", "filter", "gemahlen", "snelfilter", "espresso", "capsule", "kapsel", "cup")):
+                        return val_name_raw
+
+        # 2. Standard key fallback
+        val = self._moyee_get_portal_grind_value()
+        if val == "whole":
+            return "Whole Beans"
+        elif val == "filter":
+            return "Filter Grind"
+        elif val == "espresso":
+            return "Espresso Grind"
+        elif val == "capsules":
+            return "Capsules"
+        elif val and val != "other":
+            return val.capitalize()
+
+        return "Whole Beans"
 
     def _moyee_check_manager_rights(self):
         """Backend-only: allow employees (and superuser)."""

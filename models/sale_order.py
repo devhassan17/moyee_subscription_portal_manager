@@ -244,43 +244,112 @@ class SaleOrder(models.Model):
     # ============================================================
     # Products allowed for portal add
     # ============================================================
+    @api.model
+    def _moyee_is_subscription_product(self, product):
+        """
+        Determine if a product is a subscription product.
+        Checks for 'Subscription' (case-insensitive) in:
+        1. eCommerce Tags (all_product_tag_ids / product_tag_ids / tag_ids)
+        2. eCommerce Categories (public_categ_ids)
+        3. subscription_ok / recurring_invoice boolean flags
+        4. Product / Template name containing 'Subscription'
+        """
+        if not product:
+            return False
+        tmpl = getattr(product, "product_tmpl_id", product)
+
+        # 1. Check boolean subscription flags if present
+        if getattr(tmpl, "subscription_ok", False) or getattr(tmpl, "recurring_invoice", False):
+            return True
+
+        # 2. Check eCommerce & product tags (all_product_tag_ids, product_tag_ids, tag_ids)
+        for fname in ("all_product_tag_ids", "product_tag_ids", "tag_ids"):
+            if fname in tmpl._fields:
+                tags = getattr(tmpl, fname, False)
+                if tags and any("subscription" in (t.name or "").lower() for t in tags):
+                    return True
+
+        # 3. Check eCommerce public categories (public_categ_ids)
+        if "public_categ_ids" in tmpl._fields:
+            categs = getattr(tmpl, "public_categ_ids", False)
+            if categs and any("subscription" in (c.name or "").lower() for c in categs):
+                return True
+
+        # 4. Fallback name check
+        p_name = (getattr(product, "name", "") or getattr(tmpl, "name", "") or "").lower()
+        if "subscription" in p_name:
+            return True
+
+        return False
+
     def _moyee_get_portal_addable_products(self):
         self.ensure_one()
         Product = self.env["product.product"].sudo()
         Template = self.env["product.template"].sudo()
+        from odoo.osv import expression
 
-        domain = [("sale_ok", "=", True)]
-        if "subscription_ok" in Template._fields:
-            domain.append(("product_tmpl_id.subscription_ok", "=", True))
-        elif "recurring_invoice" in Template._fields:
-            domain.append(("product_tmpl_id.recurring_invoice", "=", True))
-
+        base_domain = [("sale_ok", "=", True)]
         if "company_id" in Product._fields and self.company_id:
-            domain.append(("company_id", "in", [False, self.company_id.id]))
+            base_domain.append(("company_id", "in", [False, self.company_id.id]))
 
-        # Filter by 'Subscription' tag if tag_ids field exists on product.template
-        if "tag_ids" in Template._fields:
-            domain.append(("product_tmpl_id.tag_ids.name", "ilike", "Subscription"))
-
-        # Exclude internal/delivery/non-coffee products (only allow physical products: storable/consumable)
+        # Physical products (consu/product)
         if "detailed_type" in Product._fields:
-            domain.append(("detailed_type", "in", ["consu", "product"]))
+            base_domain.append(("detailed_type", "in", ["consu", "product"]))
         elif "type" in Product._fields:
-            domain.append(("type", "in", ["consu", "product"]))
+            base_domain.append(("type", "in", ["consu", "product"]))
 
-        products = Product.search(domain, order="name, id", limit=200)
+        # Build OR domain for Subscription tag / category / flag
+        sub_domain_parts = []
+        if "all_product_tag_ids" in Template._fields:
+            sub_domain_parts.append([("product_tmpl_id.all_product_tag_ids.name", "ilike", "Subscription")])
+        if "product_tag_ids" in Template._fields:
+            sub_domain_parts.append([("product_tmpl_id.product_tag_ids.name", "ilike", "Subscription")])
+        if "tag_ids" in Template._fields:
+            sub_domain_parts.append([("product_tmpl_id.tag_ids.name", "ilike", "Subscription")])
+        if "public_categ_ids" in Template._fields:
+            sub_domain_parts.append([("product_tmpl_id.public_categ_ids.name", "ilike", "Subscription")])
+        if "subscription_ok" in Template._fields:
+            sub_domain_parts.append([("product_tmpl_id.subscription_ok", "=", True)])
+        if "recurring_invoice" in Template._fields:
+            sub_domain_parts.append([("product_tmpl_id.recurring_invoice", "=", True)])
+        sub_domain_parts.append([("product_tmpl_id.name", "ilike", "Subscription")])
 
-        # Exclude service/maintenance/accessory/delivery products
-        exclude_keywords = {"onderhoud", "service", "maintenance", "installatie", "repair", "reparatie", "schoonmaak", "cleaning", "reiniging", "optie", "support", "delivery", "shipping", "bezorg", "levering", "verzend", "verzending", "verzendkosten", "transport", "postnl", "dhl", "ups"}
+        if sub_domain_parts:
+            sub_domain = expression.OR(sub_domain_parts)
+            domain = expression.AND([base_domain, sub_domain])
+        else:
+            domain = base_domain
+
+        products = Product.search(domain, order="name, id", limit=300)
+
+        exclude_keywords = {
+            "onderhoud", "service", "maintenance", "installatie", "repair", "reparatie",
+            "schoonmaak", "cleaning", "reiniging", "optie", "support", "delivery", "shipping",
+            "bezorg", "levering", "verzend", "verzending", "verzendkosten", "transport",
+            "postnl", "dhl", "ups", "discount", "promo", "coupon"
+        }
         filtered_products = Product.browse()
         for p in products:
-            if getattr(p, 'is_delivery', False) or getattr(p.product_tmpl_id, 'is_delivery', False):
+            if getattr(p, "is_delivery", False) or getattr(p.product_tmpl_id, "is_delivery", False):
                 continue
             p_name = (p.name or "").lower()
             p_code = (p.default_code or "").lower()
             if any(kw in p_name or kw in p_code for kw in exclude_keywords):
                 continue
-            filtered_products += p
+            if self._moyee_is_subscription_product(p):
+                filtered_products += p
+
+        # Fallback if no products matched the strict subscription tag/flag domain:
+        if not filtered_products:
+            fallback_products = Product.search(base_domain, order="name, id", limit=300)
+            for p in fallback_products:
+                if getattr(p, "is_delivery", False) or getattr(p.product_tmpl_id, "is_delivery", False):
+                    continue
+                p_name = (p.name or "").lower()
+                p_code = (p.default_code or "").lower()
+                if any(kw in p_name or kw in p_code for kw in exclude_keywords):
+                    continue
+                filtered_products += p
 
         return filtered_products
 
@@ -299,34 +368,45 @@ class SaleOrder(models.Model):
         grind = "other"
         weight = "other"
 
-        # Helper to check attributes on product record
+        def _get_attr_values(prod_rec):
+            avs = getattr(prod_rec, "product_template_attribute_value_ids", False)
+            if not avs and hasattr(prod_rec, "product_variant_combination"):
+                avs = prod_rec.product_variant_combination
+            return avs or []
+
+        # Helper to check attributes on product variant record
         def _scan_attributes(prod_rec):
             nonlocal grind, weight
-            attr_values = getattr(prod_rec, "product_template_attribute_value_ids", False)
+            attr_values = _get_attr_values(prod_rec)
             if attr_values:
                 for av in attr_values:
                     if grind != "other":
                         break
                     attr_name = (av.attribute_id.name or "").lower()
-                    val_name = (av.name or "").lower()
+                    val_name_raw = getattr(av, "product_attribute_value_id", False) and av.product_attribute_value_id.name or av.name or ""
+                    val_name = val_name_raw.lower()
 
-                    if any(kw in attr_name for kw in ("grind", "maling", "mahlgrad", "mahlung", "brew", "zubereitung", "hoe zet je", "how do you brew")):
+                    is_grind_attr = any(kw in attr_name for kw in ("grind", "maling", "mahlgrad", "mahlung", "brew", "zubereitung", "hoe zet je", "how do you brew", "type", "koffie", "zetwijze"))
+                    if is_grind_attr or any(kw in val_name for kw in ("whole", "boon", "bonen", "bohn", "ganz", "filter", "gemahlen", "snelfilter", "espresso", "capsule", "kapsel", "cup")):
                         if any(kw in val_name for kw in ("capsule", "kapsel", "cup")):
                             grind = "capsules"
-                        elif any(kw in val_name for kw in ("whole", "boon", "bonen", "bohn", "bohnen", "ganz", "ganze")):
+                        elif any(kw in val_name for kw in ("whole", "boon", "bonen", "bohn", "bonen", "ganz", "ganze", "bean", "beans", "unground")):
                             grind = "whole"
-                        elif "filter" in val_name or "gemahlen" in val_name:
-                            grind = "filter"
-                        elif "espresso" in val_name:
+                        elif any(kw in val_name for kw in ("espresso", "espressomaling", "espressomahlung")):
                             grind = "espresso"
+                        elif any(kw in val_name for kw in ("filter", "gemahlen", "snelfilter", "filtermaling", "filtermahlung")):
+                            grind = "filter"
 
                 for av in attr_values:
                     if weight != "other":
                         break
                     attr_name = (av.attribute_id.name or "").lower()
-                    val_name = (av.name or "").lower()
-                    if any(kw in attr_name for kw in ("weight", "size", "gewicht", "inhoud")):
-                        v_clean = val_name.replace(" ", "")
+                    val_name_raw = getattr(av, "product_attribute_value_id", False) and av.product_attribute_value_id.name or av.name or ""
+                    val_name = val_name_raw.lower()
+                    v_clean = val_name.replace(" ", "")
+
+                    is_weight_attr = any(kw in attr_name for kw in ("weight", "size", "gewicht", "inhoud"))
+                    if is_weight_attr or any(kw in v_clean for kw in ("1kg", "250g", "25caps", "kapsel")):
                         if any(kw in v_clean for kw in ("capsules", "capsule", "kapsel", "kapseln", "cups", "25caps")):
                             weight = "25caps"
                         elif any(kw in v_clean for kw in ("1kg", "1.0kg", "1000g", "1000 g")):
@@ -339,51 +419,11 @@ class SaleOrder(models.Model):
         if grind == "other" or weight == "other":
             _scan_attributes(product)
 
-        # 2. Check template attribute lines if still 'other'
-        def _scan_template(prod_rec):
-            nonlocal grind, weight
-            tmpl = getattr(prod_rec, "product_tmpl_id", False)
-            if tmpl and (grind == "other" or weight == "other"):
-                for line in getattr(tmpl, "attribute_line_ids", []):
-                    attr_name = (line.attribute_id.name or "").lower()
-                    val_names = [v.name.lower() for v in line.value_ids if v.name]
-
-                    if grind == "other" and any(kw in attr_name for kw in ("grind", "maling", "mahlgrad", "mahlung", "brew", "zubereitung", "how do you brew", "hoe zet je")):
-                        for val_name in val_names:
-                            if any(kw in val_name for kw in ("capsule", "kapsel", "cup")):
-                                grind = "capsules"
-                                break
-                            elif any(kw in val_name for kw in ("whole", "boon", "bonen", "bohn", "bohnen", "ganz", "ganze")):
-                                grind = "whole"
-                                break
-                            elif "filter" in val_name or "gemahlen" in val_name:
-                                grind = "filter"
-                                break
-                            elif "espresso" in val_name:
-                                grind = "espresso"
-                                break
-
-                    if weight == "other" and any(kw in attr_name for kw in ("weight", "size", "gewicht", "inhoud")):
-                        for val_name in val_names:
-                            v_clean = val_name.replace(" ", "")
-                            if any(kw in v_clean for kw in ("capsules", "capsule", "kapsel", "kapseln", "cups", "25caps")):
-                                weight = "25caps"
-                                break
-                            elif any(kw in v_clean for kw in ("1kg", "1.0kg", "1000g")):
-                                weight = "1kg"
-                                break
-                            elif any(kw in v_clean for kw in ("250g", "250", "0.25kg")):
-                                weight = "250g"
-                                break
-
-        _scan_template(product_en)
-        if grind == "other" or weight == "other":
-            _scan_template(product)
-
-        # 3. Fallback to name scanning if still 'other'
+        # 2. Fallback to name/code scanning if still 'other'
         names_to_check = [
             (getattr(product_en, "display_name", "") or getattr(product_en, "name", "") or "").lower(),
             (getattr(product, "display_name", "") or getattr(product, "name", "") or "").lower(),
+            (getattr(product, "default_code", "") or "").lower(),
         ]
         for name in names_to_check:
             if not name:
@@ -391,12 +431,12 @@ class SaleOrder(models.Model):
             if grind == "other":
                 if any(kw in name for kw in ("capsule", "kapsel", "cup")):
                     grind = "capsules"
-                elif any(kw in name for kw in ("whole", "boon", "bonen", "bohn", "bohnen", "ganz", "ganze")):
+                elif any(kw in name for kw in ("whole", "boon", "bonen", "bohn", "bonen", "ganz", "ganze", "bean", "beans", "unground")):
                     grind = "whole"
-                elif any(kw in name for kw in ("filter grind", "filtergrind", "filtermahlung", "filtermaling", "filter")):
-                    grind = "filter"
                 elif any(kw in name for kw in ("espresso grind", "espressogrind", "espressomahlung", "espressomaling", "espresso")):
                     grind = "espresso"
+                elif any(kw in name for kw in ("filter grind", "filtergrind", "filtermahlung", "filtermaling", "snelfilter", "filter")):
+                    grind = "filter"
 
             if weight == "other":
                 name_clean = name.replace(" ", "")
