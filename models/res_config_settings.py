@@ -18,7 +18,8 @@ class ResCompany(models.Model):
         column2="partner_id",
         string="Selected Subscription Customers",
         help="Select subscription customers/partners who will see the new Moyee Portal Home page (/my/home). Unselected users will see Odoo's default portal page.",
-    )    moyee_hidden_product_ids = fields.Many2many(
+    )
+    moyee_hidden_product_ids = fields.Many2many(
         comodel_name="product.product",
         relation="moyee_company_hidden_product_rel",
         column1="company_id",
