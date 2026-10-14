@@ -1,5 +1,5 @@
-# File: moyee_subscription_portal_manager/models/moyee_subscription_bulk_product_wizard.py
 import logging
+import re
 from dateutil.relativedelta import relativedelta
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
@@ -382,13 +382,23 @@ class MoyeeSubscriptionBulkProductWizard(models.TransientModel):
                             line_name = product.get_product_multiline_description_sale() or prod_name
 
                         # Create new order line
-                        OrderLine.create({
+                        vals = {
                             "order_id": order.id,
                             "product_id": product.id,
                             "name": line_name,
                             "product_uom_qty": self.add_qty,
                             "price_unit": self.add_price_unit,
-                        })
+                        }
+                        sibling = order.order_line.filtered(lambda l: not l.display_type and not l.x_moyee_is_removed)
+                        if sibling:
+                            sibling_line = sibling[0]
+                            for fname in ("temporal_type", "pricing_id", "pricing_template_id", "billing_cycle"):
+                                if fname in sibling_line._fields:
+                                    val = sibling_line[fname]
+                                    vals[fname] = val.id if hasattr(val, "id") else val
+                        new_line = OrderLine.create(vals)
+                        if hasattr(order, "_moyee_launch_stock_rule"):
+                            order._moyee_launch_stock_rule(new_line)
 
                     # Recompute order totals
                     order._compute_amounts()
@@ -442,12 +452,15 @@ class MoyeeSubscriptionBulkProductWizard(models.TransientModel):
         prod_name = product.display_name or product.name
 
         # Safety check: Prevent removing delivery products
-        pname = prod_name.lower()
+        delivery_kw_re = re.compile(
+            r"\b(delivery|shipping|bezorg\w*|levering\w*|verzend\w*|transport\w*|postnl|dhl|ups)\b",
+            re.IGNORECASE,
+        )
         if (
             getattr(product, "is_delivery", False)
             or getattr(product, "type", "") == "service"
             or getattr(product, "detailed_type", "") == "service"
-            or any(kw in pname for kw in ("delivery", "shipping", "bezorg", "levering", "verzend", "transport", "postnl", "dhl", "ups"))
+            or bool(delivery_kw_re.search(prod_name))
         ):
             raise UserError(_("Delivery products cannot be removed from subscriptions."))
 
@@ -470,6 +483,7 @@ class MoyeeSubscriptionBulkProductWizard(models.TransientModel):
                     for line in matching_lines:
                         vals = line._moyee_soft_remove_vals(self.env.user.id, reason=self.remove_reason, now=now)
                         line.write(vals)
+                        line._moyee_force_zero_qty()
                         order_updated = True
                         lines_removed_count += 1
 

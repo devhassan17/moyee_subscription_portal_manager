@@ -3,6 +3,7 @@ import logging
 import re
 import json
 from dateutil.relativedelta import relativedelta
+from markupsafe import Markup
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 
@@ -39,6 +40,9 @@ class SaleOrder(models.Model):
         compute="_compute_moyee_active_product_names",
         store=False,
     )
+
+    # Max quantity a customer may set per line from the portal
+    _MOYEE_PORTAL_MAX_QTY = 50
 
     def _compute_moyee_active_product_names(self):
         for order in self:
@@ -77,29 +81,26 @@ class SaleOrder(models.Model):
     # Hide removed lines in invoices / reports / PDFs
     # ============================================================
     def _get_invoiceable_lines(self, final=False):
-        sub_orders = self.filtered(lambda o: o._moyee_is_subscription_order())
-        non_sub_orders = self - sub_orders
-
-        sub_lines = sub_orders.mapped("order_line").filtered(
-            lambda l: not l.display_type and not l.x_moyee_is_removed and float(l.product_uom_qty or 0.0) > 0.0
-        )
-
-        if non_sub_orders:
-            non_sub_lines = super(SaleOrder, non_sub_orders)._get_invoiceable_lines(final=final).filtered(
-                lambda l: l.display_type or (not l.x_moyee_is_removed and float(l.product_uom_qty or 0.0) > 0.0)
-            )
-            return sub_lines | non_sub_lines
-
-        return sub_lines
+        # Keep Odoo/sale_subscription logic (qty_to_invoice, one-time vs recurring,
+        # sections, down payments) and only drop soft-removed lines.
+        lines = super()._get_invoiceable_lines(final=final)
+        return lines.filtered(lambda l: l.display_type or not l.x_moyee_is_removed)
 
     def _create_invoices(self, grouped=False, final=False, date=None):
         invoices = super()._create_invoices(grouped=grouped, final=final, date=date)
         for inv in invoices:
             to_remove = inv.invoice_line_ids.filtered(
-                lambda il: il.sale_line_ids and all(sl.x_moyee_is_removed or float(sl.product_uom_qty or 0.0) == 0.0 for sl in il.sale_line_ids)
+                lambda il: il.sale_line_ids and all(sl.x_moyee_is_removed for sl in il.sale_line_ids)
             )
             if to_remove:
                 to_remove.unlink()
+        # Never leave empty draft invoices behind
+        empty = invoices.filtered(
+            lambda m: m.state == "draft" and not m.invoice_line_ids.filtered(lambda l: l.display_type == "product")
+        )
+        if empty:
+            empty.unlink()
+            invoices -= empty
         return invoices
 
     def _get_order_lines_to_report(self):
@@ -134,93 +135,123 @@ class SaleOrder(models.Model):
         )
 
     def _moyee_auto_recompute_delivery(self):
-        """Automatically recalculate delivery shipping cost when subscription lines change,
-        avoiding 'already invoiced' UserError on subscription orders."""
+        """Recalculate the shipping cost when subscription lines change.
+        Existing (possibly invoiced) delivery lines are updated in place to avoid the
+        'already invoiced' error; otherwise Odoo's set_delivery_line() is used."""
         for order in self:
-            if not getattr(order, 'carrier_id', False):
+            carrier = getattr(order, 'carrier_id', False)
+            if not carrier:
                 continue
             try:
                 with self.env.cr.savepoint():
-                    # Call carrier rate computation for updated order lines/weight
-                    res = order.carrier_id.rate_shipment(order)
-                    if res.get('success'):
-                        price_unit = float(res.get('price', 0.0))
-                        delivery_lines = order._moyee_get_delivery_lines()
-                        if delivery_lines:
-                            for dline in delivery_lines:
-                                dline.sudo().write({'price_unit': price_unit})
-                        else:
-                            carrier_prod = order.carrier_id.product_id
-                            if carrier_prod:
-                                order.env['sale.order.line'].sudo().create({
-                                    'order_id': order.id,
-                                    'product_id': carrier_prod.id,
-                                    'name': carrier_prod.with_context(display_default_code=False).display_name or carrier_prod.name,
-                                    'product_uom_qty': 1.0,
-                                    'price_unit': price_unit,
-                                    'sequence': 999,
-                                })
-                        if 'recompute_delivery_price' in order._fields:
-                            order.sudo().write({'recompute_delivery_price': False})
-                        order._compute_amounts()
+                    res = carrier.rate_shipment(order)
+                    if not res.get('success'):
+                        continue
+                    price_unit = float(res.get('price', 0.0))
+                    delivery_lines = order._moyee_get_delivery_lines()
+                    if delivery_lines:
+                        delivery_lines.sudo().write({'price_unit': price_unit})
+                    elif hasattr(order, 'set_delivery_line'):
+                        order.sudo().set_delivery_line(carrier, price_unit)
+                    if 'recompute_delivery_price' in order._fields:
+                        order.sudo().write({'recompute_delivery_price': False})
             except Exception as e:
                 _logger.warning("Moyee: Auto delivery recompute error on SO %s: %s", order.name, str(e))
-
-    @api.depends('order_line.price_subtotal', 'order_line.price_tax', 'order_line.price_total', 'order_line.x_moyee_is_removed')
-    def _compute_amounts(self):
-        super()._compute_amounts()
-        for order in self:
-            if order._moyee_is_subscription_order():
-                order_lines = order.order_line.filtered(lambda x: not x.display_type and not x.x_moyee_is_removed)
-
-                # Update standard Odoo subscription fields if present (e.g. Recurring Amount / MRR)
-                for fname in ("recurring_amount_untaxed", "recurring_amount_tax", "recurring_amount_total"):
-                    if fname in order._fields:
-                        active_sub_lines = order_lines.filtered(lambda l: l._moyee_is_subscription_line() if hasattr(l, "_moyee_is_subscription_line") else True)
-                        if fname == "recurring_amount_untaxed":
-                            order[fname] = sum(active_sub_lines.mapped('price_subtotal'))
-                        elif fname == "recurring_amount_tax":
-                            order[fname] = sum(active_sub_lines.mapped('price_tax'))
-                        elif fname == "recurring_amount_total":
-                            order[fname] = sum(active_sub_lines.mapped('price_total'))
-
-                for fname in ("non_recurring_amount_untaxed", "non_recurring_amount_tax", "non_recurring_amount_total"):
-                    if fname in order._fields:
-                        one_time_lines = order_lines.filtered(lambda l: not l._moyee_is_subscription_line() if hasattr(l, "_moyee_is_subscription_line") else False)
-                        if fname == "non_recurring_amount_untaxed":
-                            order[fname] = sum(one_time_lines.mapped('price_subtotal'))
-                        elif fname == "non_recurring_amount_tax":
-                            order[fname] = sum(one_time_lines.mapped('price_tax'))
-                        elif fname == "non_recurring_amount_total":
-                            order[fname] = sum(one_time_lines.mapped('price_total'))
 
     # ============================================================
     # Portal security helpers
     # ============================================================
-    def _moyee_portal_check_access(self, *, portal_user=None, access_token=None, require_subscription=True):
+    # Odoo 18 subscription states that must never be edited from the portal
+    _MOYEE_BLOCKED_SUB_STATES = ("1_draft", "5_renewed", "6_churn", "7_upsell")
+
+    def _moyee_portal_allowed_products(self):
+        """Products a customer may add/switch to: portal-offered + already on the order."""
+        self.ensure_one()
+        hidden = set(self.company_id.moyee_hidden_product_ids.ids) if (
+            self.company_id and hasattr(self.company_id, "moyee_hidden_product_ids")
+        ) else set()
+        products = self._moyee_get_portal_addable_products() | self._moyee_get_sub_lines().mapped("product_id")
+        return products.filtered(lambda p: p.id not in hidden)
+
+    def _moyee_validate_portal_qty(self, qty):
+        try:
+            qty = float(qty or 0.0)
+        except (TypeError, ValueError):
+            raise ValidationError(_("Invalid quantity."))
+        if qty <= 0:
+            raise ValidationError(_("Quantity must be greater than 0."))
+        if not qty.is_integer():
+            raise ValidationError(_("Quantity must be a whole number."))
+        if qty > self._MOYEE_PORTAL_MAX_QTY:
+            raise ValidationError(_("Quantity cannot exceed %s.") % self._MOYEE_PORTAL_MAX_QTY)
+        return qty
+
+    def _moyee_cancel_pending_moves(self, lines):
+        """Cancel not-yet-done outgoing stock moves of the given lines (if stock is installed)."""
+        if "stock.move" not in self.env or not lines:
+            return
+        moves = self.env["stock.move"].sudo().search([
+            ("sale_line_id", "in", lines.ids),
+            ("state", "not in", ("done", "cancel")),
+            ("picking_code", "=", "outgoing"),
+        ])
+        if moves:
+            moves._action_cancel()
+
+    def _moyee_launch_stock_rule(self, lines):
+        """Create/adjust deliveries for changed lines on confirmed orders (best effort)."""
+        if self.state not in ("sale", "done"):
+            return
+        for line in lines.sudo():
+            if not hasattr(line, "_action_launch_stock_rule"):
+                return
+            try:
+                with self.env.cr.savepoint():
+                    line._action_launch_stock_rule()
+            except Exception:
+                _logger.exception("Moyee: Failed to launch stock rule for line %s.", line.id)
+
+    def _moyee_set_line_qty(self, line, qty):
+        """
+        Set qty on a subscription line. On subscriptions qty_delivered is cumulative
+        over all periods, so Odoo's 'cannot decrease below delivered' rule would block
+        any reduction. Try the ORM first; fall back to SQL when decreasing.
+        """
+        line = line.sudo()
+        try:
+            with self.env.cr.savepoint():
+                line.write({"product_uom_qty": qty})
+            return
+        except UserError:
+            if qty >= float(line.product_uom_qty or 0.0):
+                raise
+        self._moyee_cancel_pending_moves(line)
+        self.env.cr.execute("UPDATE sale_order_line SET product_uom_qty = %s WHERE id = %s", (qty, line.id))
+        line.invalidate_recordset(["product_uom_qty"])
+        line.modified(["product_uom_qty"])
+
+    def _moyee_portal_check_access(self, *, portal_user=None, access_token=None, require_subscription=True, check_state=True):
         self.ensure_one()
         portal_user = portal_user or self.env.user
 
-        # 1. Token-based access (shared links)
-        if access_token and self.access_token and access_token == self.access_token:
-            return True
+        token_ok = bool(access_token and self.access_token and access_token == self.access_token)
+        is_employee = self.env.user.has_group("base.group_user")
 
-        # Employees are allowed
-        if self.env.user.has_group("base.group_user"):
-            return True
+        # 1. Identity check (skipped for a valid share-token or employees)
+        if not token_ok and not is_employee:
+            if portal_user.id != self.env.user.id:
+                raise AccessError(_("You cannot perform actions on behalf of another user."))
+            if portal_user._is_public():
+                raise AccessError(_("You must be logged in to manage subscriptions."))
+            if self.partner_id.commercial_partner_id != portal_user.partner_id.commercial_partner_id:
+                raise AccessError(_("You do not have access to this subscription."))
 
-        if portal_user.id != self.env.user.id:
-            raise AccessError(_("You cannot perform actions on behalf of another user."))
-
-        if portal_user._is_public():
-            # If public and token failed/missing, they must login
-            raise AccessError(_("You must be logged in to manage subscriptions."))
-
+        # 2. Record checks - apply to token holders too
         if require_subscription and not self.is_subscription_order:
             raise AccessError(_("This record is not a subscription."))
 
-        if self.partner_id.commercial_partner_id != portal_user.partner_id.commercial_partner_id:
-            raise AccessError(_("You do not have access to this subscription."))
+        if not check_state or is_employee:
+            return True
 
         if self.state not in ("sale", "done"):
             raise UserError(_("This subscription is not in a confirmed state."))
@@ -228,7 +259,12 @@ class SaleOrder(models.Model):
         # In your DB: subscription_state looks like "3_progress"
         if "subscription_state" in self._fields and self.subscription_state:
             state_val = str(self.subscription_state).lower()
-            if state_val in ("closed", "cancel", "churned", "4_closed") or "closed" in state_val:
+            if (
+                state_val in self._MOYEE_BLOCKED_SUB_STATES
+                or state_val in ("closed", "cancel", "churned", "4_closed")
+                or "closed" in state_val
+                or "churn" in state_val
+            ):
                 raise UserError(_("This subscription is closed."))
 
         # If subscription_status exists in some builds, block closed ones
@@ -329,19 +365,19 @@ class SaleOrder(models.Model):
 
         products = Product.search(domain, order="name, id", limit=300)
 
-        exclude_keywords = {
-            "onderhoud", "service", "maintenance", "installatie", "repair", "reparatie",
-            "schoonmaak", "cleaning", "reiniging", "optie", "support", "delivery", "shipping",
-            "bezorg", "levering", "verzend", "verzending", "verzendkosten", "transport",
-            "postnl", "dhl", "ups", "discount", "promo", "coupon"
-        }
+        exclude_regex = re.compile(
+            r"\b(onderhoud|service|maintenance|installatie|repair|reparatie|"
+            r"schoonmaak|cleaning|reiniging|optie|support|delivery|shipping|"
+            r"bezorg\w*|levering\w*|verzend\w*|transport\w*|postnl|dhl|ups|discount|promo|coupon)\b",
+            re.IGNORECASE,
+        )
         filtered_products = Product.browse()
         for p in products:
             if getattr(p, "is_delivery", False) or getattr(p.product_tmpl_id, "is_delivery", False):
                 continue
-            p_name = (p.name or "").lower()
-            p_code = (p.default_code or "").lower()
-            if any(kw in p_name or kw in p_code for kw in exclude_keywords):
+            p_name = p.name or ""
+            p_code = p.default_code or ""
+            if exclude_regex.search(p_name) or exclude_regex.search(p_code):
                 continue
             if self._moyee_is_subscription_product(p):
                 filtered_products += p
@@ -352,9 +388,9 @@ class SaleOrder(models.Model):
             for p in fallback_products:
                 if getattr(p, "is_delivery", False) or getattr(p.product_tmpl_id, "is_delivery", False):
                     continue
-                p_name = (p.name or "").lower()
-                p_code = (p.default_code or "").lower()
-                if any(kw in p_name or kw in p_code for kw in exclude_keywords):
+                p_name = p.name or ""
+                p_code = p.default_code or ""
+                if exclude_regex.search(p_name) or exclude_regex.search(p_code):
                     continue
                 filtered_products += p
 
@@ -587,18 +623,13 @@ class SaleOrder(models.Model):
         Return plans customer can choose from.
 
         ✅ Works with plan_id (sale.subscription.plan) in your DB
-        ✅ Includes inactive plans (active_test=False) to avoid empty list
-        ✅ Multi-company safe context for SaaS
+        Only ACTIVE plans of the order's company (or shared plans) are offered.
         """
         self.ensure_one()
 
         plan_field, Plan = self._moyee_get_plan_model()
         if not plan_field:
             return self.env["ir.model"].browse([])
-
-        # Portal-safe context (VERY IMPORTANT on SaaS)
-        company_ids = self.env["res.company"].sudo().search([]).ids
-        Plan = Plan.with_context(allowed_company_ids=company_ids, active_test=False)
 
         current_plan = self[plan_field]
         if current_plan:
@@ -610,14 +641,15 @@ class SaleOrder(models.Model):
                 "optional_recurring_plans",
             ):
                 if fname in current_plan._fields:
-                    optional = current_plan[fname]
+                    optional = current_plan[fname].sudo()
+                    if "active" in optional._fields:
+                        optional = optional.filtered("active")
                     if optional:
-                        return optional.with_context(active_test=False).sudo()
+                        return optional | current_plan.sudo()
 
-        # Fallback: return all plans
+        # Fallback: active plans of the order company + shared plans
         domain = []
         if "company_id" in Plan._fields and self.company_id:
-            # ✅ safest default: order company + global (company_id False)
             domain = [("company_id", "in", [False, self.company_id.id])]
 
         order_by = "sequence, name, id" if "sequence" in Plan._fields else "name, id"
@@ -649,10 +681,19 @@ class SaleOrder(models.Model):
             raise AccessError(_("Selected interval is not allowed."))
 
         # ✅ Write to correct field name used by this DB (plan_id)
+        old_plan = self[plan_field]
         self.sudo().write({plan_field: plan_id})
 
-        self.with_user(1).message_post(
-            body=_("Moyee: customer changed subscription interval via portal."),
+        # Prices depend on the plan (pricelist rules per plan) -> recompute them
+        if old_plan.id != plan_id:
+            for line in self._moyee_get_sub_lines():
+                self._moyee_recompute_line_price(line)
+            self._moyee_auto_recompute_delivery()
+
+        self.sudo().message_post(
+            body=_("Moyee: customer changed subscription interval via portal (%s → %s).") % (
+                old_plan.display_name or "-", self[plan_field].display_name
+            ),
             subtype_xmlid="mail.mt_note",
             author_id=portal_user.partner_id.id,
         )
@@ -762,18 +803,16 @@ class SaleOrder(models.Model):
             field_name = self._moyee_get_subscription_next_date_field_name()
             if field_name:
                 try:
-                    parsed_date = fields.Date.from_string(pause_until_date)
-                    if parsed_date:
-                        if parsed_date < fields.Date.today():
-                            raise ValidationError(_("The pause date cannot be in the past."))
-                        self.sudo().write({field_name: parsed_date})
-                except Exception as e:
-                    if isinstance(e, ValidationError):
-                        raise
-                    _logger.exception("Moyee: Failed to pause subscription next date update.")
+                    target_date = fields.Date.from_string(pause_until_date)
+                    if target_date and target_date > fields.Date.today():
+                        self.sudo().write({field_name: target_date})
+                except Exception:
+                    pass
 
-        self.with_user(1).message_post(
-            body=_("Moyee: customer paused the subscription via portal. Next resume date: %s") % (pause_until_date or 'No change'),
+        self.sudo().message_post(
+            body=_("Moyee: customer paused the subscription via portal.") + (
+                _(" Target resume date: %s") % pause_until_date if pause_until_date else ""
+            ),
             subtype_xmlid="mail.mt_note",
             author_id=portal_user.partner_id.id,
         )
@@ -792,11 +831,16 @@ class SaleOrder(models.Model):
 
         self._moyee_portal_check_access(portal_user=portal_user, access_token=access_token, require_subscription=True)
 
+        if "subscription_state" in self._fields and self.subscription_state == "4_paused":
+            raise UserError(_("You cannot skip a delivery while the subscription is paused."))
+
         field_name = self._moyee_get_subscription_next_date_field_name()
         if not field_name:
             raise UserError(_("This subscription does not expose a next date field."))
 
         current_date = self[field_name] or fields.Date.today()
+        if current_date > fields.Date.today() + relativedelta(months=6):
+            raise UserError(_("Your next delivery is already more than 6 months ahead. Please pause the subscription instead."))
         
         # Calculate interval to skip
         plan = self._moyee_get_current_plan_record()
@@ -840,7 +884,7 @@ class SaleOrder(models.Model):
         new_date = current_date + relativedelta(months=months, weeks=weeks, days=days)
 
         self.sudo().write({field_name: new_date})
-        self.with_user(1).message_post(
+        self.sudo().message_post(
             body=_("Moyee: customer skipped next delivery via portal. Next date: %s") % new_date,
             subtype_xmlid="mail.mt_note",
             author_id=portal_user.partner_id.id,
@@ -858,7 +902,12 @@ class SaleOrder(models.Model):
         self._moyee_portal_check_access(portal_user=portal_user, access_token=access_token, require_subscription=True)
         self._moyee_set_subscription_paused_state(paused=False)
 
-        self.with_user(1).message_post(
+        # Avoid an immediate catch-up renewal when the stored next date is in the past
+        field_name = self._moyee_get_subscription_next_date_field_name()
+        if field_name and (not self[field_name] or self[field_name] < fields.Date.today()):
+            self.sudo().write({field_name: fields.Date.today()})
+
+        self.sudo().message_post(
             body=_("Moyee: customer resumed the subscription via portal."),
             subtype_xmlid="mail.mt_note",
             author_id=portal_user.partner_id.id,
@@ -869,109 +918,37 @@ class SaleOrder(models.Model):
     # ✅ Cancel / Close (robust)
     # ============================================================
     def _moyee_set_subscription_closed_state(self, reason=None):
+        """Close the subscription through Odoo's own flow (set_close), which takes care of
+        end date, churn/MRR logs and close reason. Never cancels the sale order.
+        Returns the close reason record (or False)."""
         self.ensure_one()
 
-        # Odoo 18 close reason handling
-        if "close_reason_id" in self._fields:
-            close_reason = False
-            comodel_name = self._fields["close_reason_id"].comodel_name
-            CloseReasonModel = self.env[comodel_name].sudo()
-            if reason:
-                # Try ID lookup first if numeric
-                if isinstance(reason, int) or (isinstance(reason, str) and reason.isdigit()):
-                    close_reason = CloseReasonModel.browse(int(reason)).exists()
-                if not close_reason:
-                    # 1. Search for existing close reason matching the selected reason
-                    close_reason = CloseReasonModel.search([("name", "ilike", reason)], limit=1)
-            
-            # If still no close_reason and we have the field, let's grab the first one as fallback
+        close_reason = False
+        if "close_reason_id" in self._fields and reason:
+            CloseReason = self.env[self._fields["close_reason_id"].comodel_name].sudo()
+            reason_str = str(reason).strip()
+            if reason_str.isdigit():
+                close_reason = CloseReason.browse(int(reason_str)).exists()
             if not close_reason:
-                close_reason = CloseReasonModel.search([], limit=1)
-            
-            if close_reason:
-                try:
-                    self.sudo().write({"close_reason_id": close_reason.id})
-                except Exception as e:
-                    _logger.debug("Moyee: Failed to write close_reason_id: %s", str(e))
+                close_reason = CloseReason.search([("name", "=ilike", reason_str)], limit=1)
 
-        # 1) Try native field writes for subscription_state first (to bypass dummy action_close)
-        if "subscription_state" in self._fields:
-            selection = self._fields["subscription_state"].selection or []
-            keys = [k for k, _lbl in selection]
-            def _pick(candidates):
-                for cand in candidates:
-                    for k in keys:
-                        if k == cand:
-                            return k
-                for cand in candidates:
-                    for k in keys:
-                        if cand in str(k).lower():
-                            return k
-                return None
-            key = _pick(("6_churn", "5_churn", "4_closed", "closed", "cancel", "churned", "churn", "close"))
-            if key:
-                try:
-                    self.sudo().write({"subscription_state": key})
-                    return True
-                except Exception as e:
-                    _logger.debug("Moyee: Failed to write subscription_state: %s", str(e))
-
-        # 2) Try standard methods, but verify they don't just return a wizard action dict
-        for m in ("action_close", "action_cancel", "action_subscription_close", "action_set_to_close"):
-            if hasattr(self, m):
-                try:
-                    res = getattr(self.sudo(), m)()
-                    if res and isinstance(res, dict):
-                        continue
-                    return True
-                except Exception as e:
-                    _logger.debug("Moyee: Failed calling %s: %s", m, str(e))
-
-        # 3) Generic selection field fallback for subscription_status
-        if "subscription_status" in self._fields:
-            selection = self._fields["subscription_status"].selection or []
-            keys = [k for k, _lbl in selection]
-            def _pick(candidates):
-                for cand in candidates:
-                    for k in keys:
-                        if k == cand:
-                            return k
-                for cand in candidates:
-                    for k in keys:
-                        if cand in str(k).lower():
-                            return k
-                return None
-            key = _pick(("closed", "cancel", "churned", "churn", "close"))
-            if key:
-                try:
-                    self.sudo().write({"subscription_status": key})
-                    return True
-                except Exception as e:
-                    _logger.debug("Moyee: Failed writing subscription_status: %s", str(e))
-
-        # 4) stage-based fallback
-        for stage_field in ("subscription_stage_id", "stage_id"):
-            if stage_field in self._fields:
-                Stage = self.env[self._fields[stage_field].comodel_name].sudo()
-                target = (
-                    Stage.search([("name", "ilike", "closed")], limit=1)
-                    or Stage.search([("name", "ilike", "cancel")], limit=1)
-                    or Stage.search([("name", "ilike", "churn")], limit=1)
-                )
-                if target:
-                    try:
-                        self.sudo().write({stage_field: target.id})
-                        return True
-                    except Exception as e:
-                        _logger.debug("Moyee: Failed writing stage_field %s: %s", stage_field, str(e))
-
-        # 5) standard sale.order cancel if nothing else worked
-        if hasattr(self, "action_cancel"):
+        order = self.sudo()
+        if hasattr(order, "set_close"):
             try:
-                self.sudo().action_cancel()
-                return True
-            except Exception as e:
-                _logger.debug("Moyee: Failed action_cancel call: %s", str(e))
+                order.set_close(close_reason_id=close_reason.id if close_reason else None)
+            except TypeError:
+                # Older signature without close_reason_id
+                if close_reason:
+                    order.write({"close_reason_id": close_reason.id})
+                order.set_close()
+            return close_reason
+
+        if "subscription_state" in order._fields:
+            vals = {"subscription_state": "6_churn"}
+            if close_reason:
+                vals["close_reason_id"] = close_reason.id
+            order.write(vals)
+            return close_reason
 
         raise UserError(_("Close/cancel is not available for this subscription implementation."))
 
@@ -984,13 +961,14 @@ class SaleOrder(models.Model):
             raise AccessError(_("You cannot perform actions on behalf of another user."))
 
         self._moyee_portal_check_access(portal_user=portal_user, access_token=access_token, require_subscription=True)
-        self._moyee_set_subscription_closed_state(reason=reason)
+        close_reason = self._moyee_set_subscription_closed_state(reason=reason)
 
-        body_msg = _("Moyee: customer cancelled/closed the subscription via portal.")
-        if reason:
-            body_msg += _("<br/>Reason: %s") % reason
+        reason_label = close_reason.display_name if close_reason else (reason or "")
+        body_msg = Markup("%s") % _("Moyee: customer cancelled/closed the subscription via portal.")
+        if reason_label:
+            body_msg += Markup("<br/>") + (_("Reason: %s") % reason_label)
 
-        self.with_user(1).message_post(
+        self.sudo().message_post(
             body=body_msg,
             subtype_xmlid="mail.mt_note",
             author_id=portal_user.partner_id.id,
@@ -1025,9 +1003,11 @@ class SaleOrder(models.Model):
 
         if value < fields.Date.today():
             raise ValidationError(_("The next delivery date cannot be in the past."))
+        if value > fields.Date.today() + relativedelta(months=6):
+            raise ValidationError(_("The next delivery date cannot be more than 6 months ahead. Please pause the subscription instead."))
 
         self.sudo().write({field_name: value})
-        self.with_user(1).message_post(
+        self.sudo().message_post(
             body=_("Moyee: customer updated next date via portal (%s).") % field_name,
             subtype_xmlid="mail.mt_note",
             author_id=portal_user.partner_id.id,
@@ -1088,14 +1068,9 @@ class SaleOrder(models.Model):
         if not price and line.product_id:
             price = getattr(line.product_id, "lst_price", 0.0) or getattr(line.product_id, "list_price", 0.0)
 
-        # 5. Fix tax-included price if applicable
-        if price and hasattr(self.env["account.tax"], "_fix_tax_included_price_company"):
-            try:
-                price = self.env["account.tax"]._fix_tax_included_price_company(
-                    price, line.product_id.taxes_id, line.tax_id, line.company_id
-                )
-            except Exception as e:
-                _logger.debug("Moyee: Tax inclusion fix failed: %s", str(e))
+        # NOTE: no extra _fix_tax_included_price_company() here: _get_display_price()
+        # already returns the correctly tax-adjusted price; applying it again would
+        # double-convert tax-included prices.
 
         if not price or float(price) <= 0.0:
             raise ValidationError(_("The product '%s' does not have a valid price configured. Action aborted.") % line.product_id.display_name)
@@ -1118,13 +1093,10 @@ class SaleOrder(models.Model):
         product = self.env["product.product"].sudo().browse(int(product_id)).exists()
         if not product:
             raise ValidationError(_("Invalid product."))
+        if product not in self._moyee_portal_allowed_products():
+            raise AccessError(_("This product cannot be added to your subscription."))
 
-        try:
-            qty = float(qty or 0.0)
-        except Exception:
-            qty = 0.0
-        if qty <= 0:
-            raise ValidationError(_("Quantity must be greater than 0."))
+        qty = self._moyee_validate_portal_qty(qty)
 
         existing_line = self.order_line.filtered(
             lambda l: (not l.display_type) and l.product_id.id == product.id
@@ -1134,22 +1106,18 @@ class SaleOrder(models.Model):
             if line_to_update.x_moyee_is_removed:
                 line_to_update.write({
                     "x_moyee_is_removed": False,
-                    "product_uom_qty": qty,
                     "x_moyee_removed_on": False,
                     "x_moyee_removed_by": False,
                     "x_moyee_remove_reason": False,
                 })
+                self._moyee_set_line_qty(line_to_update, qty)
             else:
-                if mode == "set":
-                    line_to_update.write({"product_uom_qty": qty})
-                else:
-                    line_to_update.write({"product_uom_qty": float(line_to_update.product_uom_qty or 0.0) + qty})
+                new_qty = qty if mode == "set" else float(line_to_update.product_uom_qty or 0.0) + qty
+                if new_qty > self._MOYEE_PORTAL_MAX_QTY:
+                    raise ValidationError(_("Quantity cannot exceed %s.") % self._MOYEE_PORTAL_MAX_QTY)
+                self._moyee_set_line_qty(line_to_update, new_qty)
             self._moyee_recompute_line_price(line_to_update)
-            if self.state in ("sale", "done") and hasattr(line_to_update, "_action_launch_stock_rule"):
-                try:
-                    line_to_update._action_launch_stock_rule()
-                except Exception:
-                    _logger.exception("Moyee: Failed to launch stock rule for updated line %s.", line_to_update.id)
+            self._moyee_launch_stock_rule(line_to_update)
         else:
             sibling = self.order_line.filtered(lambda l: not l.display_type and not l.x_moyee_is_removed)
             vals = {
@@ -1167,48 +1135,67 @@ class SaleOrder(models.Model):
                         vals[fname] = val.id if hasattr(val, "id") else val
             new_line = self.env["sale.order.line"].sudo().create(vals)
             self._moyee_recompute_line_price(new_line)
-            if self.state in ("sale", "done") and hasattr(new_line, "_action_launch_stock_rule"):
-                try:
-                    new_line._action_launch_stock_rule()
-                except Exception:
-                    _logger.exception("Moyee: Failed to launch stock rule for new line %s.", new_line.id)
+            self._moyee_launch_stock_rule(new_line)
 
         # Automatically recalculate delivery cost for updated order weight
         self._moyee_auto_recompute_delivery()
 
-        self.with_user(1).message_post(
+        self.sudo().message_post(
             body=_("Moyee: customer updated product via portal (%s x %s).") % (product.display_name, qty),
             subtype_xmlid="mail.mt_note",
             author_id=portal_user.partner_id.id,
         )
         return True
 
+    def _moyee_partner_is_shared(self, partner):
+        """True if the partner is referenced by other orders, posted invoices or pickings,
+        i.e. editing it in place would rewrite history / other subscriptions."""
+        self.ensure_one()
+        pid = partner.id
+        if self.env["sale.order"].sudo().search_count([
+            "|", "|",
+            ("partner_id", "=", pid),
+            ("partner_shipping_id", "=", pid),
+            ("partner_invoice_id", "=", pid),
+            ("id", "!=", self.id),
+        ], limit=1):
+            return True
+        if self.env["account.move"].sudo().search_count([
+            ("partner_id", "=", pid), ("state", "=", "posted"),
+        ], limit=1):
+            return True
+        if "stock.picking" in self.env and self.env["stock.picking"].sudo().search_count([
+            ("partner_id", "=", pid),
+        ], limit=1):
+            return True
+        return False
+
     def _moyee_portal_upsert_child_address(self, portal_user, vals, addr_type):
+        """Return a child address of the customer for this order.
+        Never touches the commercial partner and never edits an address that is
+        shared with other documents: a new child address is created instead."""
         self.ensure_one()
         commercial = portal_user.partner_id.commercial_partner_id
 
-        clean = {k: v for k, v in (vals or {}).items() if v not in (None, "", False)}
-        if not clean:
+        vals = vals or {}
+        if not any(vals.get(k) for k in ("street", "city", "zip")):
             return False
+        # Keep empty strings as False so customers can clear a field (e.g. street2)
+        clean = {k: (v or False) for k, v in vals.items()}
 
         current = self.partner_shipping_id if addr_type == "delivery" else self.partner_invoice_id
-        if addr_type == "invoice" and current == commercial:
-            commercial.sudo().write(clean)
-            return commercial
-
-        clean.update({"parent_id": commercial.id, "type": addr_type})
-
-        if not (current and current.parent_id == commercial):
-            existing_children = commercial.child_ids.filtered(lambda p: p.type == addr_type)
-            if existing_children:
-                current = existing_children[0]
-            else:
-                current = False
-
-        if current:
+        reusable = (
+            current
+            and current != commercial
+            and current.parent_id == commercial
+            and current.type == addr_type
+            and not self._moyee_partner_is_shared(current)
+        )
+        if reusable:
             current.sudo().write(clean)
             return current
 
+        clean.update({"parent_id": commercial.id, "type": addr_type})
         return self.env["res.partner"].sudo().create(clean)
 
     def moyee_portal_change_address_full(self, *, portal_user_id, shipping_vals=None, invoice_vals=None, access_token=None):
@@ -1234,7 +1221,7 @@ class SaleOrder(models.Model):
             raise UserError(_("Please fill at least one address field."))
 
         self.sudo().write(vals)
-        self.with_user(1).message_post(
+        self.sudo().message_post(
             body=_("Moyee: customer updated full addresses via portal."),
             subtype_xmlid="mail.mt_note",
             author_id=portal_user.partner_id.id,
@@ -1261,30 +1248,22 @@ class SaleOrder(models.Model):
         if line.display_type or line.x_moyee_is_removed:
             raise UserError(_("This line cannot be updated."))
 
-        try:
-            qty = float(qty or 0.0)
-        except Exception:
-            qty = 0.0
-        if qty <= 0:
-            raise ValidationError(_("Quantity must be greater than 0."))
-
-        # Respect delivery constraint: never go below delivered qty
-        delivered = float(line.qty_delivered or 0.0)
-        if qty < delivered:
-            raise UserError(
-                _("Quantity cannot be less than the already delivered amount (%s).") % delivered
-            )
+        qty = self._moyee_validate_portal_qty(qty)
 
         old_qty = line.product_uom_qty
         line_to_update = line.sudo()
-        line_to_update.write({"product_uom_qty": qty})
+        # NOTE: no 'qty >= qty_delivered' rule - on subscriptions qty_delivered is
+        # cumulative over all periods, so it would block every reduction.
+        self._moyee_set_line_qty(line_to_update, qty)
         self._moyee_recompute_line_price(line_to_update)
+        if qty > old_qty:
+            self._moyee_launch_stock_rule(line_to_update)
 
         # Automatically recalculate delivery cost for updated order weight
         self._moyee_auto_recompute_delivery()
 
         product_label = line.product_id.display_name if line.product_id else (line.name or _("(no product)"))
-        self.with_user(1).message_post(
+        self.sudo().message_post(
             body=_("Moyee: customer changed quantity via portal — %s: %s → %s.") % (
                 product_label, old_qty, qty
             ),
@@ -1334,6 +1313,8 @@ class SaleOrder(models.Model):
         template = self.env["product.template"].sudo().browse(int(template_id)).exists()
         if not template:
             raise ValidationError(_("Invalid coffee type selected."))
+        if template not in self._moyee_portal_allowed_products().mapped("product_tmpl_id"):
+            raise AccessError(_("This coffee cannot be selected for your subscription."))
 
         variants = self.env["product.product"].sudo().search([
             ("product_tmpl_id", "=", template.id),
@@ -1357,13 +1338,8 @@ class SaleOrder(models.Model):
             )
 
         new_qty = None
-        if qty is not None:
-            try:
-                new_qty = float(qty)
-            except (ValueError, TypeError):
-                new_qty = None
-            if new_qty is not None and new_qty <= 0:
-                raise ValidationError(_("Quantity must be greater than 0."))
+        if qty not in (None, ""):
+            new_qty = self._moyee_validate_portal_qty(qty)
 
         old_product = line.product_id
         if old_product.id != target_product.id:
@@ -1373,29 +1349,44 @@ class SaleOrder(models.Model):
             )
             if existing_line:
                 existing_line_sudo = existing_line[:1].sudo()
-                add_qty = new_qty if (new_qty is not None and new_qty > 0) else line.product_uom_qty
-                existing_line_sudo.write({"product_uom_qty": existing_line_sudo.product_uom_qty + add_qty})
-                line.sudo().write({"x_moyee_is_removed": True, "product_uom_qty": 0.0})
+                add_qty = new_qty if new_qty is not None else line.product_uom_qty
+                merged_qty = existing_line_sudo.product_uom_qty + add_qty
+                if merged_qty > self._MOYEE_PORTAL_MAX_QTY:
+                    raise ValidationError(_("Quantity cannot exceed %s.") % self._MOYEE_PORTAL_MAX_QTY)
+                self._moyee_set_line_qty(existing_line_sudo, merged_qty)
+                line.sudo().write(line._moyee_soft_remove_vals(
+                    portal_user.id, reason=_("Merged into another line via portal edit.")
+                ))
+                line.sudo()._moyee_force_zero_qty()
                 self._moyee_recompute_line_price(existing_line_sudo)
+                self._moyee_launch_stock_rule(existing_line_sudo)
             else:
                 line_sudo = line.sudo()
-                update_vals = {
+                # Pending deliveries were created for the OLD product: cancel them
+                # so the warehouse does not ship the wrong coffee.
+                self._moyee_cancel_pending_moves(line_sudo)
+                line_sudo.write({
                     "product_id": target_product.id,
                     "name": target_product.with_context(display_default_code=False).display_name or target_product.display_name,
                     "product_uom": target_product.uom_id.id,
-                }
-                if new_qty is not None and new_qty > 0:
-                    update_vals["product_uom_qty"] = new_qty
-                line_sudo.write(update_vals)
+                })
+                if new_qty is not None:
+                    self._moyee_set_line_qty(line_sudo, new_qty)
                 self._moyee_recompute_line_price(line_sudo)
+                self._moyee_launch_stock_rule(line_sudo)
         else:
             # Same product, update quantity if changed
-            if new_qty is not None and new_qty > 0 and new_qty != line.product_uom_qty:
+            if new_qty is not None and new_qty != line.product_uom_qty:
                 line_sudo = line.sudo()
-                line_sudo.write({"product_uom_qty": new_qty})
+                increased = new_qty > line_sudo.product_uom_qty
+                self._moyee_set_line_qty(line_sudo, new_qty)
                 self._moyee_recompute_line_price(line_sudo)
+                if increased:
+                    self._moyee_launch_stock_rule(line_sudo)
 
-        self.with_user(1).message_post(
+        self._moyee_auto_recompute_delivery()
+
+        self.sudo().message_post(
             body=_("Moyee: customer edited line product via portal — %s → %s.") % (
                 old_product.display_name, target_product.display_name
             ),
@@ -1467,21 +1458,21 @@ class SaleOrder(models.Model):
         self.ensure_one()
         state = self.state or 'draft'
         if state in ('draft', 'sent'):
-            return {'label': 'In progress', 'class': 'moyee-status-processing'}
+            return {'label': _('In progress'), 'class': 'moyee-status-processing'}
         elif state == 'sale':
-            return {'label': 'In progress', 'class': 'moyee-status-processing'}
+            return {'label': _('In progress'), 'class': 'moyee-status-processing'}
         elif state == 'done':
-            return {'label': 'Completed', 'class': 'moyee-status-delivered'}
+            return {'label': _('Completed'), 'class': 'moyee-status-delivered'}
         elif state == 'cancel':
-            return {'label': 'Cancelled', 'class': 'moyee-status-cancelled'}
-        return {'label': 'In progress', 'class': 'moyee-status-processing'}
+            return {'label': _('Cancelled'), 'class': 'moyee-status-cancelled'}
+        return {'label': _('In progress'), 'class': 'moyee-status-processing'}
 
     def _get_moyee_portal_delivery_status(self):
         self.ensure_one()
         pickings = self.picking_ids.filtered(lambda p: p.state != 'cancel') if 'picking_ids' in self._fields else self.env['stock.picking']
         
         if not pickings:
-            return {'label': 'Pending shipment', 'class': 'moyee-status-upcoming'}
+            return {'label': _('Pending shipment'), 'class': 'moyee-status-upcoming'}
         
         if all(p.state == 'done' for p in pickings):
             state = 'done'
@@ -1491,9 +1482,9 @@ class SaleOrder(models.Model):
             state = 'pending'
             
         if state == 'pending':
-            return {'label': 'Pending shipment', 'class': 'moyee-status-upcoming'}
+            return {'label': _('Pending shipment'), 'class': 'moyee-status-upcoming'}
         elif state == 'partial':
-            return {'label': 'On the way', 'class': 'moyee-status-transit'}
+            return {'label': _('On the way'), 'class': 'moyee-status-transit'}
         elif state == 'done':
             m_date = self._moyee_get_monta_delivery_date()
             t_ref = self._moyee_get_tracking_ref()
@@ -1501,11 +1492,11 @@ class SaleOrder(models.Model):
             
             if m_date:
                 if m_date < today:
-                    return {'label': 'Delivered', 'class': 'moyee-status-delivered'}
+                    return {'label': _('Delivered'), 'class': 'moyee-status-delivered'}
                 else:
-                    return {'label': 'On the way', 'class': 'moyee-status-transit'}
+                    return {'label': _('On the way'), 'class': 'moyee-status-transit'}
             else:
                 if t_ref:
-                    return {'label': 'On the way', 'class': 'moyee-status-transit'}
+                    return {'label': _('On the way'), 'class': 'moyee-status-transit'}
                 else:
-                    return {'label': 'Delivered', 'class': 'moyee-status-delivered'}
+                    return {'label': _('Delivered'), 'class': 'moyee-status-delivered'}

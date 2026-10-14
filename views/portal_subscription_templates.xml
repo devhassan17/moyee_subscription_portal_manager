@@ -263,7 +263,7 @@
 
                                                 <!-- Remove -->
                                                 <div class="moyee-actions">
-                                                    <label class="form-label moyee-label d-none d-md-block"><t t-raw="'&#160;'"/></label>
+                                                    <label class="form-label moyee-label d-none d-md-block">&#160;</label>
                                                     <form t-attf-action="/my/subscriptions/{{ order.id }}/line/{{ line.id }}/remove"
                                                           method="post" class="d-inline">
                                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>

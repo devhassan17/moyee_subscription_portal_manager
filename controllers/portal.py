@@ -57,6 +57,10 @@ class MoyeePortalHome(CustomerPortal):
             counters = set()
         values = super()._prepare_home_portal_values(counters)
 
+        # /my/counters (JSON) only needs the counters: never return recordsets there
+        if counters:
+            return values
+
         if not self._is_moyee_redesign_active_for_user():
             return values
 
@@ -150,13 +154,11 @@ class MoyeePortalHome(CustomerPortal):
                 _logger.exception("Moyee: Failed to get portal changeable plans.")
                 available_plans = SaleOrder.browse()
 
-            # Hard fallback for plans
+            # Hard fallback for plans (active plans only, order company + shared)
             if not available_plans and plan_field_name and plan_field_name in active_subscription._fields:
                 try:
                     plan_model = active_subscription._fields[plan_field_name].comodel_name
                     Plan = request.env[plan_model].sudo()
-                    company_ids = request.env["res.company"].sudo().search([]).ids
-                    Plan = Plan.with_context(allowed_company_ids=company_ids, active_test=False)
                     domain = []
                     if "company_id" in Plan._fields and getattr(active_subscription, "company_id", False):
                         domain = [("company_id", "in", [False, active_subscription.company_id.id])]
@@ -182,26 +184,7 @@ class MoyeePortalHome(CustomerPortal):
 
             # Available products (for "Add product" popup)
             try:
-                addable_products = active_subscription._moyee_get_portal_addable_products()
-                existing_products = active_subscription.order_line.filtered(
-                    lambda l: not l.x_moyee_is_removed 
-                    and not l.display_type 
-                    and l.product_id 
-                    and not getattr(l, 'is_delivery', False)
-                    and not getattr(l.product_id, 'is_delivery', False)
-                    and getattr(l.product_id, 'type', '') != 'service'
-                    and getattr(l.product_id, 'detailed_type', '') != 'service'
-                    and not any(kw in (l.product_id.name or l.name or '').lower() for kw in ('delivery', 'shipping', 'bezorg', 'levering', 'verzend', 'transport', 'postnl', 'dhl', 'ups', 'discount', 'promo', 'coupon'))
-                ).mapped("product_id")
-                addable_products = addable_products.filtered(
-                    lambda p: not getattr(p, 'is_delivery', False)
-                    and getattr(p, 'type', '') != 'service'
-                    and getattr(p, 'detailed_type', '') != 'service'
-                    and not any(kw in (p.name or '').lower() for kw in ('delivery', 'shipping', 'bezorg', 'levering', 'verzend', 'transport', 'postnl', 'dhl', 'ups', 'discount', 'promo', 'coupon'))
-                )
-                available_products = addable_products | existing_products
-                if hidden_product_ids:
-                    available_products = available_products.filtered(lambda p: p.id not in hidden_product_ids)
+                available_products = active_subscription._moyee_portal_allowed_products()
             except Exception:
                 _logger.exception("Moyee: Failed to get portal addable products.")
 
@@ -221,7 +204,7 @@ class MoyeePortalHome(CustomerPortal):
         ]
         if current_company_id:
             order_domain.append(("company_id", "=", current_company_id))
-        recent_orders = SaleOrder.search(order_domain, order="date_order desc, id desc")
+        recent_orders = SaleOrder.search(order_domain, order="date_order desc, id desc", limit=50)
 
         # ── Recent invoices ──
         AccountMove = request.env["account.move"].sudo()
@@ -232,7 +215,7 @@ class MoyeePortalHome(CustomerPortal):
         ]
         if current_company_id:
             inv_domain.append(("company_id", "=", current_company_id))
-        recent_invoices = AccountMove.search(inv_domain, order="invoice_date desc, id desc")
+        recent_invoices = AccountMove.search(inv_domain, order="invoice_date desc, id desc", limit=50)
 
         # ── Portal FAQs ──
         PortalFaq = request.env["moyee.portal.faq"].sudo()
@@ -286,12 +269,11 @@ class MoyeePortalHome(CustomerPortal):
             "inspire_btn2_url": ICP.get_param("moyee_subscription_portal_manager.inspire_btn2_url", "/shop"),
         }
 
-        # Determine selected language from URL path or request context
-        url_path = (request.httprequest.path or "").lower()
-        lang_ctx = (request.env.lang or getattr(request, 'lang', '') or '').lower()
-        if "/de" in url_path or url_path.startswith("/de") or lang_ctx.startswith("de"):
+        # Determine selected language from the website language (not URL substrings)
+        lang_code = (getattr(getattr(request, "lang", None), "code", None) or request.env.lang or "").lower()
+        if lang_code.startswith("de"):
             moyee_lang = "de"
-        elif "/nl" in url_path or url_path.startswith("/nl") or lang_ctx.startswith("nl"):
+        elif lang_code.startswith("nl"):
             moyee_lang = "nl"
         else:
             moyee_lang = "en"
@@ -300,22 +282,7 @@ class MoyeePortalHome(CustomerPortal):
         variant_map = []
         if active_subscription:
             try:
-                existing_products = active_subscription.order_line.filtered(
-                    lambda l: not l.x_moyee_is_removed 
-                    and not l.display_type 
-                    and l.product_id 
-                    and not getattr(l, 'is_delivery', False)
-                    and not getattr(l.product_id, 'is_delivery', False)
-                    and getattr(l.product_id, 'type', '') != 'service'
-                    and getattr(l.product_id, 'detailed_type', '') != 'service'
-                    and not any(kw in (l.product_id.name or l.name or '').lower() for kw in ('delivery', 'shipping', 'bezorg', 'levering', 'verzend', 'transport', 'postnl', 'dhl', 'ups', 'discount', 'promo', 'coupon'))
-                ).mapped("product_id")
-                all_possible_products = (available_products | existing_products).filtered(
-                    lambda p: not getattr(p, 'is_delivery', False)
-                    and getattr(p, 'type', '') != 'service'
-                    and getattr(p, 'detailed_type', '') != 'service'
-                    and not any(kw in (p.name or '').lower() for kw in ('delivery', 'shipping', 'bezorg', 'levering', 'verzend', 'transport', 'postnl', 'dhl', 'ups', 'discount', 'promo', 'coupon'))
-                )
+                all_possible_products = available_products or active_subscription._moyee_portal_allowed_products()
                 for p in all_possible_products:
                     p_en = p.sudo().with_context(lang='en_US')
                     grind, weight = active_subscription.moyee_extract_product_metadata(p)
@@ -384,8 +351,8 @@ class MoyeePortalHome(CustomerPortal):
         company = getattr(request, "website", False) and request.website.company_id or request.env.company
         company_sudo = company.sudo()
         
-        # Hardcode company check: only allow for Moyee Coffee
-        if company and "Moyee Coffee" not in company.name:
+        # Company check: allow for Moyee Coffee or companies where Moyee portal settings are configured
+        if company and "moyee" not in (company.name or "").lower() and not company_sudo.moyee_enable_user_filter:
             return False
 
         enable_user_filter = False
@@ -423,14 +390,28 @@ class MoyeePortalHome(CustomerPortal):
         values.update(home_values)
         return request.render("moyee_subscription_portal_manager.portal_my_home_moyee", values)
 
+    _MOYEE_ADDR_FIELDS = ("street", "street2", "city", "zip", "country_id")
+
+    @staticmethod
+    def _moyee_addr_key(partner):
+        return (
+            (partner.street or "").strip().lower(),
+            (partner.street2 or "").strip().lower(),
+            (partner.city or "").strip().lower(),
+            (partner.zip or "").replace(" ", "").lower(),
+            partner.country_id.id,
+        )
+
     @http.route(["/my/account"], type="http", auth="user", website=True)
     def account(self, redirect=None, **post):
+        partner = request.env.user.partner_id
+        old_key = self._moyee_addr_key(partner) if request.httprequest.method == "POST" else None
+
         response = super().account(redirect=redirect, **post)
         if request.httprequest.method == "POST":
             # Check if Odoo portal successfully validated and saved the partner values
             is_redirect = getattr(response, "status_code", 200) in (301, 302, 303)
-            if is_redirect:
-                partner = request.env.user.partner_id
+            if is_redirect and old_key != self._moyee_addr_key(partner):
                 commercial = partner.commercial_partner_id
 
                 SaleOrder = request.env["sale.order"].sudo()
@@ -443,28 +424,29 @@ class MoyeePortalHome(CustomerPortal):
                 elif "is_subscription" in SaleOrder._fields:
                     sub_domain.append(("is_subscription", "=", True))
 
-                subscriptions = SaleOrder.search(sub_domain)
-                for sub in subscriptions:
-                    if sub.partner_shipping_id and sub.partner_shipping_id != partner and sub.partner_shipping_id != commercial:
-                        sub.partner_shipping_id.sudo().write({
-                            "name": partner.name,
-                            "phone": partner.phone or partner.mobile or False,
-                            "street": partner.street or False,
-                            "street2": partner.street2 or False,
-                            "city": partner.city or False,
-                            "zip": partner.zip or False,
-                            "country_id": partner.country_id.id if partner.country_id else False,
-                        })
-                    if sub.partner_invoice_id and sub.partner_invoice_id != partner and sub.partner_invoice_id != commercial:
-                        sub.partner_invoice_id.sudo().write({
-                            "name": partner.name,
-                            "phone": partner.phone or partner.mobile or False,
-                            "street": partner.street or False,
-                            "street2": partner.street2 or False,
-                            "city": partner.city or False,
-                            "zip": partner.zip or False,
-                            "country_id": partner.country_id.id if partner.country_id else False,
-                        })
+                new_vals = {
+                    "street": partner.street or False,
+                    "street2": partner.street2 or False,
+                    "city": partner.city or False,
+                    "zip": partner.zip or False,
+                    "country_id": partner.country_id.id or False,
+                }
+                # Only follow the profile change on subscription addresses that were
+                # identical to the OLD profile address. Different addresses (gifts,
+                # office delivery...) are left untouched. Shared partners get a copy.
+                for sub in SaleOrder.search(sub_domain):
+                    for fname, addr_type in (("partner_shipping_id", "delivery"), ("partner_invoice_id", "invoice")):
+                        addr = sub[fname]
+                        if not addr or addr in (partner, commercial) or self._moyee_addr_key(addr) != old_key:
+                            continue
+                        if sub._moyee_partner_is_shared(addr):
+                            new_addr = request.env["res.partner"].sudo().create(dict(
+                                new_vals, name=addr.name, phone=addr.phone,
+                                parent_id=commercial.id, type=addr_type,
+                            ))
+                            sub.write({fname: new_addr.id})
+                        else:
+                            addr.sudo().write(new_vals)
         return response
 
     @http.route(["/my/orders", "/my/orders/page/<int:page>"], type="http", auth="user", website=True)
@@ -513,13 +495,15 @@ class MoyeeSubscriptionPortal(http.Controller):
     # ------------------------------------------------------------
     # Security helpers
     # ------------------------------------------------------------
-    def _moyee_get_order_sudo(self, order_id, *, access_token=None, require_subscription=True):
+    def _moyee_get_order_sudo(self, order_id, *, access_token=None, require_subscription=True, check_state=True):
         order = request.env["sale.order"].sudo().browse(int(order_id)).exists()
         if not order:
             raise NotFound()
 
         try:
-            order._moyee_portal_check_access(access_token=access_token, require_subscription=require_subscription)
+            order._moyee_portal_check_access(
+                access_token=access_token, require_subscription=require_subscription, check_state=check_state
+            )
         except AccessError:
             raise NotFound()
         return order
@@ -541,15 +525,20 @@ class MoyeeSubscriptionPortal(http.Controller):
         return base
 
     def _moyee_redirect_back(self, order, *, message=None, error=None, access_token=None):
+        if error:
+            # The action failed half-way: undo any partial writes before redirecting
+            request.env.cr.rollback()
         params = {}
         if message:
             params["moyee_message"] = message
         if error:
             params["moyee_error"] = error
-        if access_token:
-            params["access_token"] = access_token
-        # Redirect back to /my/home instead of the manage page
-        return request.redirect("/my/home?" + urlencode(params))
+        # Logged-in customers go back to /my/home WITHOUT the share token in the URL
+        # (it would leak via history, logs and Referer). Anonymous token holders
+        # cannot open /my/home (auth=user), so send them to the token-based manage page.
+        if request.env.user._is_public():
+            return request.redirect(self._moyee_manage_url(order, params=params, access_token=access_token))
+        return request.redirect("/my/home" + ("?" + urlencode(params) if params else ""))
 
     # ------------------------------------------------------------
     # Helpers (Plans) - UNIVERSAL + PORTAL SAFE
@@ -570,12 +559,7 @@ class MoyeeSubscriptionPortal(http.Controller):
         plan_model = order._fields[plan_field].comodel_name
         Plan = request.env[plan_model].sudo()
 
-        # portal-safe context
-        company_ids = request.env["res.company"].sudo().search([]).ids
-        Plan = Plan.with_context(allowed_company_ids=company_ids, active_test=False)
-
-        # ✅ IMPORTANT: for sale.subscription.plan, company_id may exist (depends on build/customizations)
-        # Default: global + order company
+        # Active plans only: order company + shared (company_id False)
         domain = []
         if "company_id" in Plan._fields and getattr(order, "company_id", False):
             domain = [("company_id", "in", [False, order.company_id.id])]
@@ -601,24 +585,7 @@ class MoyeeSubscriptionPortal(http.Controller):
         next_date_field = order._moyee_get_subscription_next_date_field_name()
         next_date_value = order[next_date_field] if next_date_field else False
 
-        addable_products = order._moyee_get_portal_addable_products()
-        existing_products = order.order_line.filtered(
-            lambda l: not l.x_moyee_is_removed 
-            and not l.display_type 
-            and l.product_id 
-            and not getattr(l, 'is_delivery', False)
-            and not getattr(l.product_id, 'is_delivery', False)
-            and getattr(l.product_id, 'type', '') != 'service'
-            and getattr(l.product_id, 'detailed_type', '') != 'service'
-            and not any(kw in (l.product_id.name or l.name or '').lower() for kw in ('delivery', 'shipping', 'bezorg', 'levering', 'verzend', 'transport', 'postnl', 'dhl', 'ups', 'discount', 'promo', 'coupon'))
-        ).mapped("product_id")
-        addable_products = addable_products.filtered(
-            lambda p: not getattr(p, 'is_delivery', False)
-            and getattr(p, 'type', '') != 'service'
-            and getattr(p, 'detailed_type', '') != 'service'
-            and not any(kw in (p.name or '').lower() for kw in ('delivery', 'shipping', 'bezorg', 'levering', 'verzend', 'transport', 'postnl', 'dhl', 'ups', 'discount', 'promo', 'coupon'))
-        )
-        available_products = addable_products | existing_products
+        available_products = order._moyee_portal_allowed_products()
 
         # Try model-level logic first
         available_plans = order._moyee_get_portal_changeable_plans()
@@ -991,22 +958,31 @@ class MoyeeSubscriptionPortal(http.Controller):
         type="http",
         auth="public",
         website=True,
-        methods=["POST", "GET"],
+        methods=["POST"],
         csrf=True,
     )
     def moyee_order_reorder(self, order_id, access_token=None, **post):
-        order = self._moyee_get_order_sudo(order_id, access_token=access_token)
+        order = self._moyee_get_order_sudo(
+            order_id, access_token=access_token, require_subscription=False, check_state=False
+        )
         if not order:
             return request.redirect("/my/home")
-        
+
         # Safe ecommerce cart lookup/create
         if hasattr(request.website, "sale_get_order"):
             cart = request.website.sale_get_order(force_create=True)
-            for line in order.order_line.filtered(lambda l: not l.display_type and l.product_id.sale_ok):
+            lines = order.order_line.filtered(
+                lambda l: not l.display_type
+                and l.product_id.sale_ok
+                and not l.x_moyee_is_removed
+                and float(l.product_uom_qty or 0.0) > 0.0
+                and not l._moyee_is_delivery_line()
+            )
+            for line in lines:
                 cart._cart_update(
                     product_id=line.product_id.id,
                     add_qty=line.product_uom_qty,
                 )
             return request.redirect("/shop/checkout")
-        
+
         return request.redirect("/my/home")

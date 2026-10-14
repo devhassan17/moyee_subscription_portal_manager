@@ -1,7 +1,13 @@
 # File: moyee_subscription_portal_manager/models/sale_order_line.py
 import re
+from markupsafe import Markup
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
+
+_DELIVERY_KW_RE = re.compile(
+    r"\b(delivery|shipping|bezorg\w*|levering\w*|verzend\w*|transport\w*|postnl|dhl|ups)\b",
+    re.IGNORECASE,
+)
 
 
 class SaleOrderLine(models.Model):
@@ -19,13 +25,9 @@ class SaleOrderLine(models.Model):
             vals['name'] = self._clean_subscription_name(vals['name'])
         return super().write(vals)
 
-    def _prepare_invoice_line(self, **optional_values):
-        if self.x_moyee_is_removed or float(self.product_uom_qty or 0.0) <= 0.0:
-            return {}
-        res = super()._prepare_invoice_line(**optional_values)
-        if res and self._moyee_is_subscription_line():
-            res["quantity"] = float(self.product_uom_qty or 0.0)
-        return res
+    # NOTE: _prepare_invoice_line is intentionally NOT overridden anymore.
+    # Removed lines are filtered out in sale.order._get_invoiceable_lines(), and
+    # quantities must come from Odoo's qty_to_invoice (subscription-period aware).
 
     def _clean_subscription_name(self, name):
         if not name:
@@ -55,17 +57,9 @@ class SaleOrderLine(models.Model):
     def _moyee_get_portal_weight_display(self):
         self.ensure_one()
         weight_val = self._moyee_get_portal_weight_value()
-        lang = (self.env.context.get('lang') or getattr(self.env, 'lang', '') or '').lower()
-        path = ''
-        try:
-            from odoo.http import request
-            if request and hasattr(request, 'httprequest'):
-                path = (request.httprequest.path or '').lower()
-        except Exception:
-            pass
-
-        is_de = '/de' in path or path.startswith('/de') or lang.startswith('de')
-        is_nl = '/nl' in path or path.startswith('/nl') or lang.startswith('nl')
+        lang = (self.env.context.get('lang') or self.env.lang or '').lower()
+        is_de = lang.startswith('de')
+        is_nl = lang.startswith('nl')
 
         if weight_val == "1kg":
             return "1 kg"
@@ -104,7 +98,7 @@ class SaleOrderLine(models.Model):
                 return "1kg"
             if "250" in lname:
                 return "250g"
-            if "25" in lname or "capsule" in lname or "cups" in lname:
+            if re.search(r"\b25\b", lname) or "capsule" in lname or "cups" in lname:
                 return "25caps"
         return ""
 
@@ -140,17 +134,17 @@ class SaleOrderLine(models.Model):
         # 2. Standard key fallback
         val = self._moyee_get_portal_grind_value()
         if val == "whole":
-            return "Whole Beans"
+            return _("Whole Beans")
         elif val == "filter":
-            return "Filter Grind"
+            return _("Filter Grind")
         elif val == "espresso":
-            return "Espresso Grind"
+            return _("Espresso Grind")
         elif val == "capsules":
-            return "Capsules"
+            return _("Capsules")
         elif val and val != "other":
             return val.capitalize()
 
-        return "Whole Beans"
+        return _("Whole Beans")
 
     def _moyee_check_manager_rights(self):
         """Backend-only: allow employees (and superuser)."""
@@ -168,14 +162,14 @@ class SaleOrderLine(models.Model):
     def _moyee_is_delivery_line(self):
         """Check if line is a delivery, shipping, or service product line."""
         self.ensure_one()
-        pname = (self.product_id.display_name or self.product_id.name or self.name or "").lower()
-        return (
-            getattr(self, 'is_delivery', False)
-            or getattr(self.product_id, 'is_delivery', False)
-            or getattr(self.product_id, 'type', '') == 'service'
-            or getattr(self.product_id, 'detailed_type', '') == 'service'
-            or any(kw in pname for kw in ('delivery', 'shipping', 'bezorg', 'levering', 'verzend', 'transport', 'postnl', 'dhl', 'ups'))
-        )
+        if getattr(self, 'is_delivery', False):
+            return True
+        carrier = getattr(self.order_id, 'carrier_id', False)
+        if carrier and self.product_id and carrier.product_id == self.product_id:
+            return True
+        # Word-boundary match: avoids false positives like "cups" -> "ups"
+        pname = self.product_id.display_name or self.product_id.name or self.name or ""
+        return bool(_DELIVERY_KW_RE.search(pname))
 
     def _moyee_block_delivery_product(self):
         """Server-side protection: never allow 'delivery' product removal."""
@@ -216,6 +210,8 @@ class SaleOrderLine(models.Model):
             (tuple(lines.ids),),
         )
         lines.invalidate_recordset(["product_uom_qty"])
+        # SQL bypasses the ORM: mark dependents (qty_to_invoice, subtotals...) for recompute
+        lines.modified(["product_uom_qty"])
         lines.order_id.invalidate_recordset()
 
     # -----------------------
@@ -249,14 +245,14 @@ class SaleOrderLine(models.Model):
             line._moyee_force_zero_qty()
 
             product_label = line.product_id.display_name if line.product_id else (line.name or _("(no product)"))
-            body = _(
-                "Moyee soft removal applied.\n"
-                "- Item: %s\n"
-                "- Action: quantity set to 0, line marked as removed\n"
-                "- By: %s\n"
-                "- When: %s\n"
+            body = Markup(_(
+                "Moyee soft removal applied.<br/>"
+                "- Item: %s<br/>"
+                "- Action: quantity set to 0, line marked as removed<br/>"
+                "- By: %s<br/>"
+                "- When: %s<br/>"
                 "- Reason: %s"
-            ) % (
+            )) % (
                 product_label,
                 self.env.user.display_name,
                 fields.Datetime.to_string(now),
@@ -299,20 +295,20 @@ class SaleOrderLine(models.Model):
             line.sudo()._moyee_force_zero_qty()
 
             product_label = line.product_id.display_name if line.product_id else (line.name or _("(no product)"))
-            body = _(
-                "Moyee soft removal applied via portal.\n"
-                "- Item: %s\n"
-                "- By: %s\n"
-                "- When: %s\n"
+            body = Markup(_(
+                "Moyee soft removal applied via portal.<br/>"
+                "- Item: %s<br/>"
+                "- By: %s<br/>"
+                "- When: %s<br/>"
                 "- Reason: %s"
-            ) % (
+            )) % (
                 product_label,
                 portal_user.display_name,
                 fields.Datetime.to_string(now),
                 reason or _("(no reason provided)"),
             )
 
-            line.order_id.with_user(1).message_post(
+            line.order_id.sudo().message_post(
                 body=body,
                 subtype_xmlid="mail.mt_note",
                 author_id=portal_user.partner_id.id,
@@ -329,19 +325,20 @@ class SaleOrderLine(models.Model):
         If user clicks the default trash icon on confirmed subscription lines,
         convert unlink() into soft-remove instead of error.
         """
-        # only subscription lines on confirmed orders
+        # only subscription product lines on confirmed orders. Delivery lines are
+        # left to Odoo so that carrier changes (_remove_delivery_line) keep working.
         to_soft_remove = self.filtered(
             lambda l: (
                 not l.display_type
                 and l.order_id
                 and l._moyee_is_subscription_line()
                 and l.order_id.state in ("sale", "done")
+                and not l._moyee_is_delivery_line()
             )
         )
 
         if to_soft_remove:
             self._moyee_check_manager_rights()
-            to_soft_remove._moyee_block_delivery_product()
 
             now = fields.Datetime.now()
             for line in to_soft_remove:
