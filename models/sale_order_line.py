@@ -185,13 +185,11 @@ class SaleOrderLine(models.Model):
 
     def _moyee_soft_remove_vals(self, removed_by_user_id, reason=None, now=None):
         now = now or fields.Datetime.now()
-        # Use max(qty_delivered, 0) to avoid Odoo constraint:
-        # "The ordered quantity cannot be decreased below the amount already delivered."
-        # The x_moyee_is_removed flag is what really controls exclusion from
-        # future invoices, reports, and portal visibility.
-        safe_qty = max(float(self.qty_delivered or 0.0), 0.0)
+        # NOTE: product_uom_qty is NOT set here. Setting it to qty_delivered
+        # (cumulative over all subscription periods) caused every renewal to
+        # re-ship that quantity for free. Qty is forced to 0 afterwards in
+        # _moyee_force_zero_qty() (SQL, bypasses the "below delivered" check).
         vals = {
-            "product_uom_qty": safe_qty,
             "price_unit": 0.0,
             "x_moyee_is_removed": True,
             "x_moyee_removed_on": now,
@@ -200,6 +198,25 @@ class SaleOrderLine(models.Model):
         if reason:
             vals["x_moyee_remove_reason"] = reason
         return vals
+
+    def _moyee_force_zero_qty(self):
+        """Set ordered qty to 0 and cancel pending stock moves for removed lines."""
+        lines = self.filtered(lambda l: l.id and not l.display_type)
+        if not lines:
+            return
+        moves = self.env["stock.move"].sudo().search([
+            ("sale_line_id", "in", lines.ids),
+            ("state", "not in", ("done", "cancel")),
+            ("picking_code", "=", "outgoing"),
+        ]) if "stock.move" in self.env else False
+        if moves:
+            moves._action_cancel()
+        self.env.cr.execute(
+            "UPDATE sale_order_line SET product_uom_qty = 0 WHERE id IN %s",
+            (tuple(lines.ids),),
+        )
+        lines.invalidate_recordset(["product_uom_qty"])
+        lines.order_id.invalidate_recordset()
 
     # -----------------------
     # Backend action (employees)
@@ -223,11 +240,13 @@ class SaleOrderLine(models.Model):
             if not line._moyee_is_subscription_line():
                 raise UserError(_("This action is only available on subscription sale orders."))
 
-            if line.x_moyee_is_removed and float(line.product_uom_qty or 0.0) == 0.0:
+            if line.x_moyee_is_removed:
+                line._moyee_force_zero_qty()
                 continue
 
             vals = line._moyee_soft_remove_vals(self.env.user.id, reason=reason, now=now)
             line.write(vals)
+            line._moyee_force_zero_qty()
 
             product_label = line.product_id.display_name if line.product_id else (line.name or _("(no product)"))
             body = _(
@@ -271,11 +290,13 @@ class SaleOrderLine(models.Model):
         for line in self:
             if line.display_type:
                 continue
-            if line.x_moyee_is_removed and float(line.product_uom_qty or 0.0) == 0.0:
+            if line.x_moyee_is_removed:
+                line.sudo()._moyee_force_zero_qty()
                 continue
 
             vals = line._moyee_soft_remove_vals(portal_user.id, reason=reason, now=now)
             line.sudo().write(vals)
+            line.sudo()._moyee_force_zero_qty()
 
             product_label = line.product_id.display_name if line.product_id else (line.name or _("(no product)"))
             body = _(
@@ -333,6 +354,7 @@ class SaleOrderLine(models.Model):
                         now=now,
                     )
                 )
+                line._moyee_force_zero_qty()
 
                 product_label = line.product_id.display_name if line.product_id else (line.name or _("(no product)"))
                 line.order_id.message_post(
