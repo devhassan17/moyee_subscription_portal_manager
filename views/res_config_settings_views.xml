@@ -112,6 +112,15 @@
                             </div>
                             <div class="col-12 col-lg-6 o_setting_box">
                                 <div class="o_setting_left_pane">
+                                    <field name="moyee_enable_portal_manager"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_enable_portal_manager"/>
+                                    <div class="text-muted">Enable Moyee Subscription Portal manager features and redesigned /my/home page for this company.</div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box" invisible="not moyee_enable_portal_manager">
+                                <div class="o_setting_left_pane">
                                     <field name="moyee_enable_user_filter"/>
                                 </div>
                                 <div class="o_setting_right_pane">
@@ -119,12 +128,21 @@
                                     <div class="text-muted">If checked, only the selected subscription customers will see the new Moyee Portal Home page (/my/home). Unselected users will see Odoo's default portal page.</div>
                                 </div>
                             </div>
-                            <div class="col-12 col-lg-6 o_setting_box" invisible="not moyee_enable_user_filter">
+                            <div class="col-12 col-lg-6 o_setting_box" invisible="not moyee_enable_portal_manager or not moyee_enable_user_filter">
                                 <div class="o_setting_left_pane"/>
                                 <div class="o_setting_right_pane">
                                     <label for="moyee_redesign_partner_ids"/>
                                     <div class="text-muted">Select subscription customers/partners who will see the new Moyee Portal Home page (/my/home). Unselected users will see Odoo's default portal page.</div>
                                     <field name="moyee_redesign_partner_ids" widget="many2many_tags" placeholder="Select subscription customers..."/>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane">
+                                    <field name="moyee_enable_frontend_scripts"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_enable_frontend_scripts"/>
+                                    <div class="text-muted">Enable custom frontend tracking and data layer scripts for this company.</div>
                                 </div>
                             </div>
                         </div>
@@ -464,7 +482,12 @@
                         </p>
                     </div>
                     <group>
-                        <field name="company_id" options="{'no_create': True, 'no_open': True}"/>
+                        <group>
+                            <field name="company_id" options="{'no_create': True, 'no_open': True}"/>
+                        </group>
+                        <group>
+                            <field name="moyee_enable_frontend_scripts"/>
+                        </group>
                     </group>
                     <notebook>
                         <page string="Header Code (&lt;head&gt;)" name="header_code_page">

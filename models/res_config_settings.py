@@ -20,7 +20,11 @@ def _format_script_code(code):
 class ResCompany(models.Model):
     _inherit = "res.company"
 
-
+    moyee_enable_portal_manager = fields.Boolean(
+        string="Enable Moyee Subscription Portal",
+        default=True,
+        help="If checked, the Moyee Subscription Portal manager features and redesigned /my/home page will be active for this company.",
+    )
     moyee_enable_user_filter = fields.Boolean(
         string="Filter New Portal Home Page by Specific Subscription Customers",
         default=False,
@@ -44,6 +48,11 @@ class ResCompany(models.Model):
     )
 
     # Frontend Custom Code & Data Layers
+    moyee_enable_frontend_scripts = fields.Boolean(
+        string="Enable Frontend Tracking Scripts",
+        default=True,
+        help="If checked, custom tracking scripts and data layers configured for this company will be injected into frontend website and portal pages.",
+    )
     moyee_frontend_header_code = fields.Text(
         string="Frontend Header Code (JS / Tracking / Data Layers)",
         help="JavaScript or tracking code (e.g. Google Tag Manager, DataLayers) to inject into the <head> of frontend website and portal pages.",
@@ -55,21 +64,17 @@ class ResCompany(models.Model):
 
     def get_moyee_frontend_header_code(self):
         self_sudo = self.sudo()
-        code = (self_sudo and self_sudo.moyee_frontend_header_code) or ""
-        if not code:
-            code = self.env["ir.config_parameter"].sudo().get_param(
-                "moyee_subscription_portal_manager.frontend_header_code", ""
-            )
+        if not self_sudo or not getattr(self_sudo, "moyee_enable_frontend_scripts", True):
+            return ""
+        code = self_sudo.moyee_frontend_header_code or ""
         formatted = _format_script_code(code)
         return Markup(formatted) if formatted else ""
 
     def get_moyee_frontend_body_code(self):
         self_sudo = self.sudo()
-        code = (self_sudo and self_sudo.moyee_frontend_body_code) or ""
-        if not code:
-            code = self.env["ir.config_parameter"].sudo().get_param(
-                "moyee_subscription_portal_manager.frontend_body_code", ""
-            )
+        if not self_sudo or not getattr(self_sudo, "moyee_enable_frontend_scripts", True):
+            return ""
+        code = self_sudo.moyee_frontend_body_code or ""
         formatted = _format_script_code(code)
         return Markup(formatted) if formatted else ""
 
@@ -77,7 +82,18 @@ class ResCompany(models.Model):
 class ResConfigSettings(models.TransientModel):
     _inherit = "res.config.settings"
 
-
+    moyee_enable_portal_manager = fields.Boolean(
+        related="company_id.moyee_enable_portal_manager",
+        readonly=False,
+        string="Enable Moyee Subscription Portal",
+        help="If checked, the Moyee Subscription Portal manager features and redesigned /my/home page will be active for this company.",
+    )
+    moyee_enable_frontend_scripts = fields.Boolean(
+        related="company_id.moyee_enable_frontend_scripts",
+        readonly=False,
+        string="Enable Frontend Tracking Scripts",
+        help="If checked, custom tracking scripts and data layers will be injected into frontend website and portal pages for this company.",
+    )
     moyee_enable_user_filter = fields.Boolean(
         related="company_id.moyee_enable_user_filter",
         readonly=False,

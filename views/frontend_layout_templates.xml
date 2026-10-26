@@ -16,8 +16,9 @@
     <template id="moyee_frontend_tracking_scripts" inherit_id="web.frontend_layout" name="Moyee Frontend Tracking &amp; Data Layer Scripts">
         <!-- ══ Header Code Injection: Appends into <head> ══ -->
         <xpath expr="//head" position="inside">
-            <t t-if="request and hasattr(request, 'env') and request.env.company">
-                <t t-set="_moyee_header_code" t-value="request.env.company.sudo().get_moyee_frontend_header_code()"/>
+            <t t-set="_moyee_active_company" t-value="(request.website.company_id if (request and hasattr(request, 'website') and request.website and request.website.company_id) else (request.env.company if (request and hasattr(request, 'env') and request.env.company) else False))"/>
+            <t t-if="_moyee_active_company and hasattr(_moyee_active_company.sudo(), 'get_moyee_frontend_header_code') and _moyee_active_company.sudo().get_moyee_frontend_header_code">
+                <t t-set="_moyee_header_code" t-value="_moyee_active_company.sudo().get_moyee_frontend_header_code()"/>
                 <t t-if="_moyee_header_code">
                     <!-- Moyee Frontend Header Code / DataLayer -->
                     <t t-out="_moyee_header_code"/>
@@ -27,8 +28,9 @@
 
         <!-- ══ Body Code Injection: Appends directly inside <body> before #wrapwrap ══ -->
         <xpath expr="//div[@id='wrapwrap']" position="before">
-            <t t-if="request and hasattr(request, 'env') and request.env.company">
-                <t t-set="_moyee_body_code" t-value="request.env.company.sudo().get_moyee_frontend_body_code()"/>
+            <t t-set="_moyee_active_company" t-value="(request.website.company_id if (request and hasattr(request, 'website') and request.website and request.website.company_id) else (request.env.company if (request and hasattr(request, 'env') and request.env.company) else False))"/>
+            <t t-if="_moyee_active_company and hasattr(_moyee_active_company.sudo(), 'get_moyee_frontend_body_code') and _moyee_active_company.sudo().get_moyee_frontend_body_code">
+                <t t-set="_moyee_body_code" t-value="_moyee_active_company.sudo().get_moyee_frontend_body_code()"/>
                 <t t-if="_moyee_body_code">
                     <!-- Moyee Frontend Body Code / Noscript -->
                     <t t-out="_moyee_body_code"/>

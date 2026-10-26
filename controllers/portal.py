@@ -357,10 +357,15 @@ class MoyeePortalHome(CustomerPortal):
 
     def _is_moyee_redesign_active_for_user(self):
         company = getattr(request, "website", False) and request.website.company_id or request.env.company
+        if not company:
+            return False
         company_sudo = company.sudo()
         
-        # Company check: allow for Moyee Coffee or companies where Moyee portal settings are configured
-        if company and "moyee" not in (company.name or "").lower() and not company_sudo.moyee_enable_user_filter:
+        # Company check: must have Moyee Subscription Portal enabled for this company
+        if "moyee_enable_portal_manager" in company_sudo._fields:
+            if not company_sudo.moyee_enable_portal_manager:
+                return False
+        elif "moyee" not in (company.name or "").lower() and not getattr(company_sudo, "moyee_enable_user_filter", False):
             return False
 
         enable_user_filter = False
