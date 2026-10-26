@@ -483,7 +483,7 @@
                     </div>
                     <group>
                         <group>
-                            <field name="company_id" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="company_ids" widget="many2many_tags" options="{'no_create': True}" placeholder="Select one or more companies..."/>
                         </group>
                         <group>
                             <field name="moyee_enable_frontend_scripts"/>
