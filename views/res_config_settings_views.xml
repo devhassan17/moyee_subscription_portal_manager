@@ -475,10 +475,6 @@
                         <h1>Frontend Tracking &amp; Data Layer Scripts</h1>
                         <p class="text-muted">
                             Add custom Header and Body JavaScript code (e.g. Google Tag Manager, Google Analytics, Meta Pixel, custom DataLayers).
-                            <br/>
-                            <span class="badge bg-success-subtle text-success border border-success-subtle mt-1" style="font-size: 13px; padding: 6px 12px; border-radius: 6px;">
-                                <i class="fa fa-shield me-1"/> Frontend Only — Never executed in the backend ERP interface
-                            </span>
                         </p>
                     </div>
                     <group>
