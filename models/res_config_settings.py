@@ -53,12 +53,14 @@ class ResCompany(models.Model):
         default=True,
         help="If checked, custom tracking scripts and data layers configured for this company will be injected into frontend website and portal pages.",
     )
-    moyee_frontend_header_code = fields.Text(
+    moyee_frontend_header_code = fields.Html(
         string="Frontend Header Code (JS / Tracking / Data Layers)",
+        sanitize=False,
         help="JavaScript or tracking code (e.g. Google Tag Manager, DataLayers) to inject into the <head> of frontend website and portal pages.",
     )
-    moyee_frontend_body_code = fields.Text(
+    moyee_frontend_body_code = fields.Html(
         string="Frontend Body Code (JS / Tracking / Noscript)",
+        sanitize=False,
         help="JavaScript or tracking code (e.g. Google Tag Manager noscript, body data layers) to inject inside the <body> of frontend website and portal pages.",
     )
 
@@ -112,15 +114,17 @@ class ResConfigSettings(models.TransientModel):
     )
 
     # Frontend Custom Code & Data Layers
-    moyee_frontend_header_code = fields.Text(
+    moyee_frontend_header_code = fields.Html(
         related="company_id.moyee_frontend_header_code",
         readonly=False,
+        sanitize=False,
         string="Frontend Header Code (JS / Tracking / Data Layers)",
         help="JavaScript or tracking code (e.g. Google Tag Manager, DataLayers) to inject into the <head> of frontend website and portal pages.",
     )
-    moyee_frontend_body_code = fields.Text(
+    moyee_frontend_body_code = fields.Html(
         related="company_id.moyee_frontend_body_code",
         readonly=False,
+        sanitize=False,
         string="Frontend Body Code (JS / Tracking / Noscript)",
         help="JavaScript or tracking code (e.g. Google Tag Manager noscript, body data layers) to inject inside the <body> of frontend website and portal pages.",
     )

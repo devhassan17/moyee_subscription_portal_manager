@@ -9,32 +9,28 @@
          - Inherits web.frontend_layout (and thereby applies to all
            portal and website pages).
          - NEVER executes in the backend ERP interface (/web).
-         - Uses sudo() getters on res.company with Markup to safely
-           render unescaped <script>, <noscript>, and tags without
-           triggering AccessError for public/portal visitors.
+         - Zero external function calls: Uses standard Odoo QWeb
+           operators ('in' keyword and direct field access) to
+           completely eliminate any 'NoneType' or 'hasattr' call errors.
+         - Uses fields.Html with Markup to render unescaped <script>,
+           <noscript>, and dataLayer tags safely.
          ========================================================= -->
     <template id="moyee_frontend_tracking_scripts" inherit_id="web.frontend_layout" name="Moyee Frontend Tracking &amp; Data Layer Scripts">
         <!-- ══ Header Code Injection: Appends into <head> ══ -->
         <xpath expr="//head" position="inside">
-            <t t-set="_moyee_active_company" t-value="(request.website.company_id if (request and hasattr(request, 'website') and request.website and request.website.company_id) else (request.env.company if (request and hasattr(request, 'env') and request.env.company) else False))"/>
-            <t t-if="_moyee_active_company and hasattr(_moyee_active_company.sudo(), 'get_moyee_frontend_header_code') and _moyee_active_company.sudo().get_moyee_frontend_header_code">
-                <t t-set="_moyee_header_code" t-value="_moyee_active_company.sudo().get_moyee_frontend_header_code()"/>
-                <t t-if="_moyee_header_code">
-                    <!-- Moyee Frontend Header Code / DataLayer -->
-                    <t t-out="_moyee_header_code"/>
-                </t>
+            <t t-set="_moyee_active_company" t-value="res_company or (request and request.env and request.env.company)"/>
+            <t t-if="_moyee_active_company and 'moyee_enable_frontend_scripts' in _moyee_active_company and _moyee_active_company.moyee_enable_frontend_scripts and 'moyee_frontend_header_code' in _moyee_active_company and _moyee_active_company.moyee_frontend_header_code">
+                <!-- Moyee Frontend Header Code / DataLayer -->
+                <t t-out="_moyee_active_company.moyee_frontend_header_code"/>
             </t>
         </xpath>
 
         <!-- ══ Body Code Injection: Appends directly inside <body> before #wrapwrap ══ -->
         <xpath expr="//div[@id='wrapwrap']" position="before">
-            <t t-set="_moyee_active_company" t-value="(request.website.company_id if (request and hasattr(request, 'website') and request.website and request.website.company_id) else (request.env.company if (request and hasattr(request, 'env') and request.env.company) else False))"/>
-            <t t-if="_moyee_active_company and hasattr(_moyee_active_company.sudo(), 'get_moyee_frontend_body_code') and _moyee_active_company.sudo().get_moyee_frontend_body_code">
-                <t t-set="_moyee_body_code" t-value="_moyee_active_company.sudo().get_moyee_frontend_body_code()"/>
-                <t t-if="_moyee_body_code">
-                    <!-- Moyee Frontend Body Code / Noscript -->
-                    <t t-out="_moyee_body_code"/>
-                </t>
+            <t t-set="_moyee_active_company" t-value="res_company or (request and request.env and request.env.company)"/>
+            <t t-if="_moyee_active_company and 'moyee_enable_frontend_scripts' in _moyee_active_company and _moyee_active_company.moyee_enable_frontend_scripts and 'moyee_frontend_body_code' in _moyee_active_company and _moyee_active_company.moyee_frontend_body_code">
+                <!-- Moyee Frontend Body Code / Noscript -->
+                <t t-out="_moyee_active_company.moyee_frontend_body_code"/>
             </t>
         </xpath>
     </template>

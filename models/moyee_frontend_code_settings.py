@@ -21,12 +21,14 @@ class MoyeeFrontendCodeSettings(models.TransientModel):
         default=True,
         help="If checked, custom tracking scripts will be active and injected for this specific company.",
     )
-    moyee_frontend_header_code = fields.Text(
+    moyee_frontend_header_code = fields.Html(
         string="Header Code (JS / Tracking / Data Layers)",
+        sanitize=False,
         help="JavaScript or tracking code (e.g. Google Tag Manager, DataLayers) to inject into the <head> of frontend website and portal pages.",
     )
-    moyee_frontend_body_code = fields.Text(
+    moyee_frontend_body_code = fields.Html(
         string="Body Code (JS / Tracking / Noscript)",
+        sanitize=False,
         help="JavaScript or tracking code (e.g. Google Tag Manager noscript, body data layers) to inject inside the <body> of frontend website and portal pages.",
     )
 
@@ -54,11 +56,19 @@ class MoyeeFrontendCodeSettings(models.TransientModel):
     def action_save(self):
         self.ensure_one()
         if self.company_id:
+            header_code = self.moyee_frontend_header_code or ""
+            body_code = self.moyee_frontend_body_code or ""
+            # If raw JS without tags, wrap nicely
+            if header_code and not ("<script" in str(header_code).lower() or "<noscript" in str(header_code).lower() or "<!--" in str(header_code) or "<" in str(header_code)):
+                header_code = f"<script type=\"text/javascript\">\n{header_code}\n</script>"
+            if body_code and not ("<script" in str(body_code).lower() or "<noscript" in str(body_code).lower() or "<!--" in str(body_code) or "<" in str(body_code)):
+                body_code = f"<script type=\"text/javascript\">\n{body_code}\n</script>"
+
             self.company_id.sudo().write(
                 {
                     "moyee_enable_frontend_scripts": self.moyee_enable_frontend_scripts,
-                    "moyee_frontend_header_code": self.moyee_frontend_header_code or False,
-                    "moyee_frontend_body_code": self.moyee_frontend_body_code or False,
+                    "moyee_frontend_header_code": header_code or False,
+                    "moyee_frontend_body_code": body_code or False,
                 }
             )
         return {
