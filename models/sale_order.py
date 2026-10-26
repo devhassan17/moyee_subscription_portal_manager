@@ -137,7 +137,8 @@ class SaleOrder(models.Model):
     def _moyee_auto_recompute_delivery(self):
         """Recalculate the shipping cost when subscription lines change.
         Existing (possibly invoiced) delivery lines are updated in place to avoid the
-        'already invoiced' error; otherwise Odoo's set_delivery_line() is used."""
+        'already invoiced' error; otherwise Odoo's set_delivery_line() is used.
+        Also safely soft-removes duplicate delivery lines if multiple exist."""
         for order in self:
             carrier = getattr(order, 'carrier_id', False)
             if not carrier:
@@ -149,8 +150,29 @@ class SaleOrder(models.Model):
                         continue
                     price_unit = float(res.get('price', 0.0))
                     delivery_lines = order._moyee_get_delivery_lines()
+
+                    # Deduplicate: if multiple delivery lines exist, keep the carrier-matching or latest one
+                    if len(delivery_lines) > 1:
+                        matching_lines = delivery_lines.filtered(
+                            lambda l: carrier.product_id and l.product_id == carrier.product_id
+                        )
+                        keep_line = matching_lines[-1:] if matching_lines else delivery_lines[-1:]
+                        extra_lines = delivery_lines - keep_line
+                        for ex in extra_lines:
+                            ex.sudo().write({
+                                "x_moyee_is_removed": True,
+                                "x_moyee_removed_on": fields.Datetime.now(),
+                                "x_moyee_remove_reason": "Duplicate delivery line soft-removed by auto-delivery recompute.",
+                            })
+                            ex.sudo()._moyee_force_zero_qty()
+                        delivery_lines = keep_line
+
                     if delivery_lines:
-                        delivery_lines.sudo().write({'price_unit': price_unit})
+                        vals = {'price_unit': price_unit}
+                        if carrier.product_id and delivery_lines.product_id != carrier.product_id:
+                            vals['product_id'] = carrier.product_id.id
+                            vals['name'] = carrier.name
+                        delivery_lines.sudo().write(vals)
                     elif hasattr(order, 'set_delivery_line'):
                         order.sudo().set_delivery_line(carrier, price_unit)
                     if 'recompute_delivery_price' in order._fields:

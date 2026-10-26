@@ -1,5 +1,20 @@
-# File: moyee_subscription_portal_manager/models/res_config_settings.py
 from odoo import fields, models
+
+try:
+    from markupsafe import Markup
+except ImportError:
+    Markup = lambda s: s
+
+
+def _format_script_code(code):
+    if not code or not str(code).strip():
+        return ""
+    stripped = str(code).strip()
+    # If the user only provided raw javascript without any HTML/script tags, wrap it in <script>
+    if not ("<script" in stripped.lower() or "<noscript" in stripped.lower() or "<!--" in stripped or "<" in stripped):
+        stripped = f"<script type=\"text/javascript\">\n{stripped}\n</script>"
+    return stripped
+
 
 
 class ResCompany(models.Model):
@@ -28,6 +43,36 @@ class ResCompany(models.Model):
         help="Select specific products that will be hidden from the customer subscription products view on the account portal (/my/home).",
     )
 
+    # Frontend Custom Code & Data Layers
+    moyee_frontend_header_code = fields.Text(
+        string="Frontend Header Code (JS / Tracking / Data Layers)",
+        help="JavaScript or tracking code (e.g. Google Tag Manager, DataLayers) to inject into the <head> of frontend website and portal pages.",
+    )
+    moyee_frontend_body_code = fields.Text(
+        string="Frontend Body Code (JS / Tracking / Noscript)",
+        help="JavaScript or tracking code (e.g. Google Tag Manager noscript, body data layers) to inject inside the <body> of frontend website and portal pages.",
+    )
+
+    def get_moyee_frontend_header_code(self):
+        self_sudo = self.sudo()
+        code = (self_sudo and self_sudo.moyee_frontend_header_code) or ""
+        if not code:
+            code = self.env["ir.config_parameter"].sudo().get_param(
+                "moyee_subscription_portal_manager.frontend_header_code", ""
+            )
+        formatted = _format_script_code(code)
+        return Markup(formatted) if formatted else ""
+
+    def get_moyee_frontend_body_code(self):
+        self_sudo = self.sudo()
+        code = (self_sudo and self_sudo.moyee_frontend_body_code) or ""
+        if not code:
+            code = self.env["ir.config_parameter"].sudo().get_param(
+                "moyee_subscription_portal_manager.frontend_body_code", ""
+            )
+        formatted = _format_script_code(code)
+        return Markup(formatted) if formatted else ""
+
 
 class ResConfigSettings(models.TransientModel):
     _inherit = "res.config.settings"
@@ -48,6 +93,20 @@ class ResConfigSettings(models.TransientModel):
         readonly=False,
         string="Hidden Subscription Products on Portal",
         help="Select specific products that will be hidden from the customer subscription products view on the account portal (/my/home).",
+    )
+
+    # Frontend Custom Code & Data Layers
+    moyee_frontend_header_code = fields.Text(
+        related="company_id.moyee_frontend_header_code",
+        readonly=False,
+        string="Frontend Header Code (JS / Tracking / Data Layers)",
+        help="JavaScript or tracking code (e.g. Google Tag Manager, DataLayers) to inject into the <head> of frontend website and portal pages.",
+    )
+    moyee_frontend_body_code = fields.Text(
+        related="company_id.moyee_frontend_body_code",
+        readonly=False,
+        string="Frontend Body Code (JS / Tracking / Noscript)",
+        help="JavaScript or tracking code (e.g. Google Tag Manager noscript, body data layers) to inject inside the <body> of frontend website and portal pages.",
     )
 
     # Styling Overrides
@@ -193,6 +252,10 @@ class ResConfigSettings(models.TransientModel):
             moyee_show_sidebar_upsell=ICP.get_param("moyee_subscription_portal_manager.show_sidebar_upsell", "True").lower() in ("true", "1", "yes"),
             moyee_show_sidebar_support=ICP.get_param("moyee_subscription_portal_manager.show_sidebar_support", "True").lower() in ("true", "1", "yes"),
         )
+        if not res.get("moyee_frontend_header_code"):
+            res["moyee_frontend_header_code"] = ICP.get_param("moyee_subscription_portal_manager.frontend_header_code", "")
+        if not res.get("moyee_frontend_body_code"):
+            res["moyee_frontend_body_code"] = ICP.get_param("moyee_subscription_portal_manager.frontend_body_code", "")
         return res
 
     def set_values(self):
@@ -209,3 +272,5 @@ class ResConfigSettings(models.TransientModel):
         ICP.set_param("moyee_subscription_portal_manager.show_sidebar_profile", str(self.moyee_show_sidebar_profile))
         ICP.set_param("moyee_subscription_portal_manager.show_sidebar_upsell", str(self.moyee_show_sidebar_upsell))
         ICP.set_param("moyee_subscription_portal_manager.show_sidebar_support", str(self.moyee_show_sidebar_support))
+        ICP.set_param("moyee_subscription_portal_manager.frontend_header_code", self.moyee_frontend_header_code or "")
+        ICP.set_param("moyee_subscription_portal_manager.frontend_body_code", self.moyee_frontend_body_code or "")

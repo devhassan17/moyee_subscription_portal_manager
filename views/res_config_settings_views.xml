@@ -417,9 +417,81 @@
                         </div>
                     </block>
 
+                    <block title="Frontend Tracking &amp; Data Layer Scripts" name="moyee_frontend_scripts_block">
+                        <div class="row mt16 o_settings_container">
+                            <div class="col-12 o_setting_box">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_frontend_header_code" string="Header Code (Scripts / Data Layers / GTM)"/>
+                                    <div class="text-muted">JavaScript, Google Tag Manager &lt;head&gt; code, Meta Pixel, or data layers to be injected into the &lt;head&gt; of frontend website and portal pages. (Frontend only — never executed in backend ERP interface).</div>
+                                    <field name="moyee_frontend_header_code" widget="text" class="font-monospace" placeholder="&lt;script&gt;&#10;  window.dataLayer = window.dataLayer || [];&#10;  // Your dataLayer / header JS here&#10;&lt;/script&gt;" style="min-height: 140px; font-family: monospace; font-size: 13px; width: 100%;"/>
+                                </div>
+                            </div>
+                            <div class="col-12 o_setting_box mt16">
+                                <div class="o_setting_left_pane"/>
+                                <div class="o_setting_right_pane">
+                                    <label for="moyee_frontend_body_code" string="Body Code (Scripts / Noscript / Data Layers)"/>
+                                    <div class="text-muted">JavaScript, Google Tag Manager &lt;body&gt; noscript, or body data layers to be injected immediately inside the &lt;body&gt; of frontend website and portal pages. (Frontend only — never executed in backend ERP interface).</div>
+                                    <field name="moyee_frontend_body_code" widget="text" class="font-monospace" placeholder="&lt;!-- Google Tag Manager (noscript) --&gt;&#10;&lt;noscript&gt;&lt;iframe src=&quot;https://www.googletagmanager.com/ns.html?id=GTM-XXXX&quot; height=&quot;0&quot; width=&quot;0&quot; style=&quot;display:none;visibility:hidden&quot;&gt;&lt;/iframe&gt;&lt;/noscript&gt;" style="min-height: 140px; font-family: monospace; font-size: 13px; width: 100%;"/>
+                                </div>
+                            </div>
+                        </div>
+                    </block>
+
                 </app>
             </xpath>
         </field>
+    </record>
+
+    <!-- Dedicated Frontend Code & Data Layer Settings View & Action -->
+    <record id="moyee_frontend_code_settings_view_form" model="ir.ui.view">
+        <field name="name">moyee.frontend.code.settings.view.form</field>
+        <field name="model">moyee.frontend.code.settings</field>
+        <field name="arch" type="xml">
+            <form string="Frontend Tracking &amp; Data Layer Scripts" class="oe_form_configuration">
+                <header>
+                    <button name="action_save" string="Save Scripts" type="object" class="btn-primary" icon="fa-check"/>
+                </header>
+                <sheet>
+                    <div class="oe_title mb-4">
+                        <h1>Frontend Tracking &amp; Data Layer Scripts</h1>
+                        <p class="text-muted">
+                            Add custom Header and Body JavaScript code (e.g. Google Tag Manager, Google Analytics, Meta Pixel, custom DataLayers).
+                            <br/>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle mt-1" style="font-size: 13px; padding: 6px 12px; border-radius: 6px;">
+                                <i class="fa fa-shield me-1"/> Frontend Only — Never executed in the backend ERP interface
+                            </span>
+                        </p>
+                    </div>
+                    <group>
+                        <field name="company_id" options="{'no_create': True, 'no_open': True}"/>
+                    </group>
+                    <notebook>
+                        <page string="Header Code (&lt;head&gt;)" name="header_code_page">
+                            <div class="alert alert-info mt-2" role="alert">
+                                <strong>Header Code:</strong> This code is injected inside the <code>&lt;head&gt;</code> tag of all frontend website and customer portal pages.
+                                Paste your <code>&lt;script&gt;</code> tags, dataLayer initializers, meta tags, etc.
+                            </div>
+                            <field name="moyee_frontend_header_code" widget="text" placeholder="&lt;script&gt;&#10;  window.dataLayer = window.dataLayer || [];&#10;  // Your dataLayer / header code here&#10;&lt;/script&gt;" style="min-height: 250px; font-family: monospace; font-size: 13px; width: 100%;"/>
+                        </page>
+                        <page string="Body Code (&lt;body&gt;)" name="body_code_page">
+                            <div class="alert alert-info mt-2" role="alert">
+                                <strong>Body Code:</strong> This code is injected immediately after the opening <code>&lt;body&gt;</code> tag (before page content wrappers) on all frontend website and customer portal pages.
+                                Ideal for Google Tag Manager <code>&lt;noscript&gt;</code> tags and body scripts.
+                            </div>
+                            <field name="moyee_frontend_body_code" widget="text" placeholder="&lt;!-- Google Tag Manager (noscript) --&gt;&#10;&lt;noscript&gt;&lt;iframe src=&quot;https://www.googletagmanager.com/ns.html?id=GTM-XXXX&quot; height=&quot;0&quot; width=&quot;0&quot; style=&quot;display:none;visibility:hidden&quot;&gt;&lt;/iframe&gt;&lt;/noscript&gt;" style="min-height: 250px; font-family: monospace; font-size: 13px; width: 100%;"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_moyee_frontend_code_settings" model="ir.actions.act_window">
+        <field name="name">Frontend Scripts &amp; Data Layers</field>
+        <field name="res_model">moyee.frontend.code.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
     </record>
 
     <!-- Settings Menu & Action -->
@@ -442,6 +514,12 @@
               parent="menu_moyee_portal_root"
               action="action_moyee_portal_settings"
               sequence="10"/>
+
+    <menuitem id="menu_moyee_portal_frontend_code"
+              name="Frontend Scripts"
+              parent="menu_moyee_portal_root"
+              action="action_moyee_frontend_code_settings"
+              sequence="15"/>
 
     <menuitem id="menu_moyee_portal_faq"
               name="Portal FAQs"

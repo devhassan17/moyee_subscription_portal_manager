@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- =========================================================
+         Frontend Layout Extension: Injects Header & Body Code
+         (DataLayers, Google Tag Manager, Meta Pixel, Analytics).
+         
+         CRITICAL ARCHITECTURAL GUARANTEE:
+         - Inherits web.frontend_layout (and thereby applies to all
+           portal and website pages).
+         - NEVER executes in the backend ERP interface (/web).
+         - Uses sudo() getters on res.company with Markup to safely
+           render unescaped <script>, <noscript>, and tags without
+           triggering AccessError for public/portal visitors.
+         ========================================================= -->
+    <template id="moyee_frontend_tracking_scripts" inherit_id="web.frontend_layout" name="Moyee Frontend Tracking &amp; Data Layer Scripts">
+        <!-- ══ Header Code Injection: Appends into <head> ══ -->
+        <xpath expr="//head" position="inside">
+            <t t-if="request and hasattr(request, 'env') and request.env.company">
+                <t t-set="_moyee_header_code" t-value="request.env.company.sudo().get_moyee_frontend_header_code()"/>
+                <t t-if="_moyee_header_code">
+                    <!-- Moyee Frontend Header Code / DataLayer -->
+                    <t t-out="_moyee_header_code"/>
+                </t>
+            </t>
+        </xpath>
+
+        <!-- ══ Body Code Injection: Appends directly inside <body> before #wrapwrap ══ -->
+        <xpath expr="//div[@id='wrapwrap']" position="before">
+            <t t-if="request and hasattr(request, 'env') and request.env.company">
+                <t t-set="_moyee_body_code" t-value="request.env.company.sudo().get_moyee_frontend_body_code()"/>
+                <t t-if="_moyee_body_code">
+                    <!-- Moyee Frontend Body Code / Noscript -->
+                    <t t-out="_moyee_body_code"/>
+                </t>
+            </t>
+        </xpath>
+    </template>
+
+</odoo>

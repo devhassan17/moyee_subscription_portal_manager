@@ -267,6 +267,14 @@ class MoyeePortalHome(CustomerPortal):
             "inspire_btn1_url": ICP.get_param("moyee_subscription_portal_manager.inspire_btn1_url", "/radical-impact-coffee"),
             "inspire_btn2_text": ICP.get_param("moyee_subscription_portal_manager.inspire_btn2_text", "Browse our coffee"),
             "inspire_btn2_url": ICP.get_param("moyee_subscription_portal_manager.inspire_btn2_url", "/shop"),
+            "frontend_header_code": (
+                (request.env.company and request.env.company.moyee_frontend_header_code)
+                or ICP.get_param("moyee_subscription_portal_manager.frontend_header_code", "")
+            ),
+            "frontend_body_code": (
+                (request.env.company and request.env.company.moyee_frontend_body_code)
+                or ICP.get_param("moyee_subscription_portal_manager.frontend_body_code", "")
+            ),
         }
 
         # Determine selected language from the website language (not URL substrings)

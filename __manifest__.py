@@ -1,7 +1,7 @@
 # File: moyee_subscription_portal_manager/__manifest__.py
 {
     "name": "Moyee Subscription Portal Manager",
-    "version": "18.0.2.0.108",
+    "version": "18.0.2.0.110",
     "category": "Sales",
     "summary": "Soft-remove subscription sale order lines and allow secure portal self-service actions.",
     "description": """\
@@ -29,6 +29,7 @@ Portal + backend build:
         "views/portal_subscription_templates.xml",
         "views/portal_my_account_sub_templates.xml",
         "views/portal_my_account_templates.xml",
+        "views/frontend_layout_templates.xml",
         "views/moyee_subscription_bulk_product_wizard_views.xml",
         "views/res_config_settings_views.xml",
         "reports/report_invoice.xml",

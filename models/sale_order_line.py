@@ -194,7 +194,7 @@ class SaleOrderLine(models.Model):
         return vals
 
     def _moyee_force_zero_qty(self):
-        """Set ordered qty to 0 and cancel pending stock moves for removed lines."""
+        """Set ordered qty, prices, and invoiceable quantities to 0 and cancel pending stock moves for removed lines."""
         lines = self.filtered(lambda l: l.id and not l.display_type)
         if not lines:
             return
@@ -206,12 +206,27 @@ class SaleOrderLine(models.Model):
         if moves:
             moves._action_cancel()
         self.env.cr.execute(
-            "UPDATE sale_order_line SET product_uom_qty = 0 WHERE id IN %s",
+            """UPDATE sale_order_line 
+               SET product_uom_qty = 0, 
+                   price_unit = 0, 
+                   price_subtotal = 0, 
+                   price_total = 0, 
+                   qty_to_invoice = 0, 
+                   untaxed_amount_to_invoice = 0 
+               WHERE id IN %s""",
             (tuple(lines.ids),),
         )
-        lines.invalidate_recordset(["product_uom_qty"])
-        # SQL bypasses the ORM: mark dependents (qty_to_invoice, subtotals...) for recompute
-        lines.modified(["product_uom_qty"])
+        fields_to_invalidate = [
+            "product_uom_qty",
+            "price_unit",
+            "price_subtotal",
+            "price_total",
+            "qty_to_invoice",
+            "untaxed_amount_to_invoice",
+        ]
+        lines.invalidate_recordset(fields_to_invalidate)
+        # SQL bypasses the ORM: mark dependents for recompute
+        lines.modified(fields_to_invalidate)
         lines.order_id.invalidate_recordset()
 
     # -----------------------
